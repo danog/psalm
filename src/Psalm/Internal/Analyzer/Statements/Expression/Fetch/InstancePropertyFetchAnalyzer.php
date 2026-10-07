@@ -434,7 +434,7 @@ final class InstancePropertyFetchAnalyzer
                     $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
 
 
-                    $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->value);
+                    $class_storage = ($codebase->classlike_storage_provider->getOrNull($lhs_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($lhs_type_part->value));
 
                     AtomicPropertyFetchAnalyzer::processTaints(
                         $statements_analyzer,

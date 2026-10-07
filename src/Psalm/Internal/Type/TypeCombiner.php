@@ -1474,7 +1474,7 @@ final class TypeCombiner
     private static function getClassLikes(Codebase $codebase, string $fq_classlike_name): array
     {
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name));
         } catch (InvalidArgumentException) {
             return [];
         }

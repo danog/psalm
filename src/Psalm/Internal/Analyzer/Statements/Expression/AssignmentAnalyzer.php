@@ -1209,7 +1209,7 @@ final class AssignmentAnalyzer
                         $graph,
                         $stmt,
                         $property_id,
-                        $codebase->classlike_storage_provider->get($declaring_class),
+                        ($codebase->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class)),
                         $by_ref_out_type,
                         $context,
                         null,

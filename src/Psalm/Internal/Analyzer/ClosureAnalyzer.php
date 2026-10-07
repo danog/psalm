@@ -104,7 +104,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             return parent::getParentFQCLN();
         }
 
-        return $this->codebase->classlike_storage_provider->get($this->bound_this_class)->parent_class;
+        return ($this->codebase->classlike_storage_provider->getOrNull($this->bound_this_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($this->bound_this_class))->parent_class;
     }
 
     /** @psalm-mutation-free */
@@ -213,7 +213,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             && $context->self !== null
             && $codebase->classlike_storage_provider->has($context->self)
         ) {
-            $self_class_storage = $codebase->classlike_storage_provider->get($context->self);
+            $self_class_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
 
             ClassAnalyzer::addContextProperties(
                 $statements_analyzer,

@@ -51,7 +51,7 @@ final class ClassTemplateParamCollector
             && !empty($non_trait_class_storage->overridden_method_ids[$method_name])
         ) {
             foreach ($non_trait_class_storage->overridden_method_ids[$method_name] as $overridden_method_id) {
-                $overridden_storage = $codebase->methods->getStorage($overridden_method_id);
+                $overridden_storage = ($codebase->methods->getStorageOrNull($overridden_method_id) ?? throw $codebase->methods->missing($overridden_method_id));
 
                 if (!$overridden_storage->return_type) {
                     continue;
@@ -63,7 +63,7 @@ final class ClassTemplateParamCollector
 
                 $fq_overridden_class = $overridden_method_id->fq_class_name;
 
-                $overridden_class_storage = $codebase->classlike_storage_provider->get($fq_overridden_class);
+                $overridden_class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_overridden_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_overridden_class));
 
                 $overridden_template_types = $overridden_class_storage->template_types;
 

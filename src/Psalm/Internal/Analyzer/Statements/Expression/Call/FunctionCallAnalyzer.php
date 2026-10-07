@@ -931,7 +931,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $has_valid_function_call_type = true;
 
                     if ($potential_method_id && $codebase->methods->hasStorage($potential_method_id)) {
-                        $potential_method_storage = $codebase->methods->getStorage($potential_method_id);
+                        $potential_method_storage = ($codebase->methods->getStorageOrNull($potential_method_id) ?? throw $codebase->methods->missing($potential_method_id));
 
                         $statements_analyzer->signalMutation(
                             $potential_method_storage->capabilities,

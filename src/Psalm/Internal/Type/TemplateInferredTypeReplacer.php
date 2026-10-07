@@ -340,7 +340,7 @@ final class TemplateInferredTypeReplacer
                     }
 
                     try {
-                        $classlike_storage = $codebase->classlike_storage_provider->get($template_class);
+                        $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($template_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($template_class));
 
                         if ($classlike_storage->template_extended_params) {
                             $defining_class = $atomic_type->defining_class;

@@ -109,7 +109,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
         $this_context = new Context();
         $this_context->self = $method_id->fq_class_name;
 
-        $class_storage = $codebase->classlike_storage_provider->get($method_id->fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name));
 
         $this_context->vars_in_scope['$this'] = new Union([new TNamedObject($class_storage->name)]);
 

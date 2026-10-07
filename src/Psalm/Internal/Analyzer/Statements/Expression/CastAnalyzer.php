@@ -839,7 +839,7 @@ final class CastAnalyzer
                             $declaring_method_id = $codebase->methods->getDeclaringMethodId($intersection_method_id);
 
                             if ($declaring_method_id !== null) {
-                                $to_string_storage = $codebase->methods->getStorage($declaring_method_id);
+                                $to_string_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
                                 $var_id = ExpressionIdentifier::getExtendedVarId(
                                     $stmt,
                                     $statements_analyzer->getFQCLN(),
@@ -1076,7 +1076,7 @@ final class CastAnalyzer
             return false;
         }
 
-        $to_string_storage = $codebase->methods->getStorage($to_string_id);
+        $to_string_storage = ($codebase->methods->getStorageOrNull($to_string_id) ?? throw $codebase->methods->missing($to_string_id));
 
         if ($to_string_storage->location === null
             || !$codebase->config->isInProjectDirs($to_string_storage->location->file_path)
@@ -1308,7 +1308,7 @@ final class CastAnalyzer
      */
     private static function getDeclaredEscapes(Codebase $codebase, ?MethodIdentifier $to_string_id): int
     {
-        return $to_string_id === null ? 0 : $codebase->methods->getStorage($to_string_id)->removed_taints;
+        return $to_string_id === null ? 0 : ($codebase->methods->getStorageOrNull($to_string_id) ?? throw $codebase->methods->missing($to_string_id))->removed_taints;
     }
 
     /**

@@ -102,7 +102,7 @@ final class MethodVisibilityAnalyzer
                 return null;
             }
 
-            $appearing_class_storage = $codebase->classlike_storage_provider->get($appearing_method_class);
+            $appearing_class_storage = ($codebase->classlike_storage_provider->getOrNull($appearing_method_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_method_class));
         }
 
         $declaring_method_class = $declaring_method_id->fq_class_name;
@@ -113,7 +113,7 @@ final class MethodVisibilityAnalyzer
             return null;
         }
 
-        $storage = $codebase->methods->getStorage($declaring_method_id, $with_pseudo);
+        $storage = ($codebase->methods->getStorageOrNull($declaring_method_id, $with_pseudo) ?? throw $codebase->methods->missing($declaring_method_id));
         $visibility = $storage->visibility;
 
         if ($appearing_method_name

@@ -590,7 +590,7 @@ final class ConcatAnalyzer
                         $statements_analyzer->getFilePath(),
                     )) {
                         try {
-                            $storage = $codebase->methods->getStorage($to_string_method_id);
+                            $storage = ($codebase->methods->getStorageOrNull($to_string_method_id) ?? throw $codebase->methods->missing($to_string_method_id));
                         } catch (UnexpectedValueException) {
                             continue;
                         }

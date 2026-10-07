@@ -108,7 +108,7 @@ final class NativeClassTaintAnalyzer
         if ($class_storage_provider->has($method_id->fq_class_name)) {
             $class_names = [
                 ...$class_names,
-                ...array_keys($class_storage_provider->get($method_id->fq_class_name)->parent_classes),
+                ...array_keys(($class_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name))->parent_classes),
             ];
         }
 
@@ -272,7 +272,7 @@ final class NativeClassTaintAnalyzer
                 continue;
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_name));
 
             // the objects held by a specialized instance are tracked through the variables holding it
             if (!$class_storage->specialize_instance) {

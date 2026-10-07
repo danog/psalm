@@ -444,7 +444,7 @@ final class NegatedAssertionReconciler extends Reconciler
                 ) {
                     $codebase = $statements_analyzer->getCodebase();
 
-                    $enum_storage = $codebase->classlike_storage_provider->get($fq_enum_name);
+                    $enum_storage = ($codebase->classlike_storage_provider->getOrNull($fq_enum_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_enum_name));
 
                     if (!$enum_storage->is_enum || !$enum_storage->enum_cases) {
                         $scalar_var_type = $assertion_type;

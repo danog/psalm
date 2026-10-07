@@ -37,7 +37,7 @@ final class FunctionCasingChecker implements AfterFunctionCallAnalysisInterface,
         try {
             /** @psalm-suppress ArgumentTypeCoercion */
             $method_id = new MethodIdentifier(...explode('::', $declaring_method_id));
-            $function_storage = $codebase->methods->getStorage($method_id);
+            $function_storage = ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id));
 
             if ($function_storage->cased_name === '__call') {
                 return;

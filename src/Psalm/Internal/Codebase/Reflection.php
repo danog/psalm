@@ -80,7 +80,7 @@ final class Reflection
         $class_name_lower = strtolower($class_name);
 
         try {
-            $this->storage_provider->get($class_name_lower);
+            ($this->storage_provider->getOrNull($class_name_lower) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_name_lower));
 
             return;
         } catch (Exception) {
@@ -100,7 +100,7 @@ final class Reflection
             $this->registerClass($reflected_parent_class);
             $parent_class_name_lc = strtolower($parent_class_name);
 
-            $parent_storage = $this->storage_provider->get($parent_class_name_lc);
+            $parent_storage = ($this->storage_provider->getOrNull($parent_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_class_name_lc));
 
             $this->registerInheritedMethods($class_name_lower, $parent_class_name_lc);
             $this->registerInheritedProperties($class_name_lower, $parent_class_name_lc);
@@ -255,7 +255,7 @@ final class Reflection
 
         $fq_class_name_lc = strtolower($fq_class_name);
 
-        $class_storage = $this->storage_provider->get($fq_class_name_lc);
+        $class_storage = ($this->storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
 
         if (isset($class_storage->methods[$method_name_lc])) {
             return;
@@ -522,8 +522,8 @@ final class Reflection
         string $fq_class_name,
         string $parent_class,
     ): void {
-        $parent_storage = $this->storage_provider->get($parent_class);
-        $storage = $this->storage_provider->get($fq_class_name);
+        $parent_storage = ($this->storage_provider->getOrNull($parent_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_class));
+        $storage = ($this->storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         // register where they appear (can never be in a trait)
         foreach ($parent_storage->appearing_method_ids as $method_name => $appearing_method_id) {
@@ -548,8 +548,8 @@ final class Reflection
         string $fq_class_name,
         string $parent_class,
     ): void {
-        $parent_storage = $this->storage_provider->get($parent_class);
-        $storage = $this->storage_provider->get($fq_class_name);
+        $parent_storage = ($this->storage_provider->getOrNull($parent_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_class));
+        $storage = ($this->storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         // register where they appear (can never be in a trait)
         foreach ($parent_storage->appearing_property_ids as $property_name => $appearing_property_id) {

@@ -114,7 +114,7 @@ final class MethodComparator
             $implementer_classlike_storage,
             $implementer_classlike_storage->is_trait
                 && $codebase->classlike_storage_provider->has($implementer_called_class_name)
-                ? $codebase->classlike_storage_provider->get($implementer_called_class_name)
+                ? ($codebase->classlike_storage_provider->getOrNull($implementer_called_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementer_called_class_name))
                 : $implementer_classlike_storage,
             $guide_method_storage,
             $implementer_method_storage,
@@ -284,11 +284,11 @@ final class MethodComparator
                 && $pseudo_method_storage->location
             ) {
                 foreach ($overridden_method_ids as $overridden_method_id) {
-                    $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
+                    $parent_method_storage = ($codebase->methods->getStorageOrNull($overridden_method_id) ?? throw $codebase->methods->missing($overridden_method_id));
 
                     $overridden_fq_class_name = $overridden_method_id->fq_class_name;
 
-                    $parent_storage = $codebase->classlike_storage_provider->get($overridden_fq_class_name);
+                    $parent_storage = ($codebase->classlike_storage_provider->getOrNull($overridden_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($overridden_fq_class_name));
 
                     self::compare(
                         $codebase,
@@ -490,8 +490,7 @@ final class MethodComparator
                 if ($bound_atomic instanceof TTemplateParam
                     && $codebase->classlike_storage_provider->has($bound_atomic->defining_class)
                 ) {
-                    $capabilities |= $codebase->classlike_storage_provider
-                        ->get($bound_atomic->defining_class)
+                    $capabilities |= ($codebase->classlike_storage_provider->getOrNull($bound_atomic->defining_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($bound_atomic->defining_class))
                         ->template_lower_bounds[$bound_atomic->param_name] ?? Capabilities::NONE;
                 } else {
                     $capabilities |= Capabilities::fromType(new Union([$bound_atomic]));
@@ -928,9 +927,9 @@ final class MethodComparator
         $guide_class_name = $guide_classlike_storage->name;
 
         if ($implementer_classlike_storage->is_trait) {
-            $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
+            $implementer_called_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $implementer_called_class_name,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementer_called_class_name));
 
             if (isset(
                 $implementer_called_class_storage->template_extended_params[$implementer_classlike_storage->name],
@@ -1206,9 +1205,9 @@ final class MethodComparator
         }
 
         if ($implementer_classlike_storage->is_trait) {
-            $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
+            $implementer_called_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $implementer_called_class_name,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementer_called_class_name));
 
             if ($implementer_called_class_storage->template_extended_params) {
                 self::transformTemplates(

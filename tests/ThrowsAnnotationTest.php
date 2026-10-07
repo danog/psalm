@@ -1210,7 +1210,7 @@ final class ThrowsAnnotationTest extends TestCase
         $codebase->addFilesToAnalyze([$file_path => $file_path]);
         $codebase->scanFiles();
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
         $method_storage = $is_static
             ? $class_storage->pseudo_static_methods[$method_name_lc]
             : $class_storage->pseudo_methods[$method_name_lc];

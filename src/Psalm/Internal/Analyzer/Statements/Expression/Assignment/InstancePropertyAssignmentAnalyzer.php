@@ -131,7 +131,7 @@ final class InstancePropertyAssignmentAnalyzer
             }
 
             if ($class_property_type) {
-                $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
 
                 $class_property_type = self::getExpandedPropertyType(
                     $codebase,
@@ -789,10 +789,10 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if ($codebase->classlike_storage_provider->has($fq_class_name)
-            && !$codebase->classlike_storage_provider->get($fq_class_name)->final
+            && !($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name))->final
         ) {
             $inherited_property_node = DataFlowNode::getForInheritedProperty(
-                $codebase->classlike_storage_provider->get($fq_class_name)->name . '::$' . $prop_name,
+                ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name))->name . '::$' . $prop_name,
             );
 
             $graph->addNode($inherited_property_node);
@@ -823,7 +823,7 @@ final class InstancePropertyAssignmentAnalyzer
         $ancestors = [];
 
         while ($codebase->classlike_storage_provider->has($fq_class_name)) {
-            $storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             if ($storage->parent_class === null
                 || (!$through_redeclarations
@@ -834,7 +834,7 @@ final class InstancePropertyAssignmentAnalyzer
                 break;
             }
 
-            $parent_storage = $codebase->classlike_storage_provider->get($storage->parent_class);
+            $parent_storage = ($codebase->classlike_storage_provider->getOrNull($storage->parent_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($storage->parent_class));
             $parent_declaring_class = $parent_storage->declaring_property_ids[$prop_name] ?? null;
 
             if ($parent_declaring_class === null
@@ -859,7 +859,7 @@ final class InstancePropertyAssignmentAnalyzer
             return false;
         }
 
-        $property = $codebase->classlike_storage_provider->get($declaring_class)->properties[$prop_name] ?? null;
+        $property = ($codebase->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class))->properties[$prop_name] ?? null;
 
         return $property !== null && $property->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE;
     }
@@ -1166,9 +1166,9 @@ final class InstancePropertyAssignmentAnalyzer
         if (!$codebase->classExists($lhs_type_part->value, null, $context)) {
             if ($codebase->interfaceExists($lhs_type_part->value, null, $context)) {
                 $interface_exists = true;
-                $interface_storage = $codebase->classlike_storage_provider->get(
+                $interface_storage = ($codebase->classlike_storage_provider->getOrNull(
                     strtolower($lhs_type_part->value),
-                );
+                ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing(strtolower($lhs_type_part->value)));
 
                 $override_property_visibility = $interface_storage->override_property_visibility;
 
@@ -1261,7 +1261,7 @@ final class InstancePropertyAssignmentAnalyzer
             )
         ) {
             $has_magic_setter = true;
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             if ($var_id) {
                 if (isset($class_storage->pseudo_property_set_types['$' . $prop_name])) {
@@ -1364,7 +1364,7 @@ final class InstancePropertyAssignmentAnalyzer
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             self::taintProperty(
                 $statements_analyzer,
@@ -1479,7 +1479,7 @@ final class InstancePropertyAssignmentAnalyzer
             $statements_analyzer->getFilePath(),
         );
 
-        $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
         if (isset($declaring_class_storage->properties[$prop_name])) {
             $property_storage = $declaring_class_storage->properties[$prop_name];
@@ -1552,7 +1552,7 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if (!$class_property_type->isMixed()) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             $class_property_type = TypeExpander::expandUnion(
                 $codebase,
@@ -1684,7 +1684,7 @@ final class InstancePropertyAssignmentAnalyzer
             return null;
         }
 
-        $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
+        $property_class_storage = ($codebase->classlike_storage_provider->getOrNull($property_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($property_class_name));
 
         $property_storage = $property_class_storage->properties[$property_name];
 

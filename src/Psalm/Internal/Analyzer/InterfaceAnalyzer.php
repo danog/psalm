@@ -59,7 +59,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             throw new UnexpectedValueException('bad');
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_interface_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name));
 
         $class_context = new Context($fq_interface_name);
 
@@ -82,7 +82,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 }
 
                 try {
-                    $extended_interface_storage = $codebase->classlike_storage_provider->get($extended_interface_name);
+                    $extended_interface_storage = ($codebase->classlike_storage_provider->getOrNull($extended_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($extended_interface_name));
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -147,7 +147,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             throw new UnexpectedValueException('bad');
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_interface_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name));
         $interface_context = new Context($this->getFQCLN());
 
         AttributesAnalyzer::analyze(

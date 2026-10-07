@@ -38,7 +38,7 @@ final class MethodCallProhibitionAnalyzer
             return;
         }
 
-        $storage = $codebase_methods->getStorage($method_id);
+        $storage = ($codebase_methods->getStorageOrNull($method_id) ?? throw $codebase_methods->missing($method_id));
 
         if ($storage->deprecated) {
             IssueBuffer::maybeAdd(

@@ -315,7 +315,7 @@ final class ReturnAnalyzer
                         // `self` and `static` bind to that class and the trait's template params resolve
                         // to their bounds
                         $using_class = $context->self;
-                        $using_storage = $codebase->classlike_storage_provider->get($using_class);
+                        $using_storage = ($codebase->classlike_storage_provider->getOrNull($using_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($using_class));
                         $local_return_type = TypeExpander::expandUnion(
                             $codebase,
                             $declared_return_type->replaceClassLike(strtolower($trait_name), $using_class),
@@ -338,7 +338,7 @@ final class ReturnAnalyzer
                     if ($storage instanceof MethodStorage) {
                         [$fq_class_name, $method_name] = explode('::', $cased_method_id);
 
-                        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
                         $found_generic_params = ClassTemplateParamCollector::collect(
                             $codebase,

@@ -929,7 +929,7 @@ final class AtomicTypeComparator
             return Capabilities::NONE;
         }
 
-        return $codebase->classlike_storage_provider->get($template->defining_class)
+        return ($codebase->classlike_storage_provider->getOrNull($template->defining_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($template->defining_class))
             ->template_lower_bounds[$template->param_name] ?? Capabilities::NONE;
     }
 }

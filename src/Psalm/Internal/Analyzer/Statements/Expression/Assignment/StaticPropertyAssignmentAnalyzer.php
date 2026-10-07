@@ -203,7 +203,7 @@ final class StaticPropertyAssignmentAnalyzer
                 }
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
             if ($var_id) {
                 $context->vars_in_scope[$var_id] = $assignment_value_type;

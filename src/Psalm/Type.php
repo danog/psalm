@@ -1116,8 +1116,8 @@ abstract class Type
             /** @psalm-suppress TypeDoesNotContainType */
             if ($type_1_atomic instanceof TNamedObject && $type_2_atomic instanceof TNamedObject) {
                 try {
-                    $first = $codebase->classlike_storage_provider->get($type_1_atomic->value);
-                    $second = $codebase->classlike_storage_provider->get($type_2_atomic->value);
+                    $first = ($codebase->classlike_storage_provider->getOrNull($type_1_atomic->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type_1_atomic->value));
+                    $second = ($codebase->classlike_storage_provider->getOrNull($type_2_atomic->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type_2_atomic->value));
                     $first_is_class = !$first->is_interface && !$first->is_trait;
                     $second_is_class = !$second->is_interface && !$second->is_trait;
                     if ($first_is_class && $second_is_class) {
@@ -1198,7 +1198,7 @@ abstract class Type
             return null;
         }
         try {
-            $storage = $codebase->classlike_storage_provider->get($type->value);
+            $storage = ($codebase->classlike_storage_provider->getOrNull($type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type->value));
         } catch (InvalidArgumentException) {
             // Ignore non-existing classes during initial scan
             return $type;

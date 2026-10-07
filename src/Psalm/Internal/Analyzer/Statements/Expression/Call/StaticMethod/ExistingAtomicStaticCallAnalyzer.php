@@ -164,7 +164,7 @@ final class ExistingAtomicStaticCallAnalyzer
             && $stmt->class instanceof PhpParser\Node\Name
             && $stmt->class->getParts() === ['parent']
             && $context->self
-            && ($self_class_storage = $codebase->classlike_storage_provider->get($context->self))
+            && ($self_class_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self)))
             && $self_class_storage->template_extended_params
         ) {
             foreach ($self_class_storage->template_extended_params as $template_fq_class_name => $extended_types) {
@@ -409,7 +409,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
             $native_capabilities = $native_method_id !== null
                 && $codebase->methods->hasStorage($native_method_id)
-                ? $codebase->methods->getStorage($native_method_id)->capabilities
+                ? ($codebase->methods->getStorageOrNull($native_method_id) ?? throw $codebase->methods->missing($native_method_id))->capabilities
                 : Capabilities::ALL;
 
             $stmt->attrs()->callee_capabilities = (NewAnalyzer::getCalleeCapabilities($stmt) ?? Capabilities::NONE)
@@ -505,7 +505,7 @@ final class ExistingAtomicStaticCallAnalyzer
             $method_id,
             $cased_method_id,
             $return_type_candidate,
-            $method_storage ?? ($declaring_method_id ? $codebase->methods->getStorage($declaring_method_id) : null),
+            $method_storage ?? ($declaring_method_id ? ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id)) : null),
             $template_result,
             $context,
         );
@@ -608,7 +608,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 && $context->self
             ) {
                 $static_type = $context->self;
-                $context_final = $codebase->classlike_storage_provider->get($context->self)->final;
+                $context_final = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self))->final;
             } elseif ($context->calling_method_id !== null) {
                 // differentiate between these cases:
                 //   1. "static" comes from the CALLED static method - use $fq_class_name.

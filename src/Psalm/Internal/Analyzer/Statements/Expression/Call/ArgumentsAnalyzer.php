@@ -657,7 +657,7 @@ final class ArgumentsAnalyzer
             $self_fq_class_name = $called_class;
 
             if ($codebase->classlike_storage_provider->has($called_class)) {
-                $called_class_storage = $codebase->classlike_storage_provider->get($called_class);
+                $called_class_storage = ($codebase->classlike_storage_provider->getOrNull($called_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($called_class));
                 $static_class_is_final = $called_class_storage->final;
 
                 // `self` is the class where the method appears. For a trait, that is
@@ -679,7 +679,7 @@ final class ArgumentsAnalyzer
         if ($self_fq_class_name !== null
             && $codebase->classlike_storage_provider->has($self_fq_class_name)
         ) {
-            $parent_fq_class_name = $codebase->classlike_storage_provider->get($self_fq_class_name)
+            $parent_fq_class_name = ($codebase->classlike_storage_provider->getOrNull($self_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($self_fq_class_name))
                 ->parent_class;
         }
 
@@ -791,7 +791,7 @@ final class ArgumentsAnalyzer
 
             if ($declaring_method_id && (string)$declaring_method_id !== (string)$method_id) {
                 $self_fq_class_name = $declaring_method_id->fq_class_name;
-                $class_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($self_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($self_fq_class_name));
             }
 
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
@@ -1518,7 +1518,7 @@ final class ArgumentsAnalyzer
     ): bool {
         if ($method_id !== null) {
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id;
-            $storage = $codebase->methods->getStorage($declaring_method_id);
+            $storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
             // the arguments of a call through an alias of a trait method don't flow into its body
             if ($storage->abstract || strtolower((string) $storage->cased_name) !== $method_id->method_name) {
@@ -1547,9 +1547,9 @@ final class ArgumentsAnalyzer
     ): DataFlowNode {
         if ($method_id !== null) {
             $cased_function_id = FunctionLikeAnalyzer::getByRefParamsOutMethodId($codebase, $method_id);
-            $storage = $codebase->methods->getStorage(
+            $storage = ($codebase->methods->getStorageOrNull(
                 $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id,
-            );
+            ) ?? throw $codebase->methods->missing($codebase->methods->getDeclaringMethodId($method_id) ?? $method_id));
         }
 
         return DataFlowNode::getForMethodArgumentOut(
@@ -1683,7 +1683,7 @@ final class ArgumentsAnalyzer
         );
 
         try {
-            $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
         } catch (InvalidArgumentException) {
             return;
         }

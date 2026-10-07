@@ -74,7 +74,7 @@ final class AttributesAnalyzer
             $attribute_name_location = new CodeLocation($source, $attribute->name);
 
             $attribute_class_storage = $codebase->classlikes->classExists($fq_attribute_name, null, $context)
-                ? $codebase->classlike_storage_provider->get($fq_attribute_name)
+                ? ($codebase->classlike_storage_provider->getOrNull($fq_attribute_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_attribute_name))
                 : null;
 
             $attribute_class_flags = self::getAttributeClassFlags(
@@ -388,7 +388,7 @@ final class AttributesAnalyzer
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($class_string->value);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($class_string->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_string->value));
         $arg_location = new CodeLocation($statements_analyzer, $arg);
         $class_attribute_target = self::getAttributeClassFlags(
             $statements_analyzer,

@@ -283,7 +283,7 @@ final class CloneAnalyzer
                             && $codebase->methods->hasStorage($declaring_clone_method_id)
                         ) {
                             // __clone only mutates the copy: what it does to it is fine
-                            $clone_method_storage = $codebase->methods->getStorage($declaring_clone_method_id);
+                            $clone_method_storage = ($codebase->methods->getStorageOrNull($declaring_clone_method_id) ?? throw $codebase->methods->missing($declaring_clone_method_id));
 
                             $statements_analyzer->signalMutation(
                                 $clone_method_storage->capabilities & ~Capabilities::RECEIVER_LOCAL,
@@ -406,7 +406,7 @@ final class CloneAnalyzer
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         foreach ($with_properties_value->items as $item) {
             if ($item === null || $item->unpack || $item->key === null) {

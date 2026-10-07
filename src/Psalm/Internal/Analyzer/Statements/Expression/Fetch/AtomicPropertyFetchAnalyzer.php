@@ -209,7 +209,7 @@ final class AtomicPropertyFetchAnalyzer
             $class_exists = true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $config = $statements_analyzer->getProjectAnalyzer()->getConfig();
 
@@ -271,7 +271,7 @@ final class AtomicPropertyFetchAnalyzer
                     $new_property_id = $mixin->value . '::$' . $prop_name;
 
                     try {
-                        $new_class_storage = $codebase->classlike_storage_provider->get($mixin->value);
+                        $new_class_storage = ($codebase->classlike_storage_provider->getOrNull($mixin->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($mixin->value));
                     } catch (InvalidArgumentException) {
                         $new_class_storage = null;
                     }
@@ -466,9 +466,9 @@ final class AtomicPropertyFetchAnalyzer
             }
         }
 
-        $declaring_class_storage = $codebase->classlike_storage_provider->get(
+        $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
             $declaring_property_class,
-        );
+        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
         if (isset($declaring_class_storage->properties[$prop_name])) {
             self::checkPropertyDeprecation($prop_name, $declaring_property_class, $stmt, $statements_analyzer);
@@ -604,9 +604,9 @@ final class AtomicPropertyFetchAnalyzer
     ): void {
         $property_id = $declaring_property_class . '::$' . $prop_name;
         $codebase = $statements_analyzer->getCodebase();
-        $declaring_class_storage = $codebase->classlike_storage_provider->get(
+        $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
             $declaring_property_class,
-        );
+        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
         if (isset($declaring_class_storage->properties[$prop_name])) {
             $property_storage = $declaring_class_storage->properties[$prop_name];
@@ -690,9 +690,9 @@ final class AtomicPropertyFetchAnalyzer
                         $lhs_type_part,
                         $class_storage,
                         $declaring_property_class
-                            ? $codebase->classlike_storage_provider->get(
+                            ? ($codebase->classlike_storage_provider->getOrNull(
                                 $declaring_property_class,
-                            ) : $class_storage,
+                            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class)) : $class_storage,
                     );
 
                     // reading a property through a type variable resolves it
@@ -1215,7 +1215,7 @@ final class AtomicPropertyFetchAnalyzer
     ): void {
         if ($codebase->interfaceExists($lhs_type_part->value)) {
             $interface_exists = true;
-            $interface_storage = $codebase->classlike_storage_provider->get($lhs_type_part->value);
+            $interface_storage = ($codebase->classlike_storage_provider->getOrNull($lhs_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($lhs_type_part->value));
 
             $override_property_visibility = $interface_storage->override_property_visibility;
 
@@ -1324,9 +1324,9 @@ final class AtomicPropertyFetchAnalyzer
                     $lhs_type_part,
                     $class_storage,
                     $declaring_property_class
-                        ? $codebase->classlike_storage_provider->get(
+                        ? ($codebase->classlike_storage_provider->getOrNull(
                             $declaring_property_class,
-                        ) : $class_storage,
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class)) : $class_storage,
                 );
 
                 $stmt_type = TypeVariableTracker::resolveTypeVariables($stmt_type, $codebase);

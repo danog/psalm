@@ -37,7 +37,7 @@ final class ClassConstantByWildcardResolver
             return null;
         }
 
-        $classlike_storage = $this->codebase->classlike_storage_provider->get($class_name);
+        $classlike_storage = ($this->codebase->classlike_storage_provider->getOrNull($class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_name));
 
         $constants = $this->resolver->resolveConstants(
             $classlike_storage,

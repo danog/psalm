@@ -106,7 +106,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
         $codebase = $source->getCodebase();
-        $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $this->storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
     }
 
     /**
@@ -181,7 +181,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
                     $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name);
                     $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
-                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
+                    $trait_storage = ($codebase->classlike_storage_provider->getOrNull($fq_trait_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_trait_name));
                     $trait_aliases = $trait_storage->aliases;
 
                     if ($trait_aliases === null) {
@@ -344,7 +344,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name)))
         ) {
             $incorrect_casing_of = $codebase->classlike_storage_provider->has($fq_class_name)
-                ? $codebase->classlike_storage_provider->get($fq_class_name)->name
+                ? ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name))->name
                 : null;
             $class_exists = false;
             $interface_exists = false;
@@ -413,7 +413,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         $codebase->scanner->registerReflectedClassLikeStorage($aliased_name);
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($aliased_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($aliased_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($aliased_name));
         } catch (InvalidArgumentException $e) {
             if (!$options->inferred) {
                 throw $e;
@@ -686,7 +686,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return $emit_issues ? null : true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
         if (!isset($class_storage->properties[$property_name])) {
             throw new UnexpectedValueException('$storage should not be null for ' . $property_id);

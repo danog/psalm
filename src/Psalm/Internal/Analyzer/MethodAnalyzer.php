@@ -72,9 +72,9 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
         if (!$storage) {
             try {
-                $storage = $codebase->methods->getStorage($method_id);
+                $storage = ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id));
             } catch (UnexpectedValueException $e) {
-                $class_storage = $codebase->classlike_storage_provider->get($source_fqcln_lc);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($source_fqcln_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($source_fqcln_lc));
 
                 if (!$class_storage->parent_classes) {
                     throw $e;
@@ -87,7 +87,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 }
 
                 // happens for fake constructors
-                $storage = $codebase->methods->getStorage($declaring_method_id);
+                $storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
             }
         }
 
@@ -129,7 +129,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             throw new LogicException('Declaring method for ' . $original_method_id . ' should not be null');
         }
 
-        $storage = $codebase_methods->getStorage($method_id, $with_pseudo);
+        $storage = ($codebase_methods->getStorageOrNull($method_id, $with_pseudo) ?? throw $codebase_methods->missing($method_id));
 
         if (!$storage->is_static) {
             if ($self_call) {
@@ -185,7 +185,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
         $method_since_id = $method_storage->since_php_version_id;
         if ($method_since_id === null && $codebase->classlike_storage_provider->has($defining_class)) {
-            $defining_class_storage = $codebase->classlike_storage_provider->get($defining_class);
+            $defining_class_storage = ($codebase->classlike_storage_provider->getOrNull($defining_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($defining_class));
             $method_since_id = $defining_class_storage->since_php_version_id;
 
             // A native method with no `@since` on it or its class is dated by the versioned
@@ -329,7 +329,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             return null;
         }
         try {
-            $declared = $codebase->methods->getStorage($declaring_method_id, true)->cased_name;
+            $declared = ($codebase->methods->getStorageOrNull($declaring_method_id, true) ?? throw $codebase->methods->missing($declaring_method_id))->cased_name;
         } catch (UnexpectedValueException) {
             return null;
         }
@@ -391,7 +391,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             return true;
         }
 
-        $storage = $codebase->methods->getStorage($declaring_method_id);
+        $storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
         switch ($storage->visibility) {
             case ClassLikeAnalyzer::VISIBILITY_PUBLIC:

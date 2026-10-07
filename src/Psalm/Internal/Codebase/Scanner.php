@@ -547,7 +547,7 @@ final class Scanner
         $this->codebase->classlike_storage_provider->makeNew($lc);
         foreach ($storage->dependent_classlikes as $dependent_lc => $_) {
             if ($this->codebase->classlike_storage_provider->has($dependent_lc)) {
-                $this->unpopulate($this->codebase->classlike_storage_provider->get($dependent_lc), $seen);
+                $this->unpopulate(($this->codebase->classlike_storage_provider->getOrNull($dependent_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_lc)), $seen);
             }
         }
     }

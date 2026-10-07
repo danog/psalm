@@ -44,9 +44,9 @@ final class AssertionsFromInheritanceResolver
         ], fn(string $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists($classOrInterface)));
 
         foreach ($inherited_classes_and_interfaces as $potential_assertion_providing_class) {
-            $potential_assertion_providing_classlike_storage = $this->codebase->classlike_storage_provider->get(
+            $potential_assertion_providing_classlike_storage = ($this->codebase->classlike_storage_provider->getOrNull(
                 $potential_assertion_providing_class,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($potential_assertion_providing_class));
             if (!isset($potential_assertion_providing_classlike_storage->methods[$method_name_lc])) {
                 continue;
             }

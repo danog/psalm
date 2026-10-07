@@ -382,7 +382,7 @@ final class DataFlowNode implements Stringable
             return null;
         }
 
-        $storage = $methods->getStorage($declaring_id);
+        $storage = ($methods->getStorageOrNull($declaring_id) ?? throw $methods->missing($declaring_id));
 
         return self::getForMethodArgument(
             $cased_method_id,

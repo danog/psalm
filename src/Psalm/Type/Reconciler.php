@@ -1032,9 +1032,9 @@ class Reconciler
         $property_id = $fq_class_name . '::$' . $property_name;
 
         if (!$codebase->propertyExists($property_id, true)) {
-            $declaring_class_storage = $codebase->classlike_storage_provider->get(
+            $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $fq_class_name,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             return $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
         }
@@ -1055,9 +1055,9 @@ class Reconciler
             null,
         );
 
-        $declaring_class_storage = $codebase->classlike_storage_provider->get(
+        $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
             $declaring_property_class,
-        );
+        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
         if ($class_property_type) {
             return TypeExpander::expandUnion(

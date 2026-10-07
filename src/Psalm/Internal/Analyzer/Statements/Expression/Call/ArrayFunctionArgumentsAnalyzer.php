@@ -814,7 +814,7 @@ final class ArrayFunctionArgumentsAnalyzer
                         );
 
                         try {
-                            $method_storage = $codebase->methods->getStorage($function_id_part);
+                            $method_storage = ($codebase->methods->getStorageOrNull($function_id_part) ?? throw $codebase->methods->missing($function_id_part));
                         } catch (UnexpectedValueException) {
                             // the method may not exist, but we're suppressing that issue
                             continue;

@@ -504,7 +504,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($storage instanceof MethodStorage && $storage->location && !$storage->allow_named_arg_calls) {
             foreach ($overridden_method_ids as $overridden_method_id) {
-                $overridden_storage = $codebase->methods->getStorage($overridden_method_id);
+                $overridden_storage = ($codebase->methods->getStorageOrNull($overridden_method_id) ?? throw $codebase->methods->missing($overridden_method_id));
                 if ($overridden_storage->allow_named_arg_calls) {
                     IssueBuffer::maybeAdd(new MethodSignatureMismatch(
                         'Method ' . (string) $method_id . ' should accept named arguments '
@@ -528,7 +528,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         // the type @psalm-self-out gives is checked like a @return type: its classes must exist, and its
         // template and purity arguments must fit their bounds
         if ($storage instanceof MethodStorage && $storage->self_out_type && $storage->self_out_type_location) {
-            $classlike_storage = $context->self ? $codebase->classlike_storage_provider->get($context->self) : null;
+            $classlike_storage = $context->self ? ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self)) : null;
 
             /** @psalm-suppress UnusedMethodCall This call actually has the side effect of creating issues */
             TypeExpander::expandUnion(
@@ -1287,7 +1287,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id) ?? $declaring_method_id;
 
         return $appearing_method_id->fq_class_name
-            . '::' . $codebase->methods->getStorage($declaring_method_id)->cased_name;
+            . '::' . ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id))->cased_name;
     }
 
     /**
@@ -1308,7 +1308,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         }
 
         $overridden_method_ids = array_map(strval(...), $overridden_method_ids);
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         // the classes a method overridden is called through (see getByRefParamsOutMethodId())
         foreach ($class_storage->parent_classes + $class_storage->class_implements as $ancestor) {
@@ -1321,7 +1321,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $overridden_storage = $codebase->methods->getStorage($declaring_method_id);
+            $overridden_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
             $overridden_cased_method_id = self::getByRefParamsOutMethodId($codebase, $ancestor_method_id);
 
             foreach ($storage->params as $offset => $param) {
@@ -1965,7 +1965,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         $fqcln = $this->source->getFQCLN();
 
         if ($fqcln !== null && $this instanceof MethodAnalyzer) {
-            $class_storage = $codebase->classlike_storage_provider->get($fqcln);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fqcln));
             $is_final = $this->function->isFinal() || $class_storage->final;
         }
 
@@ -2136,7 +2136,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $codebase_methods = $codebase->methods;
 
             try {
-                return $codebase_methods->getStorage($method_id);
+                return ($codebase_methods->getStorageOrNull($method_id) ?? throw $codebase_methods->missing($method_id));
             } catch (UnexpectedValueException) {
                 $declaring_method_id = $codebase_methods->getDeclaringMethodId($method_id);
 
@@ -2145,7 +2145,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 }
 
                 // happens for fake constructors
-                return $codebase_methods->getStorage($declaring_method_id);
+                return ($codebase_methods->getStorageOrNull($declaring_method_id) ?? throw $codebase_methods->missing($declaring_method_id));
             }
         }
 
@@ -2352,7 +2352,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $method_id = $this->getMethodId($context->self);
 
             $fq_class_name = (string)$context->self;
-            $appearing_class_storage = $classlike_storage_provider->get($fq_class_name);
+            $appearing_class_storage = ($classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             if ($add_mutations) {
                 if (!$context->collect_initializations) {
@@ -2477,7 +2477,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 && $codebase->config->ensure_override_attribute
                 && $overridden_method_ids
                 && ($storage->defining_fqcln === null
-                    || !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->is_trait
+                    || !($codebase->classlike_storage_provider->getOrNull($storage->defining_fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($storage->defining_fqcln))->is_trait
                 ) && $storage->cased_name !== '__construct'
                 && ($storage->cased_name !== '__toString'
                     || isset($appearing_class_storage->direct_class_interfaces['stringable']))
@@ -2507,11 +2507,11 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 && !$context->collect_mutations
             ) {
                 foreach ($overridden_method_ids as $overridden_method_id) {
-                    $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
+                    $parent_method_storage = ($codebase->methods->getStorageOrNull($overridden_method_id) ?? throw $codebase->methods->missing($overridden_method_id));
 
                     $overridden_fq_class_name = $overridden_method_id->fq_class_name;
 
-                    $parent_storage = $classlike_storage_provider->get($overridden_fq_class_name);
+                    $parent_storage = ($classlike_storage_provider->getOrNull($overridden_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($overridden_fq_class_name));
 
                     if ($this->function->name->name === '__construct'
                         && !$parent_storage->preserve_constructor_signature
@@ -2534,13 +2534,13 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                         $declaring_fq_class_name = $implementer_declaring_method_id->fq_class_name;
 
-                        $appearing_class_storage = $classlike_storage_provider->get(
+                        $appearing_class_storage = ($classlike_storage_provider->getOrNull(
                             $appearing_fq_class_name,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
 
-                        $declaring_class_storage = $classlike_storage_provider->get(
+                        $declaring_class_storage = ($classlike_storage_provider->getOrNull(
                             $declaring_fq_class_name,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_class_name));
 
                         if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {
                             $implementer_visibility
@@ -2681,7 +2681,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $fq_class_name = (string)$context->self;
 
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
             $method_name_lc = strtolower($storage->cased_name);
 
@@ -2693,7 +2693,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $parent_method_id = end($class_storage->overridden_method_ids[$method_name_lc]);
 
                 if ($parent_method_id) {
-                    $parent_method_storage = $codebase->methods->getStorage($parent_method_id);
+                    $parent_method_storage = ($codebase->methods->getStorageOrNull($parent_method_id) ?? throw $codebase->methods->missing($parent_method_id));
 
                     // if the parent method has a param at that position and isn't abstract
                     if (!$parent_method_storage->abstract

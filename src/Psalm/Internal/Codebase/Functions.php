@@ -553,7 +553,7 @@ final class Functions
                         );
 
                         try {
-                            $storage = $codebase->methods->getStorage($count_method_id);
+                            $storage = ($codebase->methods->getStorageOrNull($count_method_id) ?? throw $codebase->methods->missing($count_method_id));
                         } catch (Exception) {
                             continue;
                         }

@@ -62,7 +62,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
             if ($object_type instanceof Atomic\TEnumCase) {
                 $properties = ['name' => new Union([Type::getAtomicStringFromLiteral($object_type->case_name)])];
                 $codebase = $statements_source->getCodebase();
-                $enum_classlike_storage = $codebase->classlike_storage_provider->get($object_type->value);
+                $enum_classlike_storage = ($codebase->classlike_storage_provider->getOrNull($object_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($object_type->value));
                 if ($enum_classlike_storage->enum_type === null) {
                     return TKeyedArray::make($properties);
                 }

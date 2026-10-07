@@ -427,12 +427,15 @@ final class BinaryOpAnalyzer
             foreach ($stmt_right_type->getAtomicTypes() as $atomic_type) {
                 if ($atomic_type instanceof TNamedObject) {
                     try {
-                        $storage = $codebase->methods->getStorage(
+                        $storage = ($codebase->methods->getStorageOrNull(
                             new MethodIdentifier(
                                 $atomic_type->value,
                                 '__tostring',
                             ),
-                        );
+                        ) ?? throw $codebase->methods->missing(new MethodIdentifier(
+                                $atomic_type->value,
+                                '__tostring',
+                            )));
                     } catch (UnexpectedValueException) {
                         continue;
                     }
@@ -459,12 +462,15 @@ final class BinaryOpAnalyzer
             foreach ($stmt_left_type->getAtomicTypes() as $atomic_type) {
                 if ($atomic_type instanceof TNamedObject) {
                     try {
-                        $storage = $codebase->methods->getStorage(
+                        $storage = ($codebase->methods->getStorageOrNull(
                             new MethodIdentifier(
                                 $atomic_type->value,
                                 '__tostring',
                             ),
-                        );
+                        ) ?? throw $codebase->methods->missing(new MethodIdentifier(
+                                $atomic_type->value,
+                                '__tostring',
+                            )));
                     } catch (UnexpectedValueException) {
                         continue;
                     }

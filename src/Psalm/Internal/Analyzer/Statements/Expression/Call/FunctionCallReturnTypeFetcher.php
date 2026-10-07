@@ -393,7 +393,7 @@ final class FunctionCallReturnTypeFetcher
 
                 case 'get_parent_class':
                     if ($context->self && $codebase->classExists($context->self, null, $context)) {
-                        $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
+                        $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
 
                         if ($classlike_storage->parent_classes) {
                             return new Union([

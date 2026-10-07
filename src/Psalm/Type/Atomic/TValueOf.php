@@ -184,7 +184,7 @@ final class TValueOf extends Atomic
             } elseif ($atomic_type instanceof TNamedObject
                 && $codebase->classlike_storage_provider->has($atomic_type->value)
             ) {
-                $class_storage = $codebase->classlike_storage_provider->get($atomic_type->value);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($atomic_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic_type->value));
                 $cases = $class_storage->enum_cases;
                 if (!$class_storage->is_enum
                     || $class_storage->enum_type === null

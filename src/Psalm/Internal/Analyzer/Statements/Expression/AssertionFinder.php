@@ -943,7 +943,7 @@ final class AssertionFinder
             $guarded_class = isset($args[0]) ? self::getLiteralClassName($args[0]->value) : null;
 
             if ($guarded_class !== null && $codebase->classlike_storage_provider->has($guarded_class)) {
-                $class_storage = $codebase->classlike_storage_provider->get($guarded_class);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($guarded_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($guarded_class));
 
                 if (!$class_storage->user_defined && !$codebase->isClassLikePolyfilled($class_storage->name)) {
                     $since_php_version_id = $class_storage->since_php_version_id;
@@ -4415,7 +4415,7 @@ final class AssertionFinder
                 return 'Variable ' . $name . ' is not an object so the assertion cannot be applied';
             }
 
-            $class_definition = $class_provider->get($type->value);
+            $class_definition = ($class_provider->getOrNull($type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type->value));
             $property_definition = $class_definition->properties[$property] ?? null;
 
             if (!$property_definition instanceof PropertyStorage) {

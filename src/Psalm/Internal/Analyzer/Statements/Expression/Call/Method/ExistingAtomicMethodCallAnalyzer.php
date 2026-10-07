@@ -184,7 +184,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $parent_source = $statements_analyzer->getSource();
 
@@ -205,7 +205,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
                 $fq_trait_name_lc = strtolower($fq_trait_name);
 
-                $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
+                $trait_storage = ($codebase->classlike_storage_provider->getOrNull($fq_trait_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_trait_name_lc));
 
                 if (isset($trait_storage->methods[$method_name_lc])) {
                     $trait_method_id = new MethodIdentifier($trait_storage->name, $method_name_lc);
@@ -225,7 +225,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
         try {
-            $method_storage = $codebase->methods->getStorage($declaring_method_id ?? $method_id);
+            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id ?? $method_id) ?? throw $codebase->methods->missing($declaring_method_id ?? $method_id));
         } catch (UnexpectedValueException) {
             $method_storage = null;
         }
@@ -368,7 +368,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                         true,
                         false,
                         $static_type instanceof TNamedObject
-                            && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                            && ($codebase->classlike_storage_provider->getOrNull($static_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_type->value))->final,
                         true,
                     );
                 }
@@ -390,7 +390,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     true,
                     false,
                     $static_type instanceof TNamedObject
-                        && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                        && ($codebase->classlike_storage_provider->getOrNull($static_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_type->value))->final,
                     true,
                 );
 
@@ -590,7 +590,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         $prop_name = $first_arg_value->value;
         $property_id = $fq_class_name . '::$' . $prop_name;
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $codebase->propertyExists(
             $property_id,

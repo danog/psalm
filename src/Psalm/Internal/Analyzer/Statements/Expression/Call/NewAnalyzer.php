@@ -135,7 +135,7 @@ final class NewAnalyzer extends CallAnalyzer
             } elseif ($context->self !== null) {
                 switch ($stmt->class->getFirst()) {
                     case 'self':
-                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                        $class_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
                         $fq_class_name = $class_storage->name;
                         break;
 
@@ -145,7 +145,7 @@ final class NewAnalyzer extends CallAnalyzer
 
                     case 'static':
                         // @todo maybe we can do better here
-                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                        $class_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
                         $fq_class_name = $class_storage->name;
 
                         if (!$class_storage->final) {
@@ -333,7 +333,7 @@ final class NewAnalyzer extends CallAnalyzer
         bool $can_extend,
         ?TemplateResult $template_result = null,
     ): void {
-        $storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         if ($from_static) {
             if (!$storage->preserve_constructor_signature) {
@@ -460,7 +460,7 @@ final class NewAnalyzer extends CallAnalyzer
             $method_storage = null;
 
             if ($declaring_method_id) {
-                $method_storage = $codebase->methods->getStorage($declaring_method_id);
+                $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
                 $caller_identifier = $statements_analyzer->getFullyQualifiedFunctionMethodOrNamespaceName() ?: '';
                 if (!NamespaceAnalyzer::isWithinAny($caller_identifier, $method_storage->internal)) {
@@ -775,7 +775,7 @@ final class NewAnalyzer extends CallAnalyzer
         $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
         if ($declaring_method_id) {
-            $method_storage = $codebase->methods->getStorage($declaring_method_id);
+            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
         }
 
         if (!$method_storage) {
@@ -994,7 +994,7 @@ final class NewAnalyzer extends CallAnalyzer
                 $context,
                 $stmt,
                 $declaring_method_id,
-                $codebase->methods->getStorage($declaring_method_id),
+                ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id)),
                 null,
                 $fq_class_name,
             );
@@ -1177,9 +1177,9 @@ final class NewAnalyzer extends CallAnalyzer
                     if ($lhs_type_part->as_type
                         && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
                     ) {
-                        $as_storage = $codebase->classlike_storage_provider->get(
+                        $as_storage = ($codebase->classlike_storage_provider->getOrNull(
                             $lhs_type_part->as_type->value,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($lhs_type_part->as_type->value));
 
                         if (!$as_storage->preserve_constructor_signature) {
                             IssueBuffer::maybeAdd(
@@ -1234,9 +1234,9 @@ final class NewAnalyzer extends CallAnalyzer
                         if ($lhs_type_part->as_type
                             && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
                         ) {
-                            $as_storage = $codebase->classlike_storage_provider->get(
+                            $as_storage = ($codebase->classlike_storage_provider->getOrNull(
                                 $lhs_type_part->as_type->value,
-                            );
+                            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($lhs_type_part->as_type->value));
 
                             if (!$as_storage->preserve_constructor_signature) {
                                 IssueBuffer::maybeAdd(
@@ -1614,7 +1614,7 @@ final class NewAnalyzer extends CallAnalyzer
 
         $templates = [];
 
-        foreach ($codebase->methods->getStorage($constructor_id)->params as $param) {
+        foreach (($codebase->methods->getStorageOrNull($constructor_id) ?? throw $codebase->methods->missing($constructor_id))->params as $param) {
             foreach ($param->type?->getTemplateTypes() ?? [] as $template_type) {
                 if (isset($storage->template_types[$template_type->param_name])) {
                     $templates[$template_type->param_name] = true;
@@ -1649,8 +1649,8 @@ final class NewAnalyzer extends CallAnalyzer
             return [];
         }
 
-        $defining_storage = $codebase->classlike_storage_provider->get($defining_class);
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $defining_storage = ($codebase->classlike_storage_provider->getOrNull($defining_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($defining_class));
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
         $bound_by_arguments = self::getConstructorParamTemplates($codebase, $defining_storage);
         $class_template_params = ClassTemplateParamCollector::collect(
             $codebase,

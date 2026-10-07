@@ -115,7 +115,7 @@ final class Methods
         $fq_class_name = strtolower($this->classlikes->getUnAliasedName($fq_class_name));
 
         try {
-            $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+            $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
         } catch (InvalidArgumentException) {
             return false;
         }
@@ -275,7 +275,7 @@ final class Methods
 
         // functions
         if (InternalCallMapHandler::inCallMap((string) $callmap_id)) {
-            $class_storage = $this->classlike_storage_provider->get($callmap_id->fq_class_name);
+            $class_storage = ($this->classlike_storage_provider->getOrNull($callmap_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($callmap_id->fq_class_name));
 
             $declaring_method_name = $declaring_method_id->method_name ?? $method_name;
 
@@ -325,7 +325,7 @@ final class Methods
         }
 
         if ($declaring_method_id) {
-            $storage = $this->getStorage($declaring_method_id, true);
+            $storage = ($this->getStorageOrNull($declaring_method_id, true) ?? throw $this->missing($declaring_method_id));
 
             $params = $storage->params;
 
@@ -342,7 +342,7 @@ final class Methods
             $appearing_fq_class_name = $appearing_method_id->fq_class_name;
             $appearing_method_name = $appearing_method_id->method_name;
 
-            $class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
+            $class_storage = ($this->classlike_storage_provider->getOrNull($appearing_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
 
             if (!isset($class_storage->overridden_method_ids[$appearing_method_name])) {
                 return $params;
@@ -354,7 +354,7 @@ final class Methods
 
             $overridden_method_id = $class_storage->documenting_method_ids[$appearing_method_name];
 
-            $overridden_storage = $this->getStorage($overridden_method_id);
+            $overridden_storage = ($this->getStorageOrNull($overridden_method_id) ?? throw $this->missing($overridden_method_id));
 
             $overriding_fq_class_name = $overridden_method_id->fq_class_name;
 
@@ -367,7 +367,7 @@ final class Methods
                     $params[$i]->type = $overridden_storage->params[$i]->type;
 
                     if ($source) {
-                        $overridden_class_storage = $this->classlike_storage_provider->get($overriding_fq_class_name);
+                        $overridden_class_storage = ($this->classlike_storage_provider->getOrNull($overriding_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($overriding_fq_class_name));
                         $params[$i]->type = self::localizeType(
                             $source->getCodebase(),
                             $params[$i]->type,
@@ -398,7 +398,7 @@ final class Methods
         string $appearing_fq_class_name,
         string $base_fq_class_name,
     ): Union {
-        $class_storage = $codebase->classlike_storage_provider->get($appearing_fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($appearing_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
         $extends = $class_storage->template_extended_params;
 
         if (!$extends) {
@@ -455,7 +455,7 @@ final class Methods
             return false;
         }
 
-        return $this->getStorage($declaring_method_id)->variadic;
+        return ($this->getStorageOrNull($declaring_method_id) ?? throw $this->missing($declaring_method_id))->variadic;
     }
 
     /**
@@ -478,7 +478,7 @@ final class Methods
             $original_fq_class_name = strtolower($adjusted_fq_class_name);
         }
 
-        $original_class_storage = $this->classlike_storage_provider->get($original_fq_class_name);
+        $original_class_storage = ($this->classlike_storage_provider->getOrNull($original_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($original_fq_class_name));
 
         if (isset($original_class_storage->pseudo_methods[$original_method_name])) {
             return $original_class_storage->pseudo_methods[$original_method_name]->return_type;
@@ -493,7 +493,7 @@ final class Methods
         $appearing_method_id = $this->getAppearingMethodId($method_id);
 
         if (!$appearing_method_id) {
-            $class_storage = $this->classlike_storage_provider->get($original_fq_class_name);
+            $class_storage = ($this->classlike_storage_provider->getOrNull($original_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($original_fq_class_name));
 
             if ($class_storage->abstract && isset($class_storage->overridden_method_ids[$original_method_name])) {
                 $appearing_method_id = reset($class_storage->overridden_method_ids[$original_method_name]);
@@ -506,7 +506,7 @@ final class Methods
         $appearing_fq_class_name = $appearing_method_id->fq_class_name;
         $appearing_method_name = $appearing_method_id->method_name;
 
-        $appearing_fq_class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
+        $appearing_fq_class_storage = ($this->classlike_storage_provider->getOrNull($appearing_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
 
         if ($appearing_fq_class_name === 'UnitEnum'
             && $original_class_storage->is_enum
@@ -587,9 +587,9 @@ final class Methods
                             new MethodIdentifier($atomic_type->value, '__invoke'),
                         )
                     ) {
-                        $invokable_storage = $this->getStorage(
+                        $invokable_storage = ($this->getStorageOrNull(
                             new MethodIdentifier($atomic_type->value, '__invoke'),
-                        );
+                        ) ?? throw $this->missing(new MethodIdentifier($atomic_type->value, '__invoke')));
 
                         return new Union([new TClosure(
                             $invokable_storage->params,
@@ -616,9 +616,9 @@ final class Methods
             return $return_type_candidate;
         }
 
-        $class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($appearing_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
 
-        $storage = $this->getStorage($declaring_method_id);
+        $storage = ($this->getStorageOrNull($declaring_method_id) ?? throw $this->missing($declaring_method_id));
 
         $candidate_type = $storage->return_type;
 
@@ -637,7 +637,7 @@ final class Methods
                 return $storage->return_type;
             }
 
-            $overridden_storage = $this->getStorage($overridden_method_id);
+            $overridden_storage = ($this->getStorageOrNull($overridden_method_id) ?? throw $this->missing($overridden_method_id));
 
             if ($overridden_storage->return_type) {
                 if ($overridden_storage->return_type->isNull()) {
@@ -657,7 +657,7 @@ final class Methods
                 }
 
                 $overridden_class_storage =
-                    $this->classlike_storage_provider->get($overridden_method_id->fq_class_name);
+                    ($this->classlike_storage_provider->getOrNull($overridden_method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($overridden_method_id->fq_class_name));
 
                 $overridden_storage_return_type = TypeExpander::expandUnion(
                     $codebase,
@@ -764,7 +764,7 @@ final class Methods
         }
 
         foreach ($class_storage->overridden_method_ids[$appearing_method_name] as $overridden_method_id) {
-            $overridden_storage = $this->getStorage($overridden_method_id);
+            $overridden_storage = ($this->getStorageOrNull($overridden_method_id) ?? throw $this->missing($overridden_method_id));
 
             if ($overridden_storage->return_type) {
                 if ($overridden_storage->return_type->isNull()) {
@@ -779,7 +779,7 @@ final class Methods
                 $fq_overridden_class = $overridden_method_id->fq_class_name;
 
                 $overridden_class_storage =
-                    $this->classlike_storage_provider->get($fq_overridden_class);
+                    ($this->classlike_storage_provider->getOrNull($fq_overridden_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_overridden_class));
 
                 $overridden_return_type = $overridden_storage->return_type;
 
@@ -838,13 +838,13 @@ final class Methods
             return false;
         }
 
-        $fq_class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+        $fq_class_storage = ($this->classlike_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name));
 
         if (!$fq_class_storage->user_defined && InternalCallMapHandler::inCallMap((string) $method_id)) {
             return false;
         }
 
-        return $this->getStorage($method_id)->returns_by_ref;
+        return ($this->getStorageOrNull($method_id) ?? throw $this->missing($method_id))->returns_by_ref;
     }
 
     /**
@@ -860,7 +860,7 @@ final class Methods
             return null;
         }
 
-        $storage = $this->getStorage($method_id);
+        $storage = ($this->getStorageOrNull($method_id) ?? throw $this->missing($method_id));
 
         // if function exists in stubs and in analyzed code
         // use the return type location of the analyzed code instead of the stubbed location
@@ -872,7 +872,7 @@ final class Methods
             $overridden_method_ids = $this->getOverriddenMethodIds($method_id);
 
             foreach ($overridden_method_ids as $overridden_method_id) {
-                $overridden_storage = $this->getStorage($overridden_method_id);
+                $overridden_storage = ($this->getStorageOrNull($overridden_method_id) ?? throw $this->missing($overridden_method_id));
 
                 if ($overridden_storage->return_type_location && !$overridden_storage->stubbed) {
                     $defined_location = $overridden_storage->return_type_location;
@@ -894,7 +894,7 @@ final class Methods
         string $declaring_fq_class_name,
         string $declaring_method_name_lc,
     ): void {
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $class_storage->declaring_method_ids[$method_name_lc] = new MethodIdentifier(
             $declaring_fq_class_name,
@@ -912,7 +912,7 @@ final class Methods
         string $appearing_fq_class_name,
         string $appearing_method_name_lc,
     ): void {
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $class_storage->appearing_method_ids[$method_name_lc] = new MethodIdentifier(
             $appearing_fq_class_name,
@@ -957,7 +957,7 @@ final class Methods
             $function_ids[] = strtolower($fq_interface_name . '::' . $method_name);
         }
 
-        $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->fq_class_name);
+        $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_method_id->fq_class_name));
         $declaring_method_name = $declaring_method_id->method_name;
 
         if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {
@@ -976,7 +976,7 @@ final class Methods
     ): ?MethodIdentifier {
         $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
 
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $method_name = $method_id->method_name;
 
@@ -1007,7 +1007,7 @@ final class Methods
     ): ?MethodIdentifier {
         $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
 
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $method_name = $method_id->method_name;
 
@@ -1020,7 +1020,7 @@ final class Methods
      */
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array
     {
-        $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name));
         $method_name = $method_id->method_name;
 
         return $class_storage->overridden_method_ids[$method_name] ?? [];
@@ -1043,7 +1043,7 @@ final class Methods
         $old_fq_class_name = $original_method_id->fq_class_name;
         $old_method_name = $original_method_id->method_name;
 
-        $storage = $this->getStorage($method_id);
+        $storage = ($this->getStorageOrNull($method_id) ?? throw $this->missing($method_id));
 
         if ($old_method_name === $new_method_name
             && strtolower($old_fq_class_name) !== $old_fq_class_name
@@ -1069,7 +1069,7 @@ final class Methods
             throw new UnexpectedValueException('$storage should not be null for ' . $method_id);
         }
 
-        $storage = $this->getStorage($declaring_method_id, true);
+        $storage = ($this->getStorageOrNull($declaring_method_id, true) ?? throw $this->missing($declaring_method_id));
 
         if (!$storage->location) {
             return null;
@@ -1090,7 +1090,7 @@ final class Methods
                 null,
                 null,
             )) {
-                return $this->classlike_storage_provider->get($fq_class_name);
+                return ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
             }
         }
 
@@ -1106,26 +1106,22 @@ final class Methods
 
         $declaring_fq_class_name = $declaring_method_id->fq_class_name;
 
-        return $this->classlike_storage_provider->get($declaring_fq_class_name);
+        return ($this->classlike_storage_provider->getOrNull($declaring_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_class_name));
     }
 
-    /** @psalm-mutation-free */
-    public function getStorage(MethodIdentifier $method_id, bool $with_pseudo = false): MethodStorage
+    /**
+     * The exception for a method that has no storage, for callers that require it:
+     * `getStorageOrNull($id) ?? throw $methods->missing($id)`.
+     *
+     * @psalm-mutation-free
+     */
+    public function missing(MethodIdentifier $method_id): UnexpectedValueException
     {
-        $method_storage = $this->getStorageOrNull($method_id, $with_pseudo);
-        if ($method_storage === null) {
-            if (!$this->classlike_storage_provider->has($method_id->fq_class_name)) {
-                throw new UnexpectedValueException(
-                    'Could not get class storage for ' . strtolower($method_id->fq_class_name),
-                );
-            }
-
-            throw new UnexpectedValueException(
-                '$storage should not be null for ' . $method_id,
-            );
+        if (!$this->classlike_storage_provider->has($method_id->fq_class_name)) {
+            return new UnexpectedValueException('Could not get class storage for ' . strtolower($method_id->fq_class_name));
         }
 
-        return $method_storage;
+        return new UnexpectedValueException('$storage should not be null for ' . $method_id);
     }
 
     /**
@@ -1155,7 +1151,7 @@ final class Methods
     public function hasStorage(MethodIdentifier $method_id): bool
     {
         try {
-            $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+            $class_storage = ($this->classlike_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name));
         } catch (InvalidArgumentException) {
             return false;
         }

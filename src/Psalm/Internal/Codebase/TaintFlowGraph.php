@@ -282,7 +282,7 @@ final class TaintFlowGraph extends DataFlowGraph
             // an override could have side effects even if this implementation doesn't
             if ($storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE
                 && !$storage->final
-                && !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->final
+                && !($codebase->classlike_storage_provider->getOrNull($storage->defining_fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($storage->defining_fqcln))->final
             ) {
                 return false;
             }

@@ -318,12 +318,12 @@ final class ArgumentAnalyzer
         $static_classlike_storage = null;
 
         if ($self_fq_class_name) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+            $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($self_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($self_fq_class_name));
             $parent_class = $classlike_storage->parent_class;
             $static_classlike_storage = $classlike_storage;
 
             if ($static_fq_class_name && $static_fq_class_name !== $self_fq_class_name) {
-                $static_classlike_storage = $codebase->classlike_storage_provider->get($static_fq_class_name);
+                $static_classlike_storage = ($codebase->classlike_storage_provider->getOrNull($static_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_fq_class_name));
             }
         }
 
@@ -1436,7 +1436,7 @@ final class ArgumentAnalyzer
             }
 
             try {
-                $method_storage = $codebase->methods->getStorage($potential_method_id);
+                $method_storage = ($codebase->methods->getStorageOrNull($potential_method_id) ?? throw $codebase->methods->missing($potential_method_id));
 
                 $lhs_atomic = $lhs->getSingleAtomic();
                 if ($lhs->isSingle()
@@ -1889,12 +1889,12 @@ final class ArgumentAnalyzer
             $fq_classlike_name = $method_id->fq_class_name;
             $cased_method_name = explode('::', $cased_method_id)[1];
 
-            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name));
 
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
-                $dependent_classlike_storage = $codebase->classlike_storage_provider->get(
+                $dependent_classlike_storage = ($codebase->classlike_storage_provider->getOrNull(
                     $dependent_classlike_lc,
-                );
+                ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_classlike_lc));
 
                 // Resolve the declaring method's storage (a dependent class usually inherits the
                 // method, so it has no storage under its own id) so this node's location -- and the
@@ -1927,7 +1927,7 @@ final class ArgumentAnalyzer
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
             if ($declaring_method_id && (string) $declaring_method_id !== (string) $method_id) {
-                $declaring_storage = $codebase->methods->getStorage($declaring_method_id);
+                $declaring_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
                 // Specialized like $method_node: that node has an outgoing edge, so it is
                 // propagated from as-is rather than entered as a specialized call. An edge
                 // into the unspecialized declaring parameter would take the flow into the body
@@ -1960,7 +1960,7 @@ final class ArgumentAnalyzer
             $declaring_method_id = $method_id ? $codebase->methods->getDeclaringMethodId($method_id) : null;
             if ($method_id && $declaring_method_id) {
                 $callable_param_method_id = FunctionLikeAnalyzer::getByRefParamsOutMethodId($codebase, $method_id);
-                $callable_param_storage = $codebase->methods->getStorage($declaring_method_id);
+                $callable_param_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
             }
 
             FunctionCallReturnTypeFetcher::taintCallablePassedToParam(

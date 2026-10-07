@@ -226,9 +226,9 @@ final class ObjectComparator
                     return false;
                 }
 
-                $input_class_storage = $codebase->classlike_storage_provider->get(
+                $input_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                     $intersection_input_type->defining_class,
-                );
+                ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($intersection_input_type->defining_class));
 
                 if (isset($input_class_storage->template_extended_params
                         [$intersection_container_type->defining_class]

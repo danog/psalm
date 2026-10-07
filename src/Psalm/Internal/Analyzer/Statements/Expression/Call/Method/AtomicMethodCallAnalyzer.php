@@ -189,7 +189,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $result->check_visibility = $result->check_visibility && !$class_storage->override_method_visibility;
 
@@ -221,7 +221,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                         true,
                         $context->insideUse(),
                     )) {
-                        $method_storage = $codebase->methods->getStorage($method_identifier);
+                        $method_storage = ($codebase->methods->getStorageOrNull($method_identifier) ?? throw $codebase->methods->missing($method_identifier));
 
                         $return_type_candidate = new Union([new TClosure(
                             $method_storage->params,
@@ -374,7 +374,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             if ($class_storage->abstract && $class_storage->class_implements) {
                 foreach ($class_storage->class_implements as $interface_fqcln_lc => $_) {
-                    $interface_storage = $codebase->classlike_storage_provider->get($interface_fqcln_lc);
+                    $interface_storage = ($codebase->classlike_storage_provider->getOrNull($interface_fqcln_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($interface_fqcln_lc));
 
                     if (isset($interface_storage->methods[$method_name_lc])) {
                         $interface_has_method = true;
@@ -785,9 +785,9 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                                 $method_name_lc,
                             );
 
-                            $mixin_class_storage = $codebase->classlike_storage_provider->get(
+                            $mixin_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                                 $lhs_type_part_new->value,
-                            );
+                            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($lhs_type_part_new->value));
 
                             if ($codebase->methodExists(
                                 $new_method_id,
@@ -871,14 +871,14 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 true,
                 $context->insideUse(),
             )) {
-                $mixin_declaring_class_storage = $codebase->classlike_storage_provider->get(
+                $mixin_declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                     $class_storage->mixin_declaring_fqcln,
-                );
+                ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_storage->mixin_declaring_fqcln));
 
                 $mixin_class_template_params = ClassTemplateParamCollector::collect(
                     $codebase,
                     $mixin_declaring_class_storage,
-                    $codebase->classlike_storage_provider->get($fq_class_name),
+                    ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name)),
                     null,
                     $lhs_type_part,
                     $lhs_var_id === '$this',
@@ -906,7 +906,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                     $lhs_type_part = $new_lhs_type_part;
                 }
 
-                $mixin_class_storage = $codebase->classlike_storage_provider->get($mixin->value);
+                $mixin_class_storage = ($codebase->classlike_storage_provider->getOrNull($mixin->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($mixin->value));
 
                 $fq_class_name = $mixin_class_storage->name;
                 $mixin_class_storage->mixin_declaring_fqcln = $class_storage->mixin_declaring_fqcln;

@@ -519,7 +519,7 @@ final class ClassLikeStorage implements HasAttributesInterface
             if (!$codebase->classlike_storage_provider->has($parent_class)) {
                 continue;
             }
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
+            $parent_class_storage = ($codebase->classlike_storage_provider->getOrNull($parent_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_class));
             if ($parent_class_storage->hasAttribute($fq_class_name)) {
                 return true;
             }

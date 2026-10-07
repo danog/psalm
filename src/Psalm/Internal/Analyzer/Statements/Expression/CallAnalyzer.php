@@ -197,7 +197,7 @@ abstract class CallAnalyzer
 
             $context->initialized_methods[(string) $declaring_method_id] = true;
 
-            $method_storage = $codebase->methods->getStorage($declaring_method_id);
+            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
             $class_analyzer = $source->getSource();
 
@@ -207,9 +207,9 @@ abstract class CallAnalyzer
                 $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
                 if ($appearing_method_id) {
-                    $appearing_class_storage = $codebase->classlike_storage_provider->get(
+                    $appearing_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                         $appearing_method_id->fq_class_name,
-                    );
+                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_method_id->fq_class_name));
 
                     if (isset($appearing_class_storage->trait_final_map[$method_name_lc])) {
                         $is_final = true;
@@ -302,7 +302,7 @@ abstract class CallAnalyzer
 
         $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName($fq_class_name));
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $method_storage = null;
 
@@ -312,12 +312,12 @@ abstract class CallAnalyzer
             $declaring_fq_class_name = $declaring_method_id->fq_class_name;
 
             if ($declaring_fq_class_name !== $fq_class_name) {
-                $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_fq_class_name);
+                $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_class_name));
             } else {
                 $declaring_class_storage = $class_storage;
             }
 
-            $method_storage = $codebase->methods->getStorage($declaring_method_id);
+            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
             if ($declaring_class_storage->user_defined
                 && !$method_storage->has_docblock_param_types
@@ -325,7 +325,7 @@ abstract class CallAnalyzer
             ) {
                 $documenting_method_id = $declaring_class_storage->documenting_method_ids[$method_name];
 
-                $documenting_method_storage = $codebase->methods->getStorage($documenting_method_id);
+                $documenting_method_storage = ($codebase->methods->getStorageOrNull($documenting_method_id) ?? throw $codebase->methods->missing($documenting_method_id));
 
                 if ($documenting_method_storage->template_types) {
                     $method_storage = $documenting_method_storage;

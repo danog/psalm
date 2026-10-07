@@ -197,7 +197,7 @@ final class MethodCallReturnTypeFetcher
                         true,
                         false,
                         $static_type instanceof TNamedObject
-                        && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                        && ($codebase->classlike_storage_provider->getOrNull($static_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_type->value))->final,
                         true,
                     );
                 }
@@ -219,7 +219,7 @@ final class MethodCallReturnTypeFetcher
                     true,
                     false,
                     $static_type instanceof TNamedObject
-                    && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                    && ($codebase->classlike_storage_provider->getOrNull($static_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_type->value))->final,
                     true,
                 );
 
@@ -362,9 +362,9 @@ final class MethodCallReturnTypeFetcher
         $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
         $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
-        $method_storage = $codebase->methods->getStorage(
+        $method_storage = ($codebase->methods->getStorageOrNull(
             $declaring_method_id,
-        );
+        ) ?? throw $codebase->methods->missing($declaring_method_id));
 
         $node_location = new CodeLocation($statements_analyzer, $name_expr);
 

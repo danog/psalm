@@ -489,9 +489,9 @@ final class Analyzer
                                 $newly_invalidated_methods[$referencing_method_id] = true;
                             } else {
                                 try {
-                                    $referencing_storage = $codebase->classlike_storage_provider->get(
+                                    $referencing_storage = ($codebase->classlike_storage_provider->getOrNull(
                                         $referencing_base_classlike,
-                                    );
+                                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($referencing_base_classlike));
                                 } catch (InvalidArgumentException) {
                                     // Workaround for #3671
                                     $newly_invalidated_methods[$referencing_method_id] = true;
@@ -669,7 +669,7 @@ final class Analyzer
             $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode($fq_class_name_lc));
 
             try {
-                $classlike_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+                $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
             } catch (InvalidArgumentException) {
                 continue;
             }

@@ -46,13 +46,14 @@ final class ClassLikeStorageProvider
     }
 
     /**
-     * @psalm-mutation-free
-     * @throws InvalidArgumentException when class does not exist
+     * The exception for a class-like that has no storage, for callers that require it:
+     * `getOrNull($name) ?? throw ClassLikeStorageProvider::missing($name)`.
+     *
+     * @psalm-pure
      */
-    public function get(string $fq_classlike_name): ClassLikeStorage
+    public static function missing(string $fq_classlike_name): InvalidArgumentException
     {
-        return $this->getOrNull($fq_classlike_name)
-            ?? throw new InvalidArgumentException('Could not get class storage for ' . strtolower($fq_classlike_name));
+        return new InvalidArgumentException('Could not get class storage for ' . strtolower($fq_classlike_name));
     }
 
     /**

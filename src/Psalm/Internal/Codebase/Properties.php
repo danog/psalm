@@ -186,7 +186,7 @@ final class Properties
 
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         // own or inherited: the flattened map filled at populate
         if (isset($class_storage->all_properties[$property_name])) {
@@ -195,7 +195,7 @@ final class Properties
 
         if (isset($class_storage->declaring_property_ids[$property_name])) {
             $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
-            $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
             if (isset($declaring_class_storage->properties[$property_name])) {
                 return $declaring_class_storage->properties[$property_name];
@@ -215,11 +215,11 @@ final class Properties
 
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         if (isset($class_storage->declaring_property_ids[$property_name])) {
             $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
-            $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
             return isset($declaring_class_storage->properties[$property_name]);
         }
@@ -255,7 +255,7 @@ final class Properties
 
         if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
             $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
-            $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
             if (isset($declaring_class_storage->properties[$property_name])) {
                 $storage = $declaring_class_storage->properties[$property_name];

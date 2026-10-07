@@ -264,7 +264,7 @@ final class ClassLikeDocblockParserTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->scanFiles();
 
-        $class_storage = $codebase->classlike_storage_provider->get('MyClass');
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull('MyClass') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('MyClass'));
         $methods = $expected['is_static']
             ? $class_storage->pseudo_static_methods
             : $class_storage->pseudo_methods;

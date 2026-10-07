@@ -247,7 +247,7 @@ final class CompiledProbeTest extends TestCase
         $context = new Context();
         $this->analyzeFile($file_path, $context);
 
-        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get('datetime');
+        $storage = ($this->project_analyzer->getCodebase()->classlike_storage_provider->getOrNull('datetime') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('datetime'));
 
         $actual = [
             'user_defined' => $storage->user_defined ? 'yes' : 'no',
@@ -323,7 +323,7 @@ final class CompiledProbeTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
 
         $strlen = CallableTypeComparator::getCallableFromAtomic($codebase, new TLiteralString('strlen'));
-        $create = $codebase->methods->getStorage(new MethodIdentifier('DateTime', 'createfrominterface'));
+        $create = ($codebase->methods->getStorageOrNull(new MethodIdentifier('DateTime', 'createfrominterface')) ?? throw $codebase->methods->missing(new MethodIdentifier('DateTime', 'createfrominterface')));
         $param = $codebase->file_storage_provider->get($file_path)
             ->functions['takescallableobject']->params[0]->type;
         $class_string = $param?->getSingleAtomic();
@@ -377,7 +377,7 @@ final class CompiledProbeTest extends TestCase
         $this->analyzeFile($file_path, new Context());
 
         $codebase = $this->project_analyzer->getCodebase();
-        $c = $codebase->classlike_storage_provider->get('C');
+        $c = ($codebase->classlike_storage_provider->getOrNull('C') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('C'));
         $item = $c->properties['items']->type?->getSingleAtomic();
         $value = $item instanceof TArray ? $item->type_params[1] : null;
 

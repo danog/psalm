@@ -440,7 +440,7 @@ final class CallableTypeComparator
             $method_id = self::getCallableMethodIdFromTKeyedArray($input_type_part);
             if ($method_id && $method_id !== 'not-callable') {
                 try {
-                    $method_storage = $codebase->methods->getStorage($method_id);
+                    $method_storage = ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id));
                     $method_fqcln = $method_id->fq_class_name;
 
                     $converted_return_type = null;
@@ -542,7 +542,7 @@ final class CallableTypeComparator
                 }
 
                 if ($declaring_method_id) {
-                    $method_storage = $codebase->methods->getStorage($declaring_method_id);
+                    $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
                     $method_fqcln = $invoke_id->fq_class_name;
                     $converted_return_type = null;
                     if ($method_storage->return_type) {

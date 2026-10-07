@@ -252,7 +252,7 @@ final class AtomicStaticCallAnalyzer
                             true,
                             $context->insideUse(),
                         )) {
-                            $method_storage = $codebase->methods->getStorage($method_identifier);
+                            $method_storage = ($codebase->methods->getStorageOrNull($method_identifier) ?? throw $codebase->methods->missing($method_identifier));
 
                             $return_type_candidate = new Union([new TClosure(
                                 $method_storage->params,
@@ -356,7 +356,7 @@ final class AtomicStaticCallAnalyzer
             }
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $naive_method_exists = $codebase->methodExists(
             $method_id,
@@ -447,9 +447,9 @@ final class AtomicStaticCallAnalyzer
                             continue;
                         }
 
-                        $mixin_declaring_class_storage = $codebase->classlike_storage_provider->get(
+                        $mixin_declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                             $class_storage->mixin_declaring_fqcln,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_storage->mixin_declaring_fqcln));
 
                         $new_mixin_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
                             $codebase,
@@ -522,7 +522,7 @@ final class AtomicStaticCallAnalyzer
                     $return_type_candidate = new Union([new TClosure(
                         array_values($codebase->getMethodParams($method_id)),
                         $codebase->getMethodReturnType($method_id, $fq_class_name),
-                        $codebase->methods->getStorage($declaring_method_id)->capabilities,
+                        ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id))->capabilities,
                     )]);
                 } elseif ($stmt->class instanceof PhpParser\Node\Name && $stmt->class->getFirst() === 'parent'
                     && !$statements_analyzer->isStatic()
@@ -549,7 +549,7 @@ final class AtomicStaticCallAnalyzer
                     $return_type_candidate = new Union([new TClosure(
                         null,
                         $codebase->getMethodReturnType($call_static_method_id, $fq_class_name),
-                        $codebase->methods->getStorage($call_static_method_id)->capabilities,
+                        ($codebase->methods->getStorageOrNull($call_static_method_id) ?? throw $codebase->methods->missing($call_static_method_id))->capabilities,
                     )]);
                 } else {
                     if (IssueBuffer::accepts(
@@ -640,7 +640,7 @@ final class AtomicStaticCallAnalyzer
                 assert($callstatic_declaring_id !== null);
                 $callstatic_mutations = Capabilities::ALL;
                 if ($codebase->methods->hasStorage($callstatic_declaring_id)) {
-                    $callstatic_storage = $codebase->methods->getStorage($callstatic_declaring_id);
+                    $callstatic_storage = ($codebase->methods->getStorageOrNull($callstatic_declaring_id) ?? throw $codebase->methods->missing($callstatic_declaring_id));
                     $callstatic_mutations = $callstatic_storage->capabilities;
                 }
                 if ($codebase->methods->return_type_provider->has($fq_class_name)) {
@@ -829,7 +829,7 @@ final class AtomicStaticCallAnalyzer
             return true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         if ($class_storage->deprecated && $fq_class_name !== $context->self) {
             IssueBuffer::maybeAdd(
@@ -962,7 +962,7 @@ final class AtomicStaticCallAnalyzer
 
         if ($statements_analyzer->data_flow_graph) {
             try {
-                $method_storage = $codebase->methods->getStorage($method_id);
+                $method_storage = ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id));
 
                 ArgumentsAnalyzer::analyze(
                     $statements_analyzer,

@@ -592,7 +592,7 @@ final class ForeachAnalyzer
             $declaring_class = $codebase->properties->getDeclaringClassForProperty($property_id, true);
 
             if ($declaring_class !== null
-                && !($class_storage = $codebase->classlike_storage_provider->get($declaring_class))
+                && !($class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class)))
                     ->specialize_instance
             ) {
                 InstancePropertyAssignmentAnalyzer::taintUnspecializedProperty(
@@ -1111,9 +1111,9 @@ final class ForeachAnalyzer
                                         'Traversable',
                                     )
                                 ) {
-                                    $generic_storage = $codebase->classlike_storage_provider->get(
+                                    $generic_storage = ($codebase->classlike_storage_provider->getOrNull(
                                         $array_atomic_type->value,
-                                    );
+                                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($array_atomic_type->value));
 
                                     // The collection might be an iterator, in which case
                                     // we want to call the iterator function
@@ -1305,9 +1305,9 @@ final class ForeachAnalyzer
                 )
             )
         ) {
-            $generic_storage = $codebase->classlike_storage_provider->get(
+            $generic_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $iterator_atomic_type->value,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($iterator_atomic_type->value));
 
             if (!isset($generic_storage->template_extended_params['Traversable'])) {
                 return;
@@ -1388,7 +1388,7 @@ final class ForeachAnalyzer
                 return Capabilities::ALL;
             }
 
-            $method_storage = $codebase->methods->getStorage($declaring_method_id);
+            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
             $capabilities = self::getImplicitMethodCapabilities(
                 $statements_analyzer,
@@ -1454,7 +1454,7 @@ final class ForeachAnalyzer
                     $iterator_atomic_type,
                     $expr,
                     $declaring_method_id,
-                    $codebase->methods->getStorage($declaring_method_id),
+                    ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id)),
                     $receiver_is_fresh,
                 );
             }
@@ -1464,7 +1464,7 @@ final class ForeachAnalyzer
 
         if (strtolower($fq_class_name) === 'traversable') {
             // an iterator of unknown kind, whose purity template says all that iterating it may do
-            $traversable_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $traversable_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
             $purity_index = array_search('TPurity', array_keys($traversable_storage->template_types ?? []), true);
 
             if ($purity_index === false
@@ -1533,7 +1533,7 @@ final class ForeachAnalyzer
         return ClassTemplateParamCollector::collect(
             $codebase,
             $codebase->methods->getClassLikeStorageForMethod($declaring_method_id),
-            $codebase->classlike_storage_provider->get($iterator_atomic_type->value),
+            ($codebase->classlike_storage_provider->getOrNull($iterator_atomic_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($iterator_atomic_type->value)),
             $declaring_method_id->method_name,
             $iterator_atomic_type,
             $expr instanceof PhpParser\Node\Expr\Variable && $expr->name === 'this',

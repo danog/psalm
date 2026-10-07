@@ -323,7 +323,7 @@ final class MissingMethodCallHandler
             return;
         }
 
-        $call_storage = clone $codebase->methods->getStorage($magic_method_id);
+        $call_storage = clone ($codebase->methods->getStorageOrNull($magic_method_id) ?? throw $codebase->methods->missing($magic_method_id));
         $call_storage->setParams($pseudo_method_storage->params);
         $call_storage->purity_from_templates = $pseudo_method_storage->purity_from_templates;
 
@@ -365,7 +365,7 @@ final class MissingMethodCallHandler
         $fq_class_name = $method_id->fq_class_name;
         $method_name_lc = $method_id->method_name;
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $found_method_and_class_storage = self::findPseudoMethodAndClassStorages(
             $codebase,

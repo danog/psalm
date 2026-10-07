@@ -200,7 +200,7 @@ final class CodebaseTest extends TestCase
         $this->codebase->classlike_storage_provider->remove($fixtureNamespace . 'C');
         $this->codebase->exhumeClassLikeStorage($fixtureNamespace . 'C', 'somefile.php');
 
-        $class_storage = $this->codebase->classlike_storage_provider->get($fixtureNamespace . 'C');
+        $class_storage = ($this->codebase->classlike_storage_provider->getOrNull($fixtureNamespace . 'C') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fixtureNamespace . 'C'));
         $file_storage = $this->codebase->file_storage_provider->get('somefile.php');
 
         self::assertSame($fixtureNamespace . 'C', $class_storage->custom_metadata['fqcn']);

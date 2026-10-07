@@ -631,8 +631,8 @@ final class AssertionReconciler extends Reconciler
             return $child;
         }
 
-        $child_storage = $codebase->classlike_storage_provider->get($child->value);
-        $parent_storage = $codebase->classlike_storage_provider->get($parent->value);
+        $child_storage = ($codebase->classlike_storage_provider->getOrNull($child->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($child->value));
+        $parent_storage = ($codebase->classlike_storage_provider->getOrNull($parent->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent->value));
 
         $extended_params = $child_storage->template_extended_params[$parent_storage->name] ?? null;
 

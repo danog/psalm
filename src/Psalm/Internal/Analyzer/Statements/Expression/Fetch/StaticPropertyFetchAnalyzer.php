@@ -294,7 +294,7 @@ final class StaticPropertyFetchAnalyzer
             $statements_analyzer,
         );
 
-        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
         $property = $class_storage->properties[$prop_name];
 
         if (!$property->is_static) {

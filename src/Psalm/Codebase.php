@@ -1232,7 +1232,7 @@ final class Codebase
                 throw new UnexpectedValueException('Declaring method for ' . $method_id . ' cannot be found');
             }
 
-            return $this->methods->getStorage($declaring_method_id);
+            return ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
         }
 
         return $this->functions->getStorage($statements_analyzer, strtolower($function_id));
@@ -1410,7 +1410,7 @@ final class Codebase
                 return null;
             }
 
-            return $this->methods->getStorage($declaring_method_id);
+            return ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
         }
 
         $function_id = strtolower(substr($symbol, 0, -2));
@@ -1461,7 +1461,7 @@ final class Codebase
                     return null;
                 }
 
-                $storage = $this->methods->getStorage($declaring_method_id);
+                $storage = ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
 
                 return new PHPMarkdownContent(
                     $storage->getHoverMarkdown(),
@@ -1483,7 +1483,7 @@ final class Codebase
                 //Get Real Properties
                 if (isset($class_storage->declaring_property_ids[$property_name])) {
                     $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
-                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+                    $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
 
                     if (isset($declaring_class_storage->properties[$property_name])) {
                         $storage = $declaring_class_storage->properties[$property_name];
@@ -1586,9 +1586,9 @@ final class Codebase
         }
 
         try {
-            $storage = $this->classlike_storage_provider->get(
+            $storage = ($this->classlike_storage_provider->getOrNull(
                 $reference->symbol,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($reference->symbol));
             return new PHPMarkdownContent(
                 ($storage->abstract ? 'abstract ' : '') .
                     'class ' .
@@ -1688,7 +1688,7 @@ final class Codebase
                         return null;
                     }
 
-                    $storage = $this->methods->getStorage($declaring_method_id);
+                    $storage = ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
 
                     return $storage->location;
                 }
@@ -1742,9 +1742,9 @@ final class Codebase
                 )->location;
             }
 
-            return $this->classlike_storage_provider->get(
+            return ($this->classlike_storage_provider->getOrNull(
                 $reference->symbol,
-            )->location;
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($reference->symbol))->location;
         } catch (UnexpectedValueException $e) {
             error_log($e->getMessage());
 
@@ -1895,7 +1895,7 @@ final class Codebase
                 return null;
             }
 
-            $method_storage = $this->methods->getStorage($declaring_method_id);
+            $method_storage = ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
             $params = $method_storage->params;
             $signature_label = $method_storage->cased_name;
             $signature_documentation = $method_storage->description;
@@ -2125,12 +2125,12 @@ final class Codebase
         foreach ($type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof TNamedObject) {
                 try {
-                    $class_storage = $this->classlike_storage_provider->get($atomic_type->value);
+                    $class_storage = ($this->classlike_storage_provider->getOrNull($atomic_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic_type->value));
 
                     $method_storages = [];
                     foreach ($class_storage->declaring_method_ids as $declaring_method_id) {
                         try {
-                            $method_storages[] = $this->methods->getStorage($declaring_method_id);
+                            $method_storages[] = ($this->methods->getStorageOrNull($declaring_method_id) ?? throw $this->methods->missing($declaring_method_id));
                         } catch (UnexpectedValueException $e) {
                             error_log($e->getMessage());
                         }
@@ -2320,7 +2320,7 @@ final class Codebase
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name => $_) {
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
             } catch (Exception) {
                 continue;
             }
@@ -2394,7 +2394,7 @@ final class Codebase
             }
 
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
                 $description = $class_storage->description;
             } catch (Exception) {
                 $description = null;

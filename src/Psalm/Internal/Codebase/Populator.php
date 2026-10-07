@@ -128,7 +128,7 @@ final class Populator
         foreach ($this->classlike_storage_provider->getNew() as $class_storage) {
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
                 try {
-                    $dependee_storage = $this->classlike_storage_provider->get($dependent_classlike_lc);
+                    $dependee_storage = ($this->classlike_storage_provider->getOrNull($dependent_classlike_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_classlike_lc));
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -149,7 +149,7 @@ final class Populator
         $all_methods = [];
         foreach ($storage->declaring_method_ids as $method_name_lc => $declaring_method_id) {
             $declaring_storage = $this->classlike_storage_provider->has($declaring_method_id->fq_class_name)
-                ? $this->classlike_storage_provider->get($declaring_method_id->fq_class_name)
+                ? ($this->classlike_storage_provider->getOrNull($declaring_method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_method_id->fq_class_name))
                 : null;
             $method_storage = $declaring_storage?->methods[$declaring_method_id->method_name] ?? null;
             if ($method_storage !== null) {
@@ -161,7 +161,7 @@ final class Populator
         $all_properties = [];
         foreach ($storage->declaring_property_ids as $property_name => $declaring_class) {
             $declaring_storage = $this->classlike_storage_provider->has($declaring_class)
-                ? $this->classlike_storage_provider->get($declaring_class)
+                ? ($this->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class))
                 : null;
             $property_storage = $declaring_storage?->properties[$property_name] ?? null;
             if ($property_storage !== null) {
@@ -265,7 +265,7 @@ final class Populator
         foreach ($storage->template_extended_params as $parent_name => $type_map) {
             if (isset($type_map['TPurity'])
                 && $this->isTraversableLike($parent_name)
-                && $this->classlike_storage_provider->get($parent_name)->is_interface
+                && ($this->classlike_storage_provider->getOrNull($parent_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_name))->is_interface
             ) {
                 $storage->template_extended_params[$parent_name]['TPurity']
                     = new Union([new TCapabilities($purity)]);
@@ -286,7 +286,7 @@ final class Populator
                 continue;
             }
 
-            $parent_storage = $this->classlike_storage_provider->get($parent_name);
+            $parent_storage = ($this->classlike_storage_provider->getOrNull($parent_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_name));
             $index = array_search('TPurity', array_keys($parent_storage->template_types ?? []), true);
 
             if ($index !== false && isset($type_params[$index])) {
@@ -310,7 +310,7 @@ final class Populator
             return false;
         }
 
-        $storage = $this->classlike_storage_provider->get($fq_class_name);
+        $storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         return isset($storage->parent_interfaces['traversable']) || isset($storage->class_implements['traversable']);
     }
@@ -328,7 +328,7 @@ final class Populator
             return null;
         }
 
-        return $this->classlike_storage_provider->get($declaring_method_id->fq_class_name)
+        return ($this->classlike_storage_provider->getOrNull($declaring_method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_method_id->fq_class_name))
             ->methods[$declaring_method_id->method_name] ?? null;
     }
 
@@ -348,7 +348,7 @@ final class Populator
             return Capabilities::ALL;
         }
 
-        $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->fq_class_name);
+        $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_method_id->fq_class_name));
 
         $capabilities = $method_storage->getWorstCaseCapabilities($declaring_class_storage->template_types ?? [])
             & ~Capabilities::READ_PROPS;
@@ -374,7 +374,7 @@ final class Populator
             return Capabilities::ALL;
         }
 
-        $iterator_storage = $this->classlike_storage_provider->get($iterator_atomic_type->value);
+        $iterator_storage = ($this->classlike_storage_provider->getOrNull($iterator_atomic_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($iterator_atomic_type->value));
 
         $this->bindIterationPurity($iterator_storage, $depth);
 
@@ -409,7 +409,7 @@ final class Populator
                 $capabilities |= $this->resolveCapabilitiesType($atomic->as, $depth);
             } elseif ($atomic instanceof TTypeAlias && $depth < 10) {
                 try {
-                    $alias_storage = $this->classlike_storage_provider->get($atomic->declaring_fq_classlike_name);
+                    $alias_storage = ($this->classlike_storage_provider->getOrNull($atomic->declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic->declaring_fq_classlike_name));
                 } catch (InvalidArgumentException) {
                     return Capabilities::ALL;
                 }
@@ -606,7 +606,7 @@ final class Populator
                 $dependencies = [strtolower($dependency->name) => true];
                 do {
                     $current_dependency_name = key(array_splice($dependencies, 0, 1)); // Key shift
-                    $current_dependency = $storage_provider->get($current_dependency_name);
+                    $current_dependency = ($storage_provider->getOrNull($current_dependency_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($current_dependency_name));
                     $dependencies += $current_dependency->dependent_classlikes;
 
                     if (isset($current_dependency->dependent_classlikes[$fq_classlike_name_lc])) {
@@ -652,7 +652,7 @@ final class Populator
                         $interface,
                     ),
                 );
-                $implemented_interface_storage = $storage_provider->get($implemented_interface);
+                $implemented_interface_storage = ($storage_provider->getOrNull($implemented_interface) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implemented_interface));
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -679,7 +679,7 @@ final class Populator
                         && $method_storage->return_type === $method_storage->signature_return_type
                     ) {
                         $interface_fqcln = $interface_method_ids[0]->fq_class_name;
-                        $interface_storage = $storage_provider->get($interface_fqcln);
+                        $interface_storage = ($storage_provider->getOrNull($interface_fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($interface_fqcln));
 
                         if (isset($interface_storage->methods[$method_name])) {
                             $interface_method_storage = $interface_storage->methods[$method_name];
@@ -714,7 +714,7 @@ final class Populator
                     $declaring_class = $declaring_method_id->fq_class_name;
                     $declaring_class_storage
                         = $declaring_class_storages[$declaring_class]
-                        = $this->classlike_storage_provider->get($declaring_class);
+                        = ($this->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class));
 
                     $declaring_overridden_ids = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
                         + [$declaring_method_id->fq_class_name => $declaring_method_id];
@@ -800,7 +800,7 @@ final class Populator
                     $used_trait_lc,
                 ),
             );
-            $trait_storage = $storage_provider->get($used_trait_lc);
+            $trait_storage = ($storage_provider->getOrNull($used_trait_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($used_trait_lc));
         } catch (InvalidArgumentException) {
             return;
         }
@@ -870,7 +870,7 @@ final class Populator
         );
 
         try {
-            $parent_storage = $storage_provider->get($parent_storage_class);
+            $parent_storage = ($storage_provider->getOrNull($parent_storage_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_storage_class));
         } catch (InvalidArgumentException) {
             $this->progress->debug('Populator could not find dependency (' . __LINE__ . ")\n");
 
@@ -1013,7 +1013,7 @@ final class Populator
             $visited[$mixin_name_lc] = true;
 
             try {
-                $mixin_storage = $this->classlike_storage_provider->get($mixin_name_lc);
+                $mixin_storage = ($this->classlike_storage_provider->getOrNull($mixin_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($mixin_name_lc));
             } catch (InvalidArgumentException) {
                 // A missing mixin target is reported as UndefinedDocblockClass where it is declared. Unlike a
                 // missing parent it is not recorded as an invalid dependency, which would turn every call on
@@ -1077,7 +1077,7 @@ final class Populator
                         $new_parent,
                     ),
                 );
-                $new_parent_interface_storage = $storage_provider->get($new_parent);
+                $new_parent_interface_storage = ($storage_provider->getOrNull($new_parent) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($new_parent));
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -1177,7 +1177,7 @@ final class Populator
                     $parent_interface_lc,
                 ),
             );
-            $parent_interface_storage = $storage_provider->get($parent_interface_lc);
+            $parent_interface_storage = ($storage_provider->getOrNull($parent_interface_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_interface_lc));
         } catch (InvalidArgumentException) {
             $this->progress->debug('Populator could not find dependency (' . __LINE__ . ")\n");
 
@@ -1221,7 +1221,7 @@ final class Populator
                     $implemented_interface_lc,
                 ),
             );
-            $implemented_interface_storage = $storage_provider->get($implemented_interface_lc);
+            $implemented_interface_storage = ($storage_provider->getOrNull($implemented_interface_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implemented_interface_lc));
         } catch (InvalidArgumentException) {
             $this->progress->debug('Populator could not find dependency (' . __LINE__ . ")\n");
 
@@ -1298,7 +1298,7 @@ final class Populator
 
         foreach ($storage->referenced_classlikes as $fq_class_name) {
             try {
-                $classlike_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $classlike_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -1315,7 +1315,7 @@ final class Populator
 
             foreach ($classlike_storage->used_traits as $used_trait) {
                 try {
-                    $trait_storage = $this->classlike_storage_provider->get($used_trait);
+                    $trait_storage = ($this->classlike_storage_provider->getOrNull($used_trait) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($used_trait));
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -1358,7 +1358,7 @@ final class Populator
 
         foreach ($storage->required_classes as $required_classlike) {
             try {
-                $classlike_storage = $this->classlike_storage_provider->get($required_classlike);
+                $classlike_storage = ($this->classlike_storage_provider->getOrNull($required_classlike) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($required_classlike));
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -1498,7 +1498,7 @@ final class Populator
             ) {
                 if ($parent_storage->is_trait) {
                     $declaring_class = $declaring_method_id->fq_class_name;
-                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_class);
+                    $declaring_class_storage = ($this->classlike_storage_provider->getOrNull($declaring_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class));
 
                     if (isset($declaring_class_storage->methods[$method_name_lc])
                         && $declaring_class_storage->methods[$method_name_lc]->abstract
@@ -1515,9 +1515,9 @@ final class Populator
                     // across a real class boundary, so it must not be recorded as "overridden" here -- doing
                     // so produced a MissingOverrideAttribute false positive whenever a subclass re-declared
                     // (or re-imported via the same trait) a same-named private method.
-                    $declaring_class_storage = $this->classlike_storage_provider->get(
+                    $declaring_class_storage = ($this->classlike_storage_provider->getOrNull(
                         $declaring_method_id->fq_class_name,
-                    );
+                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_method_id->fq_class_name));
                     $declaring_method_storage = $declaring_class_storage->methods[$method_name_lc] ?? null;
 
                     // A `use T { f as public; }` adaptation does not rewrite the copied method's own
@@ -1559,9 +1559,9 @@ final class Populator
                 if (isset($storage->declaring_method_ids[$aliased_method_name])) {
                     $implementing_method_id = $storage->declaring_method_ids[$aliased_method_name];
 
-                    $implementing_class_storage = $this->classlike_storage_provider->get(
+                    $implementing_class_storage = ($this->classlike_storage_provider->getOrNull(
                         $implementing_method_id->fq_class_name,
-                    );
+                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementing_method_id->fq_class_name));
 
                     $method = $implementing_class_storage->methods[$implementing_method_id->method_name]
                         ?? $implementing_class_storage->pseudo_methods[$implementing_method_id->method_name]

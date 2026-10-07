@@ -1087,7 +1087,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $destructor = $codebase->methods->getStorage($destructor_id);
+            $destructor = ($codebase->methods->getStorageOrNull($destructor_id) ?? throw $codebase->methods->missing($destructor_id));
 
             if ($destructor->has_mutations_annotation && $destructor->capabilities === Capabilities::ALL) {
                 return true;

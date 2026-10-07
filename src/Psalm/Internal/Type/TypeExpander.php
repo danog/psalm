@@ -365,7 +365,7 @@ final class TypeExpander
                 return [$return_type];
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($declaring_fq_classlike_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_classlike_name));
 
             $type_alias_name = $return_type->alias_name;
 
@@ -536,7 +536,7 @@ final class TypeExpander
             ) {
                 $type_params = PurityArguments::align(
                     $type_params,
-                    $codebase->classlike_storage_provider->get($return_type->value),
+                    ($codebase->classlike_storage_provider->getOrNull($return_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($return_type->value)),
                 );
             }
 
@@ -726,9 +726,9 @@ final class TypeExpander
             )
         ) {
             $value = $codebase->classlikes->getUnAliasedName($return_type->value);
-            $container_class_storage = $codebase->classlike_storage_provider->get(
+            $container_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $value,
-            );
+            ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($value));
 
             if ($container_class_storage->template_types
                 && array_any(
@@ -779,7 +779,7 @@ final class TypeExpander
                     if ($codebase->classlike_storage_provider->has($static_class_type->value)) {
                         $type_params = PurityArguments::trim(
                             $return_type->type_params,
-                            $codebase->classlike_storage_provider->get($static_class_type->value),
+                            ($codebase->classlike_storage_provider->getOrNull($static_class_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($static_class_type->value)),
                         );
 
                         if ($type_params !== [] && count($type_params) !== count($return_type->type_params)) {
@@ -1085,11 +1085,11 @@ final class TypeExpander
 
         $class_storage = null;
         if ($codebase->classExists($return_type->classlike_type->value)) {
-            $class_storage = $codebase->classlike_storage_provider->get($return_type->classlike_type->value);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($return_type->classlike_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($return_type->classlike_type->value));
         } else {
             foreach ($return_type->classlike_type->extra_types as $type) {
                 if ($type instanceof TNamedObject && $codebase->classExists($type->value)) {
-                    $class_storage = $codebase->classlike_storage_provider->get($type->value);
+                    $class_storage = ($codebase->classlike_storage_provider->getOrNull($type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type->value));
                     break;
                 }
             }
@@ -1105,7 +1105,7 @@ final class TypeExpander
             if (!$codebase->classExists($class)) {
                 continue;
             }
-            $storage = $codebase->classlike_storage_provider->get($class);
+            $storage = ($codebase->classlike_storage_provider->getOrNull($class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class));
             if (!$storage->final) {
                 $all_sealed = false;
             }

@@ -88,8 +88,7 @@ final class CallPurityResolver
             $template_types = $storage->template_types ?? [];
 
             if ($storage instanceof MethodStorage && $storage->defining_fqcln !== null) {
-                $template_types += $statements_analyzer->getCodebase()->classlike_storage_provider
-                    ->get($storage->defining_fqcln)->template_types ?? [];
+                $template_types += ($statements_analyzer->getCodebase()->classlike_storage_provider->getOrNull($storage->defining_fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($storage->defining_fqcln))->template_types ?? [];
             }
 
             foreach ($template_types as $template_name => $bounds) {

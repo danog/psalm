@@ -411,7 +411,7 @@ final class ReturnTypeAnalyzer
         $classlike_storage = null;
 
         if ($self_fq_class_name) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+            $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($self_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($self_fq_class_name));
             $parent_class = $classlike_storage->parent_class;
         }
 
@@ -775,7 +775,7 @@ final class ReturnTypeAnalyzer
         $classlike_storage = null;
 
         if ($context->self) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
+            $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self));
             $parent_class = $classlike_storage->parent_class;
         }
 
@@ -884,7 +884,7 @@ final class ReturnTypeAnalyzer
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
                 $classlike_storage,
-                $codebase->classlike_storage_provider->get($context->self),
+                ($codebase->classlike_storage_provider->getOrNull($context->self) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($context->self)),
                 strtolower($function->name->name),
                 new TNamedObject($context->self),
                 true,
@@ -971,7 +971,7 @@ final class ReturnTypeAnalyzer
         $fqcln = $source->getFQCLN();
 
         if ($fqcln !== null && $function instanceof ClassMethod) {
-            $class_storage = $codebase->classlike_storage_provider->get($fqcln);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fqcln));
             $is_final = $function->isFinal() || $class_storage->final;
         }
 

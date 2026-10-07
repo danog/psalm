@@ -214,7 +214,7 @@ final class HighOrderFunctionArgHandler
                     $input_arg_expr->isFirstClassCallable()
                         ? HighOrderFunctionArgInfo::TYPE_FIRST_CLASS_CALLABLE
                         : HighOrderFunctionArgInfo::TYPE_CALLABLE,
-                    $codebase->methods->getStorage($method_id),
+                    ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id)),
                 );
             }
 
@@ -230,7 +230,7 @@ final class HighOrderFunctionArgHandler
                     $input_arg_expr->isFirstClassCallable()
                         ? HighOrderFunctionArgInfo::TYPE_FIRST_CLASS_CALLABLE
                         : HighOrderFunctionArgInfo::TYPE_CALLABLE,
-                    $codebase->methods->getStorage($method_id),
+                    ($codebase->methods->getStorageOrNull($method_id) ?? throw $codebase->methods->missing($method_id)),
                 );
             }
 
@@ -331,7 +331,7 @@ final class HighOrderFunctionArgHandler
         return new HighOrderFunctionArgInfo(
             HighOrderFunctionArgInfo::TYPE_STRING_CALLABLE,
             str_contains($literal->value, '::')
-                ? $codebase->methods->getStorage(MethodIdentifier::fromMethodIdReference($literal->value))
+                ? ($codebase->methods->getStorageOrNull(MethodIdentifier::fromMethodIdReference($literal->value)) ?? throw $codebase->methods->missing(MethodIdentifier::fromMethodIdReference($literal->value)))
                 : $codebase->functions->getStorage($statements_analyzer, strtolower($literal->value)),
         );
     }

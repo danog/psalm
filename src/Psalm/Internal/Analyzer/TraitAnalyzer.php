@@ -32,7 +32,7 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
         $this->class = $class;
         $this->fq_class_name = $fq_class_name;
         $codebase = $source->getCodebase();
-        $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $this->storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
     }
 
     /** @psalm-mutation-free */
@@ -78,7 +78,7 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
             return;
         }
 
-        $storage = $codebase->classlike_storage_provider->get($stmt->name->name);
+        $storage = ($codebase->classlike_storage_provider->getOrNull($stmt->name->name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($stmt->name->name));
 
         ClassLikeAnalyzer::registerDocblockSuppressions($storage, $statements_analyzer->getFilePath(), $codebase);
 

@@ -403,7 +403,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         if (!$storage->abstract) {
             foreach ($storage->declaring_method_ids as $declaring_method_id) {
-                $method_storage = $codebase->methods->getStorage($declaring_method_id);
+                $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
 
                 $declaring_class_name = $declaring_method_id->fq_class_name;
                 $method_name_lc = $declaring_method_id->method_name;
@@ -606,7 +606,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         continue;
                     }
 
-                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
+                    $trait_storage = ($codebase->classlike_storage_provider->getOrNull($fq_trait_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_trait_name));
                     $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
                     $trait_aliases = $trait_storage->aliases;
 
@@ -691,7 +691,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 continue;
             }
 
-            $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
+            $property_class_storage = ($codebase->classlike_storage_provider->getOrNull($property_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($property_class_name));
 
             $property_storage = $property_class_storage->properties[$property_name];
 
@@ -709,7 +709,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             if (isset($storage->overridden_property_ids[$property_name])) {
                 foreach ($storage->overridden_property_ids[$property_name] as $overridden_property_id) {
                     [$guide_class_name] = explode('::$', $overridden_property_id);
-                    $guide_class_storage = $codebase->classlike_storage_provider->get($guide_class_name);
+                    $guide_class_storage = ($codebase->classlike_storage_provider->getOrNull($guide_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($guide_class_name));
                     $guide_property_storage = $guide_class_storage->properties[$property_name];
 
                     if ($property_storage->visibility > $guide_property_storage->visibility
@@ -821,7 +821,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     // instead of the template extended type.
                     $parent_class = $storage->parent_class;
                     while ($parent_class !== null) {
-                        $parent_storage = $codebase->classlike_storage_provider->get($parent_class);
+                        $parent_storage = ($codebase->classlike_storage_provider->getOrNull($parent_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_class));
                         foreach ($parent_storage->template_covariants ?? [] as $pt_offset => $covariant) {
                             if ($covariant) {
                                 // If template_covariants is set template_types should also be set
@@ -1101,7 +1101,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $class = $this->class;
         assert($class instanceof PhpParser\Node\Stmt\Class_);
         $classlike_storage_provider = $codebase->classlike_storage_provider;
-        $class_storage = $classlike_storage_provider->get($fq_class_name_lc);
+        $class_storage = ($classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
 
         $constructor_appearing_fqcln = $fq_class_name_lc;
 
@@ -1120,7 +1120,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 continue;
             }
 
-            $property_class_storage = $classlike_storage_provider->get($property_class_name);
+            $property_class_storage = ($classlike_storage_provider->getOrNull($property_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($property_class_name));
 
             $property = $property_class_storage->properties[$property_name];
 
@@ -1202,7 +1202,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $constructor_declaring_fqcln = $storage->declaring_method_ids['__construct']->fq_class_name;
             $constructor_appearing_fqcln = $storage->appearing_method_ids['__construct']->fq_class_name;
 
-            $constructor_class_storage = $classlike_storage_provider->get($constructor_declaring_fqcln);
+            $constructor_class_storage = ($classlike_storage_provider->getOrNull($constructor_declaring_fqcln) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($constructor_declaring_fqcln));
 
             // ignore oldstyle constructors and classes without any declared properties
             if ($constructor_class_storage->user_defined
@@ -1378,16 +1378,15 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 if ($fq_class_name_lc !== $constructor_appearing_fqcln
                     && $property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
                 ) {
-                    $a_class_storage = $classlike_storage_provider->get(
+                    $a_class_storage = ($classlike_storage_provider->getOrNull(
                         $end_type->initialized_class ?: $constructor_appearing_fqcln,
-                    );
+                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($end_type->initialized_class ?: $constructor_appearing_fqcln));
 
                     if (!isset($a_class_storage->declaring_property_ids[$property_name])) {
                         $constructor_class_property_storage = null;
                     } else {
                         $declaring_property_class = $a_class_storage->declaring_property_ids[$property_name];
-                        $constructor_class_property_storage = $classlike_storage_provider
-                            ->get($declaring_property_class)
+                        $constructor_class_property_storage = ($classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class))
                             ->properties[$property_name];
                     }
                 }
@@ -1508,7 +1507,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             }
 
             $fq_trait_name_resolved = $codebase->classlikes->getUnAliasedName($fq_trait_name);
-            $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_resolved);
+            $trait_storage = ($codebase->classlike_storage_provider->getOrNull($fq_trait_name_resolved) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_trait_name_resolved));
 
             $trait_storage->trait_used = true;
 
@@ -1645,7 +1644,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         // gets inherited property type
         $class_property_type = $codebase->properties->getPropertyType($property_id, false, $source, $context);
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         $property_storage = $class_storage->properties[$property_name];
 
@@ -1824,10 +1823,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 }
 
                 if ($declaring_method_id && $declaring_method_storage->abstract) {
-                    $implementer_method_storage = $codebase->methods->getStorage($declaring_method_id);
-                    $declaring_storage = $codebase->classlike_storage_provider->get(
+                    $implementer_method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id) ?? throw $codebase->methods->missing($declaring_method_id));
+                    $declaring_storage = ($codebase->classlike_storage_provider->getOrNull(
                         $actual_method_id->fq_class_name,
-                    );
+                    ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($actual_method_id->fq_class_name));
 
                     MethodComparator::compare(
                         $codebase,
@@ -1991,7 +1990,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $did_explicitly_return = (bool) $context?->has_returned;
         $secondary_return_type_location = null;
 
-        $actual_method_storage = $codebase->methods->getStorage($actual_method_id);
+        $actual_method_storage = ($codebase->methods->getStorageOrNull($actual_method_id) ?? throw $codebase->methods->missing($actual_method_id));
 
         $return_type_location = $codebase->methods->getMethodReturnTypeLocation(
             $actual_method_id,
@@ -2013,7 +2012,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             if ($declaring_method_id) {
                 $declaring_class_name = $declaring_method_id->fq_class_name;
 
-                $class_storage = $codebase->classlike_storage_provider->get($declaring_class_name);
+                $class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_class_name));
             }
 
             $this_object_type = self::getThisObjectType(
@@ -2024,7 +2023,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
                 $class_storage,
-                $codebase->classlike_storage_provider->get($original_fq_classlike_name),
+                ($codebase->classlike_storage_provider->getOrNull($original_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($original_fq_classlike_name)),
                 strtolower($stmt->name->name),
                 $this_object_type,
             ) ?: [];
@@ -2172,7 +2171,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             );
 
             try {
-                $interface_storage = $classlike_storage_provider->get($fq_interface_name);
+                $interface_storage = ($classlike_storage_provider->getOrNull($fq_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name));
             } catch (InvalidArgumentException) {
                 return false;
             }
@@ -2206,7 +2205,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         foreach ($storage->class_implements as $fq_interface_name_lc => $fq_interface_name) {
             try {
-                $interface_storage = $classlike_storage_provider->get($fq_interface_name_lc);
+                $interface_storage = ($classlike_storage_provider->getOrNull($fq_interface_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name_lc));
             } catch (InvalidArgumentException) {
                 return false;
             }
@@ -2307,12 +2306,12 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
                     if ($implementer_declaring_method_id) {
                         $implementer_fq_class_name = $implementer_declaring_method_id->fq_class_name;
-                        $implementer_method_storage = $codebase->methods->getStorage(
+                        $implementer_method_storage = ($codebase->methods->getStorageOrNull(
                             $implementer_declaring_method_id,
-                        );
-                        $implementer_classlike_storage = $classlike_storage_provider->get(
+                        ) ?? throw $codebase->methods->missing($implementer_declaring_method_id));
+                        $implementer_classlike_storage = ($classlike_storage_provider->getOrNull(
                             $implementer_fq_class_name,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementer_fq_class_name));
                     }
 
                     if ($storage->is_enum) {
@@ -2354,9 +2353,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $appearing_fq_class_name = $implementer_appearing_method_id->fq_class_name;
                         $appearing_method_name = $implementer_appearing_method_id->method_name;
 
-                        $appearing_class_storage = $classlike_storage_provider->get(
+                        $appearing_class_storage = ($classlike_storage_provider->getOrNull(
                             $appearing_fq_class_name,
-                        );
+                        ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($appearing_fq_class_name));
 
                         if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {
                             $implementer_visibility
@@ -2453,7 +2452,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
 
         try {
-            $parent_class_storage = $classlike_storage_provider->get($parent_fq_class_name);
+            $parent_class_storage = ($classlike_storage_provider->getOrNull($parent_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_fq_class_name));
 
             $code_location = new CodeLocation(
                 $this,

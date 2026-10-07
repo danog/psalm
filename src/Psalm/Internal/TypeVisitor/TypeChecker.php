@@ -158,7 +158,7 @@ final class TypeChecker extends TypeVisitor
             && $codebase->classlike_storage_provider->has($fq_class_name_lc)
             && $this->source->getFQCLN() !== $atomic->value
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
 
             if ($class_storage->deprecated) {
                 if ($class_storage->is_interface) {
@@ -193,7 +193,7 @@ final class TypeChecker extends TypeVisitor
         $codebase = $this->source->getCodebase();
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get(strtolower($atomic->value));
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull(strtolower($atomic->value)) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing(strtolower($atomic->value)));
         } catch (InvalidArgumentException) {
             return;
         }
@@ -380,7 +380,7 @@ final class TypeChecker extends TypeVisitor
         ) {
             $codebase = $this->source->getCodebase();
 
-            $class_storage = $codebase->classlike_storage_provider->get($atomic->defining_class);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($atomic->defining_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic->defining_class));
 
             $template_offset = $class_storage->template_types
                 ? array_search($atomic->param_name, array_keys($class_storage->template_types), true)

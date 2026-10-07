@@ -31,7 +31,7 @@ final class VersionStubTest extends TestCase
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = ($codebase->classlike_storage_provider->getOrNull('Attribute') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('Attribute'));
 
         $this->assertTrue(
             isset($storage->methods['__construct']),
@@ -54,7 +54,7 @@ final class VersionStubTest extends TestCase
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = ($codebase->classlike_storage_provider->getOrNull('Attribute') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('Attribute'));
 
         $this->assertTrue(
             isset($storage->methods['__construct']),
@@ -74,7 +74,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('IteratorAggregate');
+        $storage = ($codebase->classlike_storage_provider->getOrNull('IteratorAggregate') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('IteratorAggregate'));
 
         $method = $storage->methods['getiterator'] ?? null;
 
@@ -126,16 +126,16 @@ final class VersionStubTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
 
-        $local = $codebase->methods->getStorage(new MethodIdentifier('LocalStringable', 'render'));
+        $local = ($codebase->methods->getStorageOrNull(new MethodIdentifier('LocalStringable', 'render')) ?? throw $codebase->methods->missing(new MethodIdentifier('LocalStringable', 'render')));
 
         $this->assertNull(
             $local->signature_return_type,
             'a docblock @return does not give the method a signature return type',
         );
 
-        $stringable = $codebase->methods->getStorage(new MethodIdentifier('Stringable', '__tostring'));
+        $stringable = ($codebase->methods->getStorageOrNull(new MethodIdentifier('Stringable', '__tostring')) ?? throw $codebase->methods->missing(new MethodIdentifier('Stringable', '__tostring')));
 
-        $stringable_storage = $codebase->classlike_storage_provider->get('Stringable');
+        $stringable_storage = ($codebase->classlike_storage_provider->getOrNull('Stringable') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('Stringable'));
 
         $this->assertNull(
             $stringable->signature_return_type,
@@ -184,7 +184,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         foreach (['ReflectionClass', 'ReflectionFunction', 'ReflectionMethod', 'ReflectionProperty'] as $name) {
-            $storage = $codebase->classlike_storage_provider->get($name);
+            $storage = ($codebase->classlike_storage_provider->getOrNull($name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($name));
 
             $this->assertTrue(
                 $codebase->methods->methodExists($codebase, new MethodIdentifier($name, 'getattributes')),
@@ -208,7 +208,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('ReflectionClass');
+        $storage = ($codebase->classlike_storage_provider->getOrNull('ReflectionClass') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('ReflectionClass'));
 
         $this->assertTrue(
             isset($storage->methods['newlazyghost']),
@@ -246,13 +246,13 @@ final class VersionStubTest extends TestCase
         $codebase->scanner->queueClassLikeForScanning('Stringable');
         $codebase->scanFiles();
 
-        $reflected = $codebase->classlike_storage_provider->get('Stringable');
+        $reflected = ($codebase->classlike_storage_provider->getOrNull('Stringable') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('Stringable'));
         $reflected_file = $reflected->location?->file_path ?? 'none';
         $reflected_signature = ($reflected->methods['__tostring'] ?? null)?->signature_return_type;
 
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('Stringable');
+        $storage = ($codebase->classlike_storage_provider->getOrNull('Stringable') ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing('Stringable'));
         $method = $storage->methods['__tostring'] ?? null;
 
         $this->assertNull(

@@ -174,7 +174,7 @@ final class ClassLikeNodeScanner
             $class_name = $node->name->name;
 
             if ($this->codebase->classlike_storage_provider->has($fq_classlike_name_lc)) {
-                $duplicate_storage = $this->codebase->classlike_storage_provider->get($fq_classlike_name_lc);
+                $duplicate_storage = ($this->codebase->classlike_storage_provider->getOrNull($fq_classlike_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name_lc));
 
                 // Psalm's own stubs describe the classes PHP itself provides; another file declaring a
                 // class of the same name does not get to replace that description (a compiled program
@@ -251,7 +251,7 @@ final class ClassLikeNodeScanner
 
                     foreach ($storage->dependent_classlikes as $dependent_name_lc => $_) {
                         try {
-                            $dependent_storage = $this->codebase->classlike_storage_provider->get($dependent_name_lc);
+                            $dependent_storage = ($this->codebase->classlike_storage_provider->getOrNull($dependent_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_name_lc));
                         } catch (InvalidArgumentException) {
                             continue;
                         }

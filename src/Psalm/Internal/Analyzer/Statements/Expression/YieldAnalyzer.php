@@ -176,13 +176,13 @@ final class YieldAnalyzer
                 continue;
             }
 
-            $classlike_storage = $codebase->classlike_storage_provider->get($expression_atomic_type->value);
+            $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($expression_atomic_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($expression_atomic_type->value));
 
             if (!$classlike_storage->yield) {
                 continue;
             }
             $declaring_classlike_storage = $classlike_storage->declaring_yield_fqcn
-                ? $codebase->classlike_storage_provider->get($classlike_storage->declaring_yield_fqcn)
+                ? ($codebase->classlike_storage_provider->getOrNull($classlike_storage->declaring_yield_fqcn) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($classlike_storage->declaring_yield_fqcn))
                 : $classlike_storage;
 
             $yield_candidate_type = $classlike_storage->yield;

@@ -519,7 +519,7 @@ final class TemplateStandinTypeReplacer
             ) {
                 try {
                     $classlike_storage =
-                        $codebase->classlike_storage_provider->get($atomic_input_type->value);
+                        ($codebase->classlike_storage_provider->getOrNull($atomic_input_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic_input_type->value));
 
                     if (!empty($classlike_storage->template_extended_params[$base_type->as_type->value])) {
                         $atomic_input_type = new TClassString(
@@ -570,7 +570,7 @@ final class TemplateStandinTypeReplacer
 
                 try {
                     $classlike_storage =
-                        $codebase->classlike_storage_provider->get($atomic_input_type->value);
+                        ($codebase->classlike_storage_provider->getOrNull($atomic_input_type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic_input_type->value));
 
                     if ($atomic_input_type instanceof TGenericObject
                         && isset($classlike_storage->template_extended_params[$base_type->value])
@@ -1314,7 +1314,7 @@ final class TemplateStandinTypeReplacer
             if ($input_type_part instanceof TGenericObject
                 && $codebase->classlike_storage_provider->has($input_type_part->value)
             ) {
-                $input_class_storage = $codebase->classlike_storage_provider->get($input_type_part->value);
+                $input_class_storage = ($codebase->classlike_storage_provider->getOrNull($input_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($input_type_part->value));
 
                 foreach (array_keys($input_class_storage->template_types ?? []) as $i => $template_name) {
                     if ($i >= count($input_type_params)
@@ -1325,7 +1325,7 @@ final class TemplateStandinTypeReplacer
                 }
             }
         } elseif ($codebase->classlike_storage_provider->has($input_type_part->value)) {
-            $class_storage = $codebase->classlike_storage_provider->get($input_type_part->value);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($input_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($input_type_part->value));
 
             $container_class = $container_type_part->value;
 
@@ -1345,11 +1345,11 @@ final class TemplateStandinTypeReplacer
         }
 
         $input_class_storage = $codebase->classlike_storage_provider->has($input_type_part->value)
-            ? $codebase->classlike_storage_provider->get($input_type_part->value)
+            ? ($codebase->classlike_storage_provider->getOrNull($input_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($input_type_part->value))
             : null;
 
         $container_type_params_covariant = $codebase->classlike_storage_provider->has($container_type_part->value)
-            ? $codebase->classlike_storage_provider->get($container_type_part->value)->template_covariants
+            ? ($codebase->classlike_storage_provider->getOrNull($container_type_part->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($container_type_part->value))->template_covariants
             : null;
 
         if ($input_type_part->value !== $container_type_part->value

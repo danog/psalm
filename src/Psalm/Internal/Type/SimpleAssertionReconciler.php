@@ -2934,7 +2934,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 return null;
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($class_name);
+            $class_storage = ($codebase->classlike_storage_provider->getOrNull($class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($class_name));
             if (!$class_storage->is_enum) {
                 return null;
             }
@@ -2989,7 +2989,7 @@ final class SimpleAssertionReconciler extends Reconciler
             return false;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($type->value);
+        $class_storage = ($codebase->classlike_storage_provider->getOrNull($type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type->value));
 
         return !$class_storage->final;
     }

@@ -38,7 +38,7 @@ final class DestructorAnalyzer
             return null;
         }
 
-        return $codebase->classlike_storage_provider->get($fq_class_name)->declaring_method_ids['__destruct'] ?? null;
+        return ($codebase->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name))->declaring_method_ids['__destruct'] ?? null;
     }
 
     /**
@@ -65,7 +65,7 @@ final class DestructorAnalyzer
                 continue;
             }
 
-            $destructor = $codebase->methods->getStorage($destructor_id);
+            $destructor = ($codebase->methods->getStorageOrNull($destructor_id) ?? throw $codebase->methods->missing($destructor_id));
 
             $statements_analyzer->signalMutation(
                 $destructor->capabilities & ~Capabilities::RECEIVER_LOCAL,
