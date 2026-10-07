@@ -144,6 +144,15 @@ final class ClassLikes
      */
     private array $existing_classlike_aliases = [];
 
+    /** @var array<lowercase-string, string> code-use graph class nodes by lowercase name */
+    private array $class_nodes = [];
+
+    /** @var array<string, string> code-use graph class nodes by spelling */
+    private array $class_nodes_by_spelling = [];
+
+    /** @var array<string, bool> whether a spelling is one of ClassLikeAnalyzer::SPECIAL_TYPES */
+    private array $special_spellings = [];
+
     /**
      * @var array<string, PhpParser\Node\Stmt\Trait_>
      */
@@ -366,7 +375,7 @@ final class ClassLikes
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
             $context,
             $location,
         );
@@ -408,7 +417,7 @@ final class ClassLikes
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
             $context,
             $location,
         );
@@ -450,7 +459,7 @@ final class ClassLikes
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
             $context,
             $location,
         );
@@ -475,12 +484,18 @@ final class ClassLikes
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
             $context,
             $location,
         );
 
         return true;
+    }
+
+    /** The code-use graph node of a class-like, by spelling (built once, not per reference) */
+    private function classNodeOf(string $name): string
+    {
+        return $this->class_nodes_by_spelling[$name] ??= CodeUseGraph::classNode(strtolower($name));
     }
 
     /**
@@ -494,7 +509,7 @@ final class ClassLikes
         ?Context $context = null,
     ): void {
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode(strtolower($storage->name)),
+            $this->classNodeOf($storage->name),
             $context,
             $location,
         );
@@ -642,7 +657,10 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_interface_name)])) {
+        // whether the spelling is a special type, once per spelling (not a lowercase copy per call)
+        if ($this->special_spellings[$fq_interface_name]
+            ??= isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_interface_name)])
+        ) {
             return false;
         }
 
@@ -840,6 +858,9 @@ final class ClassLikes
         }
         $alias_name_lc = strtolower($alias_name);
         if ($this->existing_classlikes_lc[$alias_name_lc] ?? false) {
+            // as getUnAliasedNameLc() does: the next lookup of this spelling skips the lowercasing
+            /** @psalm-suppress ImpurePropertyAssignment cache */
+            $this->existing_by_spelling[$alias_name] = $alias_name_lc;
             return $alias_name;
         }
 
@@ -2732,13 +2753,7 @@ final class ClassLikes
      */
     public function getStorageFor(string $fq_class_name): ?ClassLikeStorage
     {
-        $fq_class_name = $this->getUnAliasedName($fq_class_name);
-
-        try {
-            return ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
-        } catch (InvalidArgumentException) {
-            return null;
-        }
+        return $this->classlike_storage_provider->getOrNull($this->getUnAliasedName($fq_class_name));
     }
 
     /**

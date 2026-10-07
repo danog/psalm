@@ -12,6 +12,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\PurityArguments;
@@ -249,6 +250,47 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         'false' => true, 'true' => true, 'object' => true, 'mixed' => true,
     ];
 
+    private const NAME_PLAIN = 0;
+
+    private const NAME_SPECIAL = 1;
+
+    private const NAME_RESERVED = 2;
+
+    /**
+     * checkFullyQualifiedClassLikeName()'s per-spelling facts, by spelling: the name without a leading
+     * backslash, and whether it is a special name (callable, self, ...) or ends in a reserved type name.
+     *
+     * @var array<non-empty-string, array{string, int}>
+     */
+    private static array $name_kinds = [];
+
+    /**
+     * @param non-empty-string $fq_class_name
+     * @return array{string, int}
+     * @psalm-pure
+     */
+    private static function classifyName(string $fq_class_name): array
+    {
+        if ($fq_class_name[0] === '\\') {
+            $fq_class_name = substr($fq_class_name, 1);
+        }
+
+        if (in_array($fq_class_name, ['callable', 'iterable', 'self', 'static', 'parent'], true)) {
+            return [$fq_class_name, self::NAME_SPECIAL];
+        }
+
+        // the last name segment is a reserved type name
+        $last_separator = strrpos($fq_class_name, '\\');
+        $last_segment_lc = strtolower($last_separator === false ? $fq_class_name : substr($fq_class_name, $last_separator + 1));
+        if (isset(self::RESERVED_TYPE_NAMES[$last_segment_lc])
+            || ($last_separator === false && $last_segment_lc === 'resource')
+        ) {
+            return [$fq_class_name, self::NAME_RESERVED];
+        }
+
+        return [$fq_class_name, self::NAME_PLAIN];
+    }
+
     /**
      * @param  array<array-key, string>    $suppressed_issues
      */
@@ -281,20 +323,15 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        if ($fq_class_name[0] === '\\') {
-            $fq_class_name = substr($fq_class_name, 1);
-        }
+        // what depends only on the spelling (the normalized name, special and reserved names) is worked out
+        // once per spelling (pzoom resolves names once): a use only looks it up
+        [$fq_class_name, $name_kind] = self::$name_kinds[$fq_class_name] ??= self::classifyName($fq_class_name);
 
-        if (in_array($fq_class_name, ['callable', 'iterable', 'self', 'static', 'parent'], true)) {
+        if ($name_kind === self::NAME_SPECIAL) {
             return true;
         }
 
-        // the last name segment is a reserved type name (no regex: this runs for every class name use)
-        $last_separator = strrpos($fq_class_name, '\\');
-        $last_segment_lc = strtolower($last_separator === false ? $fq_class_name : substr($fq_class_name, $last_separator + 1));
-        if (isset(self::RESERVED_TYPE_NAMES[$last_segment_lc])
-            || ($last_separator === false && $last_segment_lc === 'resource')
-        ) {
+        if ($name_kind === self::NAME_RESERVED) {
             $class_name_parts = explode('\\', $fq_class_name);
             $class_name = array_pop($class_name_parts);
 
@@ -414,21 +451,26 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        $aliased_name = $codebase->classlikes->getUnAliasedName(
-            $fq_class_name,
-        );
+        if ($found_storage !== null) {
+            // the storage of the unaliased name, already looked up above: it is registered, so the reflection
+            // fallback below has nothing to do for it
+            $class_storage = $found_storage;
+        } else {
+            $aliased_name = $codebase->classlikes->getUnAliasedName(
+                $fq_class_name,
+            );
 
-        // Built-in classlikes only referenced via strings were never queued for scanning
-        $codebase->scanner->registerReflectedClassLikeStorage($aliased_name);
+            // Built-in classlikes only referenced via strings were never queued for scanning
+            $codebase->scanner->registerReflectedClassLikeStorage($aliased_name);
 
-        try {
-            $class_storage = ($codebase->classlike_storage_provider->getOrNull($aliased_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($aliased_name));
-        } catch (InvalidArgumentException $e) {
-            if (!$options->inferred) {
-                throw $e;
+            $class_storage = $codebase->classlike_storage_provider->getOrNull($aliased_name);
+            if ($class_storage === null) {
+                if (!$options->inferred) {
+                    throw ClassLikeStorageProvider::missing($aliased_name);
+                }
+
+                return null;
             }
-
-            return null;
         }
 
         // The class is known to Psalm (its stubbed definition is always loaded so analysis is
@@ -487,7 +529,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             }
         }
 
-        if (!$options->inferred) {
+        // the event only for the plugins that handle it (no event object per use otherwise)
+        if (!$options->inferred && $codebase->config->eventDispatcher->after_classlike_exists_checks !== []) {
             $event = new AfterClassLikeExistenceCheckEvent(
                 $fq_class_name,
                 $code_location,
