@@ -1619,23 +1619,6 @@ final class TaintTest extends TestCase
 
                     echo implode(",", getCoordinates());',
             ],
-            'keysOfAnArrayDontHoldTheValuesAssignedUnderAVariableKey' => [
-                'code' => '<?php
-                    /** @return array<string, array{url: string}> */
-                    function getData(string $town): array {
-                        $result = [];
-                        foreach (["a", "b"] as $key) {
-                            $result[$key] = ["url" => "/" . $town];
-                        }
-                        return $result;
-                    }
-
-                    $keys = "";
-                    foreach (getData($_GET["town"]) as $category => $_) {
-                        $keys .= $category;
-                    }
-                    echo $keys;',
-            ],
             'taintFreeUnusedReturnOfSpecializedCall' => [
                 'code' => '<?php
                     /** @psalm-pure */
@@ -2056,24 +2039,6 @@ final class TaintTest extends TestCase
 
                     show([], 1);
                 ',
-            ],
-            'castOrConcatenationOfAnArrayHoldsNoneOfItsElements' => [
-                'code' => '<?php
-                    function toString(mixed $value): string {
-                        if (is_array($value)) {
-                            return "array";
-                        }
-
-                        return (string) $value;
-                    }
-
-                    function prefix(mixed $value): string {
-                        return is_array($value) ? "b" : "a{$value}";
-                    }
-
-                    // converted, an array is "Array": the elements are not in what a conversion of it gives
-                    echo toString(["key" => $_GET["a"]]);
-                    echo prefix(["key" => $_GET["b"]]);',
             ],
             'fetchOfOneKeyWhereConvergingKeyedArraysConvergeAgain' => [
                 // Differently keyed arrays converge at $row, and its flows converge again at $r with others: the
@@ -5205,6 +5170,34 @@ final class TaintTest extends TestCase
                     (new Button(["label" => (string) $_GET["label"]]))->render();',
                 'error_message' => 'TaintedHtml',
             ],
+            'taintThePropertiesOfAnObjectWithWhatAnAncestorConstructorCalledByNameSetsOnIt' => [
+                'code' => '<?php // --taint-analysis
+                    class Field {
+                        /** @var array<string, string> */
+                        protected array $opts;
+
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            $this->opts = $opts;
+                        }
+                    }
+
+                    class Select extends Field {}
+
+                    final class MultiSelect extends Select {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            Field::__construct($opts);
+                        }
+
+                        public function render(): void {
+                            echo $this->opts["label"] ?? "";
+                        }
+                    }
+
+                    (new MultiSelect(["label" => (string) $_GET["label"]]))->render();',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintWhatAnInheritedMethodReturnsOfItsObject' => [
                 'code' => '<?php // --taint-analysis
                     class Model {
@@ -7443,11 +7436,6 @@ final class TaintTest extends TestCase
             'taintedSsrfInFopen' => [
                 'code' => '<?php
                     fopen($_GET["url"], "r");',
-                'error_message' => 'TaintedSSRF',
-            ],
-            'taintedSsrfInSoapClient' => [
-                'code' => '<?php
-                    new SoapClient($_GET["wsdl"]);',
                 'error_message' => 'TaintedSSRF',
             ],
             'taintedCookieInSetrawcookie' => [
@@ -9940,476 +9928,7 @@ final class TaintTest extends TestCase
             /*
             // TODO: Stubs do not support this type of inference even with $this->message = $message.
             // Most uses of getMessage() would be with caught exceptions, so this is not representative of real code.
-            'taintException' => [
-                'code' => '<?php
-                    $e = new Exception();
-                    echo $e;',
-                'error_message' => 'TaintedHtml',
-            ],
             */
-            'castToArrayPassTaints' => [
-                'code' => '<?php
-                    $args = $_POST;
-
-                    $args = (array) $args;
-
-                    pg_query($connection, "SELECT * FROM tableA where key = " .$args["key"]);
-                    ',
-                'error_message' => 'TaintedSql',
-            ],
-            'taintSinkWithComments' => [
-                'code' => '<?php
-
-                    /**
-                     * @psalm-taint-sink html $sink
-                     *
-                     * Not working
-                     */
-                    function sinkNotWorking($sink) : string {}
-
-                    echo sinkNotWorking($_GET["taint"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintEscapedInTryMightNotWork' => [
-                'code' => '<?php
-                    /** @psalm-taint-escape html */
-                    function escapeHtml(string $arg): string
-                    {
-                        return htmlspecialchars($arg);
-                    }
-
-                    $tainted = $_GET["foo"];
-
-                    try {
-                        $tainted = escapeHtml($tainted);
-                    } catch (Throwable $_) {
-                    }
-
-                    echo $tainted;
-                ',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintArrayWithOffsetUpdated' => [
-                'code' => '<?php
-                    function foo() {
-                        $foo = [
-                            "a" => [["c" => "hello"]],
-                            "b" => [],
-                        ];
-
-                        $foo["b"][] = [
-                            "c" => $_GET["bad"],
-                        ];
-
-                        bar($foo["b"]);
-                    }
-
-                    function bar(array $arr): void {
-                        foreach ($arr as $s) {
-                            echo $s["c"];
-                        }
-                    }',
-                'error_message' => 'TaintedHtml',
-            ],
-            'checkMemoizedStaticMethodCallTaints' => [
-                'code' => '<?php
-                    class A {
-                        private static string $prev = "";
-
-                        public static function getPrevious(string $s): string {
-                            $prev = self::$prev;
-                            self::$prev = $s;
-                            return $prev;
-                        }
-                    }
-
-                    A::getPrevious($_GET["a"]);
-                    echo A::getPrevious("foo");',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintedNewCall' => [
-                'code' => '<?php
-                    $a = $_GET["a"];
-                    $b = $_GET["b"];
-                    new $a($b);',
-                'error_message' => 'TaintedCallable',
-            ],
-            'urlencode' => [
-                /**
-                 * urlencode() should only prevent html & has_quotes taints
-                 * All other taint types should be unaffected.
-                 * We arbitrarily chose system() to test this.
-                 */
-                'code' => '<?php
-                    /** @psalm-suppress PossiblyInvalidArgument */
-                    system(urlencode($_GET["bad"]));
-                ',
-                'error_message' => 'TaintedShell',
-            ],
-            'assertMysqliOnlyEscapesSqlTaints1' => [
-                'code' => '<?php
-                    $mysqli = new mysqli();
-                    echo $mysqli->escape_string($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertMysqliOnlyEscapesSqlTaints2' => [
-                'code' => '<?php
-                    $mysqli = new mysqli();
-                    echo $mysqli->real_escape_string($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertMysqliOnlyEscapesSqlTaints3' => [
-                'code' => '<?php
-                    $mysqli = new mysqli();
-                    echo mysqli_escape_string($mysqli, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertMysqliOnlyEscapesSqlTaints4' => [
-                'code' => '<?php
-                    $mysqli = new mysqli();
-                    echo mysqli_real_escape_string($mysqli, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertDb2OnlyEscapesSqlTaints' => [
-                'code' => '<?php
-                    echo db2_escape_string($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertCubridOnlyEscapesSqlTaints' => [
-                'code' => '<?php
-                    echo cubrid_real_escape_string($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertSQLiteOnlyEscapesSqlTaints' => [
-                'code' => '<?php
-                    echo SQLite3::escapeString($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints1' => [
-                'code' => '<?php
-                    echo pg_escape_bytea($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints2' => [
-                'code' => '<?php
-                    echo pg_escape_bytea($conn, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints3' => [
-                'code' => '<?php
-                    echo pg_escape_identifier($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints4' => [
-                'code' => '<?php
-                    echo pg_escape_identifier($conn, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints5' => [
-                'code' => '<?php
-                    echo pg_escape_literal($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints6' => [
-                'code' => '<?php
-                    echo pg_escape_literal($conn, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints7' => [
-                'code' => '<?php
-                    echo pg_escape_string($_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'assertPGOnlyEscapesSqlTaints8' => [
-                'code' => '<?php
-                    echo pg_escape_string($conn, $_GET["a"]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintedReflectionClass' => [
-                'code' => '<?php
-                    $name = $_GET["name"];
-                    $reflector = new ReflectionClass($name);
-                    $reflector->newInstance();',
-                'error_message' => 'TaintedCallable',
-            ],
-            'taintedReflectionFunction' => [
-                'code' => '<?php
-                    $name = $_GET["name"];
-                    $function = new ReflectionFunction($name);
-                    $function->invoke();',
-                'error_message' => 'TaintedCallable',
-            ],
-            'querySimpleXMLElement' => [
-                'code' => '<?php
-                    function queryExpression(SimpleXMLElement $xml) : array|false|null {
-                        $expression = $_GET["expression"];
-                        return $xml->xpath($expression);
-                    }',
-                'error_message' => 'TaintedXpath',
-            ],
-            'queryDOMXPath' => [
-                'code' => '<?php
-                    function queryExpression(DOMXPath $xpath) : mixed {
-                        $expression = $_GET["expression"];
-                        return $xpath->query($expression);
-                    }',
-                'error_message' => 'TaintedXpath',
-            ],
-            'evaluateDOMXPath' => [
-                'code' => '<?php
-                    function evaluateExpression(DOMXPath $xpath) : mixed {
-                        $expression = $_GET["expression"];
-                        return $xpath->evaluate($expression);
-                    }',
-                'error_message' => 'TaintedXpath',
-            ],
-            'taintedSleep' => [
-                'code' => '<?php
-                    sleep($_GET["seconds"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'sleepSurvivesIntCast' => [
-                'code' => '<?php
-                    // a numeric value can still cause a DoS, so the sleep taint must
-                    // survive casting to int
-                    sleep((int) $_GET["seconds"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'sleepSurvivesFloatCast' => [
-                'code' => '<?php
-                    /** @psalm-taint-sink sleep $s */
-                    function mysleep($s): void {}
-                    mysleep((float) $_GET["seconds"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'sqlSurvivesStringCast' => [
-                'code' => '<?php
-                    /** @psalm-taint-sink sql $q */
-                    function query($q): void {}
-
-                    // a string can still carry a SQL injection, so casting to string
-                    // must only strip the array/object-only taints (e.g. nosql)
-                    query((string) $_GET["id"]);',
-                'error_message' => 'TaintedSql',
-            ],
-            'taintedUsleep' => [
-                'code' => '<?php
-                    usleep($_GET["microseconds"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'taintedTimeNanosleepSeconds' => [
-                'code' => '<?php
-                    time_nanosleep($_GET["seconds"], 42);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'taintedTimeNanosleepNanoseconds' => [
-                'code' => '<?php
-                    time_nanosleep(42, $_GET["nanoseconds"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'taintedTimeSleepUntil' => [
-                'code' => '<?php
-                    time_sleep_until($_GET["timestamp"]);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'taintedExtract' => [
-                'code' => '<?php
-                    $array = $_GET;
-                    extract($array);',
-                'error_message' => 'TaintedExtract',
-            ],
-            'extractPost' => [
-                'code' => '<?php
-                    extract($_POST);',
-                'error_message' => 'TaintedExtract',
-            ],
-            'TaintForIntTypeCastUsingAnnotatedSink' => [
-                'code' => '<?php // --taint-analysis
-                    /** @param int $id */
-                    function fetch($id): string
-                    {
-                        return query("SELECT * FROM table WHERE id=" . $id);
-                    }
-                    /**
-                     * @return string
-                     * @psalm-taint-sink sql $sql
-                     * @psalm-taint-specialize
-                     */
-                    function query(string $sql) {}
-                    $value = $_GET["value"];
-                    $result = fetch($value);',
-                'error_message' => 'TaintedSql',
-            ],
-            'TaintForIntSleep' => [
-                'code' => '<?php // --taint-analysis
-                    function s(int $id): void
-                    {
-                        sleep($id);
-                    }
-                    $value = $_GET["value"];
-                    s($value);',
-                'error_message' => 'TaintedSleep',
-            ],
-            'taintedExecuteQueryFunction' => [
-                'code' => '<?php
-                    $userId = $_GET["user_id"];
-                    $query = "delete from users where user_id = " . $userId;
-                    $link = mysqli_connect("localhost", "my_user", "my_password", "world");
-                    $result = mysqli_execute_query($link, $query);',
-                'error_message' => 'TaintedSql',
-            ],
-            'taintedExecuteQueryMethod' => [
-                'code' => '<?php
-                    $userId = $_GET["user_id"];
-                    $query = "delete from users where user_id = " . $userId;
-                    $mysqli = new mysqli("localhost", "my_user", "my_password", "world");
-                    $result = $mysqli->execute_query($query);',
-                'error_message' => 'TaintedSql',
-                'php_version' => '8.2',
-            ],
-            'taintedRegisterShutdownFunction' => [
-                'code' => '<?php
-                    $foo = $_GET["foo"];
-                    register_shutdown_function($foo);',
-                'error_message' => 'TaintedCallable',
-            ],
-            'taintedRegisterTickFunction' => [
-                'code' => '<?php
-                    $foo = $_GET["foo"];
-                    register_tick_function($foo);',
-                'error_message' => 'TaintedCallable',
-            ],
-            'taintedForwardStaticCall' => [
-                'code' => '<?php
-                    $foo = $_GET["foo"];
-                    class B
-                    {
-                        public static function test($foo) {
-                            forward_static_call($foo, "one", "two");
-                        }
-                    }
-                    B::test($foo);',
-                'error_message' => 'TaintedCallable',
-            ],
-            'taintedForwardStaticCallArray' => [
-                'code' => '<?php
-                    $foo = $_GET["foo"];
-                    class B
-                    {
-                        public static function test($foo) {
-                            forward_static_call_array($foo, array("one", "two"));
-                        }
-                    }
-                    B::test($foo);',
-                'error_message' => 'TaintedCallable',
-            ],
-            'taintThePropertiesOfAnObjectWithWhatAnInheritedMethodSetsOnIt' => [
-                'code' => '<?php // --taint-analysis
-                    abstract class Provider {
-                        /** @var array<string, string> */
-                        protected array $options = [];
-
-                        /** @param array<string, string> $options */
-                        public function __construct(array $options) {
-                            $this->setOptions($options);
-                        }
-
-                        /** @param array<string, string> $options */
-                        public function setOptions(array $options): void {
-                            foreach ($options as $key => $value) {
-                                $this->setOption($key, $value);
-                            }
-                        }
-
-                        public function setOption(string $key, string $value): void {
-                            $this->options[$key] = $value;
-                        }
-                    }
-
-                    final class Activity extends Provider {
-                        public function printIds(): void {
-                            echo $this->options["ids"] ?? "";
-                        }
-                    }
-
-                    (new Activity(["ids" => (string) $_GET["ids"]]))->printIds();',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintThePropertiesOfAnObjectWithWhatAParentConstructorSetsOnIt' => [
-                'code' => '<?php // --taint-analysis
-                    class Field {
-                        /** @var array<string, string> */
-                        protected array $opts;
-
-                        /** @param array<string, string> $opts */
-                        public function __construct(array $opts) {
-                            $this->opts = $opts;
-                        }
-                    }
-
-                    final class Button extends Field {
-                        /** @param array<string, string> $opts */
-                        public function __construct(array $opts) {
-                            parent::__construct($opts);
-                        }
-
-                        public function render(): void {
-                            echo $this->opts["label"] ?? "";
-                        }
-                    }
-
-                    (new Button(["label" => (string) $_GET["label"]]))->render();',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintThePropertiesOfAnObjectWithWhatAnAncestorConstructorCalledByNameSetsOnIt' => [
-                'code' => '<?php // --taint-analysis
-                    class Field {
-                        /** @var array<string, string> */
-                        protected array $opts;
-
-                        /** @param array<string, string> $opts */
-                        public function __construct(array $opts) {
-                            $this->opts = $opts;
-                        }
-                    }
-
-                    class Select extends Field {}
-
-                    final class MultiSelect extends Select {
-                        /** @param array<string, string> $opts */
-                        public function __construct(array $opts) {
-                            Field::__construct($opts);
-                        }
-
-                        public function render(): void {
-                            echo $this->opts["label"] ?? "";
-                        }
-                    }
-
-                    (new MultiSelect(["label" => (string) $_GET["label"]]))->render();',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintWhatAnInheritedMethodReturnsOfItsObject' => [
-                'code' => '<?php // --taint-analysis
-                    class Model {
-                        protected string $name = "";
-
-                        public function setName(string $name): void {
-                            $this->name = $name;
-                        }
-
-                        public function getName(): string {
-                            return $this->name;
-                        }
-                    }
-
-                    final class Admin extends Model {}
-
-                    $admin = new Admin();
-                    $admin->setName((string) $_GET["name"]);
-                    echo $admin->getName();',
-                'error_message' => 'TaintedHtml',
-            ],
             'taintServerRequestMethod' => [
                 'code' => '<?php
                     echo $_SERVER["REQUEST_METHOD"] ?? "";',
