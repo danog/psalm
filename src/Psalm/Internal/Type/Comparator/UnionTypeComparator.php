@@ -44,6 +44,7 @@ use function array_pop;
 use function array_push;
 use function array_reverse;
 use function count;
+use function get_class;
 use function is_array;
 
 use const PHP_INT_MAX;
@@ -86,9 +87,14 @@ final class UnionTypeComparator
         }
 
         // a type is contained by an identical one; with a comparison result to fill in, only for the types
-        // whose comparison with themselves records nothing in it (see isSelfContainmentInert)
-        if (($input_type === $container_type || $input_type->getId() === $container_type->getId())
-            && ($union_comparison_result === null || self::isSelfContainmentInert($input_type))
+        // whose comparison with themselves records nothing in it (see isSelfContainmentInert). Equality is the
+        // same union, or the same plain single atomic (memoized key): building union ids to compare them costs
+        // more than the comparison saves in the compiled program
+        if ($input_type === $container_type
+                ? ($union_comparison_result === null || self::isSelfContainmentInert($input_type))
+                : (self::isSelfContainmentInert($input_type)
+                    && self::isSelfContainmentInert($container_type)
+                    && self::isSameAtomic($input_type->getSingleAtomic(), $container_type->getSingleAtomic()))
         ) {
             return true;
         }
@@ -789,5 +795,28 @@ final class UnionTypeComparator
             || $atomic instanceof TNull
             || $atomic instanceof TResource
             || ($atomic instanceof TArrayKey && !$atomic instanceof TKeyOf);
+    }
+
+    /**
+     * Equality of two atomics isSelfContainmentInert() accepts. A key is a union slot, not an identity
+     * (`string` and `non-empty-string` share one): the class must match as well, and the fields no key spells.
+     *
+     * @psalm-mutation-free
+     */
+    private static function isSameAtomic(Atomic $a, Atomic $b): bool
+    {
+        if ($a === $b) {
+            return true;
+        }
+        if (get_class($a) !== get_class($b) || $a->getKey() !== $b->getKey()) {
+            return false;
+        }
+        if ($a instanceof TNamedObject && $b instanceof TNamedObject) {
+            return $a->definite_class === $b->definite_class && $a->is_static_resolved === $b->is_static_resolved;
+        }
+        if ($a instanceof TIntRange && $b instanceof TIntRange) {
+            return $a->dependent_list_key === $b->dependent_list_key;
+        }
+        return true;
     }
 }
