@@ -1990,9 +1990,86 @@ function case_sub_enum_read(): string
         . p1_read(new P1Var(new P1Call(1)));
 }
 
+/** A non-leaf concrete class (like php-parser's FuncCall with Psalm's VirtualFuncCall below it). */
+class P6Call
+{
+    /** @param list<int> $args */
+    public function __construct(public array $args)
+    {
+    }
+
+    /** @return list<int> */
+    public function getArgs(): array
+    {
+        return $this->args;
+    }
+
+    public function kind(): string
+    {
+        return 'call';
+    }
+}
+
+final class P6VirtualCall extends P6Call
+{
+    public function kind(): string
+    {
+        return 'virtual';
+    }
+}
+
+function case_own_getter(): string
+{
+    $a = new P6Call([1, 2]);
+    $b = new P6VirtualCall([3]);
+    $c = $a instanceof P6VirtualCall ? $a : $b;
+    return implode(',', $a->getArgs()) . '|' . $a->kind() . '|' . implode(',', $b->getArgs()) . '|' . $b->kind()
+        . '|' . $c->kind();
+}
+
+/** A static map read under `??`/isset (borrowed, not cloned out of its cell), with a key that writes it. */
+final class StaticMapRead
+{
+    /** @var array<string, string> */
+    private static array $m = [];
+
+    public static function fill(string $k): string
+    {
+        self::$m[$k . '!'] = 'filled';
+        return $k . '!';
+    }
+
+    public static function get(string $k): string
+    {
+        return self::$m[$k] ?? 'none';
+    }
+
+    public static function has(string $k): bool
+    {
+        return isset(self::$m[$k]);
+    }
+
+    public static function reentrant(string $k): string
+    {
+        return self::$m[self::fill($k)] ?? 'none';
+    }
+}
+
+function case_static_map_read(): string
+{
+    $a = StaticMapRead::get('x');
+    $b = StaticMapRead::has('x') ? 'y' : 'n';
+    $c = StaticMapRead::reentrant('x');
+    $d = StaticMapRead::get('x!');
+    $e = StaticMapRead::has('x!') ? 'y' : 'n';
+    return $a . ',' . $b . ',' . $c . ',' . $d . ',' . $e;
+}
+
 function run_all(): string
 {
     return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+        . check('static_map_read', case_static_map_read(), 'none,n,filled,filled,y')
+        . check('own_getter', case_own_getter(), '1,2|call|3|virtual|virtual')
         . check('sub_enum_read', case_sub_enum_read(), 'v:x,v:y,c:3,?')
         . check('count1_identity', case_count1_identity(), 'a|b,a|one:7:7|many:2')
         . check('template_entries', case_template_entries(), 'TIn:as:object;|P:of:impure;T:-:-;U:of:array<int>;')

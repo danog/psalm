@@ -2026,6 +2026,38 @@ trait ExprTrait
     }
 
     /**
+     * `Class::$map[$k]` under `??`/isset, for an initialized static map: looked up through a shared borrow of the
+     * static (`st_map_read(|m| m.get(k).cloned())`) instead of cloning the map out of its cell, with the key
+     * borrowed when it is a place of the key type. The key is evaluated before the borrow is taken (code it runs
+     * may write the same static).
+     */
+    private function staticMapElement(Expr\ArrayDimFetch $e, bool $probe): ?Val
+    {
+        $sp = $e->var;
+        if (!$sp instanceof Expr\StaticPropertyFetch || !$sp->name instanceof Node\VarLikeIdentifier || !$sp->class instanceof Name) {
+            return null;
+        }
+        $fqcn = $this->resolveClassName($sp->class);
+        $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
+        $field = $this->findStaticField($cls, $sp->name->name);
+        if ($field === null || $field->type->kind !== RustType::MAP || ($field->default === null && !$field->type->hasDefault())) {
+            return null;
+        }
+        [$kt, $vt] = $field->type->params;
+        $kv = $e->dim instanceof Expr\Variable && is_string($e->dim->name) && $e->dim->name !== 'this' ? $this->expr($e->dim) : null;
+        if ($kv !== null && $kv->place !== null && $kv->type->toRust() === $kt->toRust()) {
+            $bind = 'let __k = &' . $kv->place . ';';
+        } else {
+            $bind = 'let __k = &' . $this->keyExpr($e->dim, $kt) . ';';
+        }
+        $read = $field->declaring->path() . '::st_' . $field->rustName() . '_read';
+        if ($probe) {
+            return new Val('{ ' . $bind . ' ' . $read . '(|__m| __m.get(__k).and_then(|__v| ' . self::issetProbe($vt) . ')) }', RustType::option(RustType::bool()));
+        }
+        return $this->flattenOption('{ ' . $bind . ' ' . $read . '(|__m| __m.get(__k).cloned()) }', $vt);
+    }
+
+    /**
      * @param bool $probe the value is only tested for presence (`isset()`): the element is borrowed, not cloned
      */
     public function optionalValue(Expr $e, bool $probe = false): ?Val
@@ -2039,6 +2071,9 @@ trait ExprTrait
                 return new Val($v->code . '.to_option()', RustType::option(RustType::mixed()));
             }
             return null;
+        }
+        if ($e instanceof Expr\ArrayDimFetch && $e->dim !== null && ($sv = $this->staticMapElement($e, $probe)) !== null) {
+            return $sv;
         }
         if ($e instanceof Expr\ArrayDimFetch && $e->dim !== null) {
             // the base is read with its declared (not isset-narrowed) type: inside `??`/isset Psalm

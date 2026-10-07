@@ -655,6 +655,13 @@ final class ClassEmitter
                 $w->line('pub fn ' . $rn . ($cls->isImmutableCtorMethod($m->lc()) ? $this->signature($m, true, true) : $sig) . ' {');
                 $w->raw($this->body($cls, $m));
                 $w->line('}');
+            } elseif ($this->isTrivialOwnBody($cls, $m)) {
+                // a body that only returns its own fields or literals runs on the own handle directly: an own-handle
+                // method only ever runs on an instance of exactly this class, so wrapping `self.clone()` into the
+                // enum to dispatch back to this class's body is pure overhead (php-parser's getRawArgs(), getType())
+                $w->line('pub fn ' . $rn . $sig . ' {');
+                $w->raw($this->body($cls, $m));
+                $w->line('}');
             } else {
                 // body is on the enum as `__impl` (or as the method itself when private); the own handle forwards
                 $impl = $m->isPrivate() ? $rn : $rn . '__impl';
@@ -679,6 +686,28 @@ final class ClassEmitter
         $up = $this->casts->convert($this->wrapOwn($cls, 'self.clone()'), RustType::class($cls->fqcn), RustType::class($declaring->fqcn));
         $impl = $declaring->isLeaf() ? $rn : $rn . '__impl';
         $w->line('pub fn ' . $rn . $sig . ' { ' . $up . '.' . $impl . '(' . $this->argNames($m) . ') }');
+    }
+
+    /**
+     * A non-static, non-abstract method of `$cls` whose body is a single `return` of a literal or of a field `$cls`
+     * itself declares (`return $this->args;`): no calls, no `static`, no `$this` other than that field read.
+     */
+    private function isTrivialOwnBody(ClassModel $cls, MethodModel $m): bool
+    {
+        if ($m->isStatic() || $m->isAbstract() || $m->node === null || $m->node->stmts === null || count($m->node->stmts) !== 1) {
+            return false;
+        }
+        $stmt = $m->node->stmts[0];
+        if (!$stmt instanceof \PhpParser\Node\Stmt\Return_ || $stmt->expr === null) {
+            return false;
+        }
+        $e = $stmt->expr;
+        if ($e instanceof \PhpParser\Node\Expr\PropertyFetch) {
+            return $e->var instanceof \PhpParser\Node\Expr\Variable && $e->var->name === 'this'
+                && $e->name instanceof \PhpParser\Node\Identifier && isset($cls->fields[$e->name->name]);
+        }
+        return $e instanceof \PhpParser\Node\Scalar\String_ || $e instanceof \PhpParser\Node\Scalar\Int_
+            || ($e instanceof \PhpParser\Node\Expr\ConstFetch && in_array(strtolower($e->name->toString()), ['true', 'false', 'null'], true));
     }
 
     /** A deferred dispatch method (post-pass): the `match` over the variants, without the shared body. */
@@ -1011,6 +1040,8 @@ final class ClassEmitter
         $w->line('pub fn st_' . $rn . '_opt() -> Option<' . $t . '> { Some(Self::st_' . $rn . '()) }');
         $w->line('pub fn st_' . $rn . '_set(v: ' . $t . ') { Self::st_' . $rn . '_cell().with(|c| { *c.borrow_mut() = v; }) }');
         $w->line('pub fn st_' . $rn . '_with<R>(f: impl FnOnce(&mut ' . $t . ') -> R) -> R { Self::st_' . $rn . '_cell().with(|c| f(&mut *c.borrow_mut())) }');
+        // a read through a shared borrow (`self::$cache[$k] ?? null`): no clone of the whole value to look into it
+        $w->line('pub fn st_' . $rn . '_read<R>(f: impl FnOnce(&' . $t . ') -> R) -> R { Self::st_' . $rn . '_cell().with(|c| f(&*c.borrow())) }');
     }
 
     private function emitConstant(ClassModel $cls, ConstModel $c, Writer $w): void
