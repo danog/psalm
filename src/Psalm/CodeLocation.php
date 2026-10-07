@@ -12,6 +12,7 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use UnexpectedValueException;
 
+use function count;
 use function explode;
 use function max;
 use function mb_strcut;
@@ -54,7 +55,8 @@ class CodeLocation
 
     protected bool $single_line;
 
-    protected int $preview_start;
+    /** the snippet's start: set by calculateRealLocation() (subclasses may preset the node start) */
+    protected int $preview_start = -1;
 
     private int $preview_end = -1;
 
@@ -126,10 +128,12 @@ class CodeLocation
         ?string $selected_text = null,
         ?int $comment_line = null,
     ) {
-        /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_start = $stmt->getStartFilePos();
-        /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_end = $stmt->getEndFilePos();
+        // one read of the node's attributes rather than a getter per position: on the hot path a location is
+        // the file, the offsets and the start line (pzoom's CodeLocation); everything an issue needs beyond
+        // that (snippet, selection, columns) is computed lazily by calculateRealLocation()
+        $attrs = $stmt->attrs();
+        $this->file_start = $attrs->startFilePos ?? -1;
+        $this->file_end = $attrs->endFilePos ?? -1;
         $this->raw_file_start = $this->file_start;
         $this->raw_file_end = $this->file_end;
         $this->file_path = $file_source->getFilePath();
@@ -139,16 +143,21 @@ class CodeLocation
         $this->previous_location = $previous_location;
         $this->text = $selected_text;
 
-        /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $doc_comment = $stmt->getDocComment();
+        // the doc comment (NodeAbstract::getDocComment(): the last Doc among the comments) only matters to the
+        // snippet: only a node with comments can have one
+        $comments = $attrs->comments;
+        if ($comments !== null) {
+            for ($i = count($comments) - 1; $i >= 0; $i--) {
+                $comment = $comments[$i];
+                if ($comment instanceof PhpParser\Comment\Doc) {
+                    $this->docblock_start = $comment->getStartFilePos();
+                    $this->docblock_start_line_number = $comment->getStartLine();
+                    break;
+                }
+            }
+        }
 
-        $this->docblock_start = $doc_comment ? $doc_comment->getStartFilePos() : null;
-        $this->docblock_start_line_number = $doc_comment ? $doc_comment->getStartLine() : null;
-
-        $this->preview_start = $this->docblock_start ?: $this->file_start;
-
-        /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->raw_line_number = $stmt->getStartLine();
+        $this->raw_line_number = $attrs->startLine ?? -1;
 
         $this->docblock_line_number = $comment_line;
     }
@@ -191,6 +200,10 @@ class CodeLocation
         }
 
         $this->have_recalculated = true;
+
+        if ($this->preview_start === -1) {
+            $this->preview_start = $this->docblock_start ?: $this->file_start;
+        }
 
         $this->selection_start = $this->file_start;
         $this->selection_end = $this->file_end + 1;
