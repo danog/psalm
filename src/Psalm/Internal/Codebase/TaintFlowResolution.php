@@ -3412,8 +3412,12 @@ final class TaintFlowResolution
                 -1,
                 $caller,
             );
-        } elseif ($specialization_key !== null && $this->isExitOfEntered($exit_id, $caller)) {
-            // the call site doesn't use the exit
+        } elseif ($specialization_key !== null
+            && (isset($this->nodes[$exit_id . TaintFlowGraph::SPECIALIZATION_SEPARATOR . $specialization_key])
+                || $this->isExitOfEntered($exit_id, $caller))
+        ) {
+            // the call site doesn't use the exit: its specialization of the exit, if any, was left out with the
+            // others that have no outgoing edge (see TaintFlowGraph::connectSinksAndSources())
             return;
         } elseif ($this->isOutsideOfCalls($context)) {
             if ($specialization_key !== null) {
