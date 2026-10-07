@@ -55,15 +55,26 @@ final class PurityTemplateParser
                 }
             }
 
+            // assigned one by one rather than destructured from a literal holding `null`s
             if (count($parts) === 1) {
-                [$lower, $name, $upper] = [null, $parts[0], null];
+                $lower = null;
+                $name = $parts[0];
+                $upper = null;
             } elseif (count($parts) === 2) {
                 // `P <= io` or `write-props <= C`: the name is the side that is not a capability
-                [$lower, $name, $upper] = self::isTemplate($parts[0]) || !self::isTemplate($parts[1])
-                    ? [null, $parts[0], $parts[1]]
-                    : [$parts[0], $parts[1], null];
+                if (self::isTemplate($parts[0]) || !self::isTemplate($parts[1])) {
+                    $lower = null;
+                    $name = $parts[0];
+                    $upper = $parts[1];
+                } else {
+                    $lower = $parts[0];
+                    $name = $parts[1];
+                    $upper = null;
+                }
             } elseif (count($parts) === 3) {
-                [$lower, $name, $upper] = $parts;
+                $lower = $parts[0];
+                $name = $parts[1];
+                $upper = $parts[2];
             } else {
                 throw self::invalid($entry);
             }

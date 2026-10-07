@@ -13,6 +13,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\IssueBuffer;
+use Psalm\Storage\Capabilities;
 
 use function json_encode;
 
@@ -337,12 +338,12 @@ final class CompiledProbeTest extends TestCase
                 'class_string_as' => 'absent',
             ],
             [
-                'strlen_capabilities' => $strlen?->capabilities ?? -1,
+                'strlen_capabilities' => $strlen === null ? -1 : Capabilities::fromType($strlen->purity),
                 'createFromInterface' => (string) $create->return_type,
                 'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
             ],
             json_encode([
-                'strlen_capabilities' => $strlen?->capabilities ?? -1,
+                'strlen_capabilities' => $strlen === null ? -1 : Capabilities::fromType($strlen->purity),
                 'createFromInterface' => (string) $create->return_type,
                 'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
             ], JSON_THROW_ON_ERROR),

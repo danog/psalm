@@ -46,6 +46,11 @@ pub enum Flow<T> {
 pub enum Never {}
 
 // an uninhabited value satisfies every value trait vacuously (a container of it is always empty)
+impl crate::cast::CastTo<crate::mixed::Mixed> for Never {
+    fn cast_to(self) -> crate::mixed::Mixed {
+        match self {}
+    }
+}
 impl crate::traits::Identical for Never {
     fn identical(&self, _o: &Self) -> bool {
         match *self {}

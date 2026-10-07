@@ -23,8 +23,6 @@ use ReflectionException;
 use ReflectionFunction;
 use UnexpectedValueException;
 
-use function array_fill_keys;
-use function array_keys;
 use function array_shift;
 use function assert;
 use function class_exists;
@@ -563,7 +561,10 @@ final class InternalCallMapHandler
 
                 /** @var array<lowercase-string, mixed> */
                 $call_map = require($file);
-                self::$first_callmap_versions += array_fill_keys(array_keys($call_map), $version);
+                // the first (oldest) version listing a function wins: an explicit loop rather than array `+=`
+                foreach ($call_map as $function_id => $_) {
+                    self::$first_callmap_versions[$function_id] ??= $version;
+                }
             }
         }
 
