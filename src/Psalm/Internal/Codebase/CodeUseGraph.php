@@ -290,13 +290,19 @@ final class CodeUseGraph
      * A node representing a `use` import alias in a given file: methods
      * referencing the alias get invalidated when the import changes.
      *
-     * @psalm-pure
+     * @psalm-external-mutation-free
      */
     public static function useAliasNode(string $alias, string $file_path): string
     {
-        // do NOT change this to hash, it will fail on Windows for whatever reason
-        return self::KIND_USE_ALIAS . ' use:' . $alias . ':' . md5($file_path);
+        // do NOT change this to hash, it will fail on Windows for whatever reason; computed once per file
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        $file_hash = self::$file_path_hashes[$file_path] ??= md5($file_path);
+
+        return self::KIND_USE_ALIAS . ' use:' . $alias . ':' . $file_hash;
     }
+
+    /** @var array<string, string> md5 of each file path seen by useAliasNode() */
+    private static array $file_path_hashes = [];
 
     /**
      * A node representing the top-level code of a file.

@@ -29,7 +29,6 @@ use function count;
 use function in_array;
 use function is_int;
 use function json_encode;
-use function preg_replace;
 use function str_contains;
 use function strcspn;
 use function strpos;
@@ -874,9 +873,9 @@ final class Context
             return false;
         }
 
-        $stripped_var = (string) preg_replace('/(->|\[).*$/', '', $var_name, 1);
-
-        if ($stripped_var !== '$this' || $var_name !== $stripped_var) {
+        // every variable but `$this` itself (`$this->x`, `$this['k']` included): no need to strip the access
+        // path with a regex to decide that
+        if ($var_name !== '$this') {
             $this->cond_referenced_var_ids[$var_name] = true;
         }
 

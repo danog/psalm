@@ -101,6 +101,23 @@ final class TypeExpander
         }
 
         if (!$changed && self::isCombineNormal($new_return_type_parts)) {
+            // the input itself when the fresh union below would be identical to it -- it carries none of the flags
+            // that union drops, and no null is to be moved last: no new union, and its memoized id is kept
+            if (!$return_type->from_calculation
+                && $return_type->initialized_class === null
+                && !$return_type->checked
+                && !$return_type->failed_reconciliation
+                && !$return_type->ignore_isset
+                && !$return_type->from_template_default
+                && !$return_type->reference_free
+                && $return_type->allow_mutations
+                && $return_type->has_mutations
+                && !$return_type->propagate_parent_nodes
+                && !$return_type->different
+                && !(count($new_return_type_parts) === 2 && $new_return_type_parts[0] instanceof TNull)
+            ) {
+                return $return_type;
+            }
             // nothing to resolve and nothing the combiner would merge: the same atomics in a fresh union carrying
             // the flags an expansion keeps (below), exactly what recombining them produced, without the combiner
             // (pzoom expands in place). The combiner lists null after the other atomic.
