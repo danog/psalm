@@ -29,19 +29,14 @@ enum NullsafeChainState
     /** A `?->` short-circuit may have happened, and the node's type has other nulls too. */
     case ShortCircuitAndNull;
 
-    private const ATTRIBUTE = 'psalm-nullsafe-chain';
-
     public static function of(Expr $node): self
     {
-        /** @var ?self $state */
-        $state = $node->getAttribute(self::ATTRIBUTE);
-
-        return $state ?? self::None;
+        return $node->attrs()->nullsafe_chain ?? self::None;
     }
 
     public function markOn(Expr $node): void
     {
-        $node->setAttribute(self::ATTRIBUTE, $this);
+        $node->attrs()->nullsafe_chain = $this;
     }
 
     /**
