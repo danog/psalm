@@ -1166,9 +1166,8 @@ final class ClassEmitter
                     break;
                 }
                 $pt = $m->param_types[$i] ?? RustType::mixed();
-                if (Casts::isLocal($pt)) {
-                    $this->casts->needMixedTo($pt);
-                }
+                // needMixedTo looks through Option/List/Map: an `Option<union>` parameter needs `Mixed -> union` too
+                $this->casts->needMixedTo($pt);
                 $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
                 if ($p->by_ref) {
                     // a by-reference parameter of a dynamically called method (`enterNode(Node $node, bool
