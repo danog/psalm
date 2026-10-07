@@ -12,17 +12,12 @@ Fast (~2-10s) local iteration on the transpiler, without the full psalm build.
 `run_all()` is the dataprovider: every transpiler feature has a case there so
 the loop catches regressions in one build.
 
-## One-time setup (php-rt must match the current transpiler)
-The generated code targets the php-rt API the transpiler currently emits.
-Vendor the matching php-rt into `rust/php-rt/` before first run:
-
-    rsync -a --delete --exclude=target ct:/root/psalm-build/rust/php-rt/ rust/php-rt/
-
-(or from local `../rust/php-rt` once that is up to date). Refresh it whenever
-php-rt's API changes.
+## php-rt
+`rust/php-rt` is a symlink to the sibling checkout's runtime (`../../../psalm-port/rust/php-rt`),
+so the generated code always builds against the php-rt the subject repo carries.
 
 ## Layout
 - `php/Cases.php` — the regression suite (fixtures + `case_*()` + `run_all()`).
 - `psalm-tiny.xml` — minimal transpile config (runtime-stubs + `php/`).
 - `rust/driver/` — hand-written `main` that calls `tiny_repro::g::run_all()`.
-- `rust/php-rt/`, `rust/generated/` — gitignored reproducible artifacts.
+- `rust/php-rt` — symlink to `psalm-port/rust/php-rt`; `rust/generated/` — gitignored reproducible artifacts.

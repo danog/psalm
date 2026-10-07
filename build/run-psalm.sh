@@ -1,6 +1,6 @@
 #!/bin/bash
 # regenerate, build and test the psalm crate; writes build/pipeline-psalm.log
-cd /home/daniil/repos/psalm-port
+cd "$(dirname "$0")/../../psalm-port"
 php -d memory_limit=5000M psalm -c psalm-transpile-psalm.xml --no-cache --no-progress --transpile-rust=rust/generated/psalm > build/transpile-psalm.log 2>&1
 grep -n "\[transpiler\] [0-9]\|crashed\|Uncaught\|Fatal" build/transpile-psalm.log | head -5
 cd rust
