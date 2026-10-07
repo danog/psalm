@@ -95,6 +95,14 @@ final class TaintFlowResolution
     private const UNKNOWN_KEY_CLASS = '*';
 
     /**
+     * The keys whose fetches don't ignore the open assignment at a position of the calls entering a filter (see
+     * getFilter()), as known by that filter, when they don't ignore fetches of two different keys but '': then
+     * they don't ignore any. That's the class of none or of an unknown key, or of a key whose start only is
+     * known, starting with both.
+     */
+    private const ANY_KEY = '*';
+
+    /**
      * The key a scalar conversion (a cast, a concatenation) of a value that may be an array observes (see
      * getPathTypeEffects()): only the class of none, or of an open assignment the flows don't know, passes it
      * (see classPassesFetch()). A converted array is "Array", or 0/1, never what it holds, but a value with
@@ -2137,7 +2145,7 @@ final class TaintFlowResolution
                 if (!self::classPassesFetch($fact[0], $observed_key)) {
                     return;
                 }
-            } elseif ($fact === null || !isset($fact[1][$observed_key])) {
+            } elseif ($fact === null || !self::passesKnownKeys($fact[1], $observed_key)) {
                 $context = $this->getFilter($context, $observed_family, $depth, $observed_key);
             }
 
@@ -2561,17 +2569,20 @@ final class TaintFlowResolution
 
         $facts = $this->entry_facts[$entry];
         $position = self::getPosition($family, $depth);
+        $fact = $facts[$position] ?? [null, []];
+        $passed_keys = $fact[1];
+        $passed_keys[$fetched_key] = true;
 
-        if ($fetched_key === self::CONVERSION_KEY) {
-            // Only the class of none passes a conversion (see classPassesFetch()), and it passes any fetch. A
-            // conversion leaves the open assignment it observes open (see getPathTypeEffects()): the flows past it
-            // observe that one again, and knowing only that the calls pass it, the filter would be told apart by
-            // the keys they fetch there.
+        // Telling apart the filters by the set of keys fetched there would make one for each: the open assignment
+        // a conversion observes stays open (see getPathTypeEffects()), the flows of a filter go on in the filters
+        // of the filters it is one of (see addEntry()), and the calls made there are copied into the filters of
+        // their context for each key fetched in their walks (see passesFetch()).
+        if ($fetched_key === self::CONVERSION_KEY || (isset($passed_keys['']) && count($passed_keys) > 1)) {
+            // only the class of none doesn't ignore them all (see classPassesFetch())
             $facts[$position] = ['', []];
+        } elseif (count($passed_keys) > 1 && self::areSingleKeys($passed_keys)) {
+            $facts[$position] = [$fact[0], [self::ANY_KEY => true]];
         } else {
-            $fact = $facts[$position] ?? [null, []];
-            $passed_keys = $fact[1];
-            $passed_keys[$fetched_key] = true;
             $facts[$position] = [$fact[0], $passed_keys];
         }
 
@@ -2645,7 +2656,7 @@ final class TaintFlowResolution
             return self::classPassesFetch($fact[0], $fetched_key);
         }
 
-        if ($fact !== null && isset($fact[1][$fetched_key])) {
+        if ($fact !== null && self::passesKnownKeys($fact[1], $fetched_key)) {
             return true;
         }
 
@@ -2789,6 +2800,37 @@ final class TaintFlowResolution
     {
         return 1 << (($position >> self::DEPTH_BITS) * (self::MAX_CALL_OPEN_ASSIGNMENT_DEPTH + 1)
             + ($position & self::DEPTH_MASK));
+    }
+
+    /**
+     * Whether calls whose open assignment at a position fetches of the keys $passed_keys don't ignore (see
+     * getFilter()) are known not to ignore a fetch of key $fetched_key there
+     *
+     * @param array<string, true> $passed_keys
+     * @psalm-pure
+     */
+    private static function passesKnownKeys(array $passed_keys, string $fetched_key): bool
+    {
+        return isset($passed_keys[$fetched_key])
+            || (isset($passed_keys[self::ANY_KEY]) && $fetched_key !== '' && $fetched_key !== self::CONVERSION_KEY);
+    }
+
+    /**
+     * Whether the fetched keys $keys are each a single key known exactly (see DataFlowGraph::keysMayBeEqual()): no
+     * class of a key known exactly passes fetches of two different ones
+     *
+     * @param array<string, true> $keys
+     * @psalm-pure
+     */
+    private static function areSingleKeys(array $keys): bool
+    {
+        foreach ($keys as $key => $_) {
+            if (str_contains($key, "'|'") || (str_starts_with($key, "'") && str_ends_with($key, "'*"))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -3037,7 +3079,8 @@ final class TaintFlowResolution
             return $class !== null;
         }
 
-        return isset($passed_keys[$fetched_key]) || ($class === self::DEFERRED_CLASS && $passed_keys === []);
+        return self::passesKnownKeys($passed_keys, $fetched_key)
+            || ($class === self::DEFERRED_CLASS && $passed_keys === []);
     }
 
     /**
