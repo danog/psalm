@@ -330,19 +330,19 @@ final class CompiledProbeTest extends TestCase
 
         $this->assertSame(
             [
-                'strlen_mutations' => 0,
+                'strlen_capabilities' => 0,
                 'createFromInterface' => 'static',
                 // PHP keeps the intersection elsewhere than as_type; what matters is that a
                 // compiled build says the same thing
                 'class_string_as' => 'absent',
             ],
             [
-                'strlen_mutations' => $strlen?->allowed_mutations ?? -1,
+                'strlen_capabilities' => $strlen?->capabilities ?? -1,
                 'createFromInterface' => (string) $create->return_type,
                 'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
             ],
             json_encode([
-                'strlen_mutations' => $strlen?->allowed_mutations ?? -1,
+                'strlen_capabilities' => $strlen?->capabilities ?? -1,
                 'createFromInterface' => (string) $create->return_type,
                 'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
             ], JSON_THROW_ON_ERROR),

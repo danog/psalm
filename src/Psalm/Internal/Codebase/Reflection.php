@@ -476,7 +476,7 @@ final class Reflection
         $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
         $storage->setParams($callmap_callable->params);
         $storage->return_type = $callmap_callable->return_type;
-        $storage->allowed_mutations = Mutations::LEVEL_NONE;
+        $storage->capabilities = Capabilities::NONE;
         $storage->required_param_count = 0;
 
         foreach ($storage->params as $i => $param) {
