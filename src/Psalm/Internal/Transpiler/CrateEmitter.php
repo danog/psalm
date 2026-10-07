@@ -223,7 +223,10 @@ final class CrateEmitter
         $done_copies = [];
         do {
             $new = false;
-            foreach ($this->program->super_copies as $k => [$root, $m]) {
+            // each pass in key order: the demands accrue in the order bodies were emitted (by parallel workers)
+            $super_copies = $this->program->super_copies;
+            ksort($super_copies, SORT_STRING);
+            foreach ($super_copies as $k => [$root, $m]) {
                 if (isset($done_copies[$k])) {
                     continue;
                 }
@@ -234,7 +237,9 @@ final class CrateEmitter
             }
             // dispatch accessors for variant-specific fields written/read through a base/interface enum
             // (MutableTypeVisitor pattern) — requested during body emission, may accrue as more bodies emit.
-            foreach ($this->program->enum_field_accessors as $k => [$enum, $field, $ftype]) {
+            $enum_field_accessors = $this->program->enum_field_accessors;
+            ksort($enum_field_accessors, SORT_STRING);
+            foreach ($enum_field_accessors as $k => [$enum, $field, $ftype]) {
                 if (isset($done_copies['efa:' . $k])) {
                     continue;
                 }
@@ -253,7 +258,9 @@ final class CrateEmitter
             }
         }
         $n_disp = 0;
-        foreach ($this->program->pending_dispatch as $k => [$dcls, $dm]) {
+        $pending_dispatch = $this->program->pending_dispatch;
+        ksort($pending_dispatch, SORT_STRING);
+        foreach ($pending_dispatch as $k => [$dcls, $dm]) {
             if (isset($this->program->dispatch_demands[$k])) {
                 $class_emitter->emitDeferredDispatch($dcls, $dm, $this->classModule($dcls));
                 $n_disp++;

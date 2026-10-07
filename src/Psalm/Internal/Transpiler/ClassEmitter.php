@@ -26,6 +26,17 @@ final class ClassEmitter
     ) {
     }
 
+    /**
+     * Temporaries and places are numbered per emitted item (one accessor, method, impl, ...), so an item's text
+     * depends only on the item: not on which worker or which earlier item (or post pass) emitted before it.
+     * Byte-identical output for unchanged code keeps cargo and rustc's incremental cache from redoing it.
+     */
+    private function beginItem(): void
+    {
+        $this->casts->resetTemporaries();
+        Place::resetCounter();
+    }
+
     public function emit(ClassModel $cls, Writer $w): void
     {
         $this->program->types->context = '<class-level> ' . $cls->fqcn;
@@ -127,7 +138,10 @@ final class ClassEmitter
             $this->emitConstant($cls, $c, $w);
         }
         if (!$leaf) {
-            foreach ($cls->fields as $f) {
+            // by name: the hierarchy's fields are collected in the order analysis workers recorded them
+            $enum_fields = $cls->fields;
+            usort($enum_fields, static fn(FieldModel $a, FieldModel $b): int => strcmp($a->name, $b->name));
+            foreach ($enum_fields as $f) {
                 $this->emitEnumAccessors($cls, $f, $w);
             }
             foreach ($cls->methods as $m) {
@@ -200,6 +214,7 @@ final class ClassEmitter
 
     private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true, bool $construction_only = false, bool $boxed = false): void
     {
+        $this->beginItem();
         // census: reads of never-written fields could be plain borrows instead of clones
         $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . '); php_rt::stats::bump_named(' . Names::rustStringLiteral($f->declaring->fqcn . '::$' . $f->name) . ');';
         $fld = $f->rustName();
@@ -290,6 +305,7 @@ final class ClassEmitter
      */
     private function emitDynTrait(ClassModel $cls, Writer $w): void
     {
+        $this->beginItem();
         $seen = [];
         $w->open('pub trait ' . $cls->handle() . '__Dyn: php_rt::PhpObject {');
         foreach ($cls->methods as $m) {
@@ -315,6 +331,7 @@ final class ClassEmitter
 
     private function emitEnumAccessors(ClassModel $cls, FieldModel $f, Writer $w): void
     {
+        $this->beginItem();
         $this->program->types->context = '<enum accessors> ' . $cls->fqcn . '::$' . $f->name;
         // the dynamic (escape-variant) arms below are built unconditionally but only emitted for open
         // hierarchies: their conversions must not count as erasures otherwise
@@ -446,6 +463,7 @@ final class ClassEmitter
 
     private function emitConstructor(ClassModel $cls, Writer $w): void
     {
+        $this->beginItem();
         $this->program->types->context = '<constructor> ' . $cls->fqcn;
         $own = $cls->ownHandle();
         $obj = $cls->objStruct();
@@ -582,6 +600,7 @@ final class ClassEmitter
 
     private function emitMethodOnOwn(ClassModel $cls, MethodModel $m, Writer $w): void
     {
+        $this->beginItem();
         $rn = $m->rustName();
         $sig = $this->signature($m, !$m->isStatic());
         $declaring = $m->declaring;
@@ -672,6 +691,7 @@ final class ClassEmitter
 
     private function emitMethodOnEnum(ClassModel $cls, MethodModel $m, Writer $w, bool $force_dispatch = false): void
     {
+        $this->beginItem();
         $this->program->types->context = '<dispatch> ' . $cls->fqcn . '::' . $m->name;
         $rn = $m->rustName();
         $h = $cls->handle();
@@ -871,6 +891,7 @@ final class ClassEmitter
      */
     public function emitEnumFieldAccessor(ClassModel $enum, FieldModel $f, RustType $ft, Writer $w): void
     {
+        $this->beginItem();
         if (getenv('EFA_DIAG')) {
             fwrite(STDERR, "[efa] " . $enum->fqcn . '::$' . $f->name . ' as ' . $ft->toRust() . "\n");
         }
@@ -923,6 +944,7 @@ final class ClassEmitter
 
     public function emitSuperCopy(ClassModel $root, MethodModel $m, string $name, Writer $w): void
     {
+        $this->beginItem();
         // A construction super-copy for an immutable class runs on its OWN handle (the concrete newtype) where the
         // in-place &mut construction happens — for a concrete-non-leaf, ownHandle() ({T}Self) differs from handle()
         // (the dispatch enum). Non-ctor / cross-crate super-copies stay on the enum handle. (Leaves: ownHandle()==handle().)
@@ -955,6 +977,7 @@ final class ClassEmitter
 
     private function emitStatic(ClassModel $cls, FieldModel $f, Writer $w): void
     {
+        $this->beginItem();
         $rn = $f->rustName();
         $t = $f->type->toRust();
         $body = $this->constExprEmitter($cls);
@@ -977,6 +1000,7 @@ final class ClassEmitter
 
     private function emitConstant(ClassModel $cls, ConstModel $c, Writer $w): void
     {
+        $this->beginItem();
         $rn = $c->rustName();
         $t = $c->type;
         if ($c->expr === null) {
@@ -1015,6 +1039,7 @@ final class ClassEmitter
 
     private function emitPhpObject(ClassModel $cls, Writer $w, bool $dynamic): void
     {
+        $this->beginItem();
         $own = $cls->ownHandle();
         $w->open('impl php_rt::PhpObject for ' . $own . ' {');
         $w->line('fn class_name(&self) -> &\'static str { ' . Names::rustStringLiteral($cls->fqcn) . ' }');
@@ -1080,6 +1105,7 @@ final class ClassEmitter
     /** `to_php_string()` and `clone` support on the own handle (class-time emission). */
     private function emitOwnCloneImpls(ClassModel $cls, Writer $w): void
     {
+        $this->beginItem();
         $own = $cls->ownHandle();
         $ts = $this->program->findMethod($cls, '__tostring');
         $w->line('impl ' . $own . ' { pub fn to_php_string(&self) -> Str { ' . ($ts !== null ? 'self.' . $ts->rustName() . '()' : 'panic!(' . Names::rustStringLiteral('Uncaught exception: Object of class ' . $cls->fqcn . ' could not be converted to string') . ')') . ' } }');
@@ -1214,6 +1240,7 @@ final class ClassEmitter
 
     private function emitEnumHandleProtocol(ClassModel $cls, Writer $w, bool $dynamic): void
     {
+        $this->beginItem();
         $h = $cls->handle();
         $arms = $this->enumArms($cls);
         $w->open('impl php_rt::PhpObject for ' . $h . ' {');
@@ -1237,6 +1264,7 @@ final class ClassEmitter
 
     private function emitEnumHandleImpls(ClassModel $cls, Writer $w): void
     {
+        $this->beginItem();
         $this->program->types->context = '<handle impls> ' . $cls->fqcn;
         $h = $cls->handle();
         $arms = $this->enumArms($cls);

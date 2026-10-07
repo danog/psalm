@@ -1083,8 +1083,11 @@ final class CastEmitter
             if ($pending === []) {
                 break;
             }
+            // a stable order and per-impl temporaries: the impls must not depend on the order bodies were emitted in
+            ksort($pending, SORT_STRING);
             foreach ($pending as $k => [$from, $to]) {
                 $done[$k] = true;
+                $this->casts->resetTemporaries();
                 $w = $select($from, $to);
                 if ($w === null) {
                     continue;
