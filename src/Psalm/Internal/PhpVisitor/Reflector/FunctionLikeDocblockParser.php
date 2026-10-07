@@ -469,8 +469,12 @@ final class FunctionLikeDocblockParser
                         );
                     }
 
-                    $templates[$purity_template['name']]['psalm']
-                        = [$purity_template['name'], 'of', $purity_template['bound'], false];
+                    self::addTemplate(
+                        $templates,
+                        $purity_template['name'],
+                        'psalm',
+                        [$purity_template['name'], 'of', $purity_template['bound'], false],
+                    );
                     $info->purity_templates[] = $purity_template['name'];
                 }
             }
@@ -500,14 +504,14 @@ final class FunctionLikeDocblockParser
                     && in_array(strtolower($template_type[0]), ['as', 'super', 'of'], true)
                 ) {
                     $template_modifier = strtolower(array_shift($template_type));
-                    $templates[$template_name][$source_prefix] = [
+                    self::addTemplate(
+                        $templates,
                         $template_name,
-                        $template_modifier,
-                        implode(' ', $template_type),
-                        false,
-                    ];
+                        $source_prefix,
+                        [$template_name, $template_modifier, implode(' ', $template_type), false],
+                    );
                 } else {
-                    $templates[$template_name][$source_prefix] = [$template_name, null, null, false];
+                    self::addTemplate($templates, $template_name, $source_prefix, [$template_name, null, null, false]);
                 }
             }
         }
@@ -794,6 +798,20 @@ final class FunctionLikeDocblockParser
                 'suggested_replacement' => 'psalm-consistent-constructor on a class level',
             ];
         }
+    }
+
+    /**
+     * Records the entry a template tag source (`psalm`, `phpstan`, `none`) gives a template. Every write goes
+     * through this declared type: written inline, a `$templates[$name]['psalm'] = ...` makes Psalm type each
+     * entry `array{psalm: ..., none?: ...}` -- `psalm` required even for templates only another source declares --
+     * and the compiled program then reads a default entry for them.
+     *
+     * @param array<string, array<string, array{string, ?string, ?string, bool}>> $templates
+     * @param array{string, ?string, ?string, bool} $entry
+     */
+    private static function addTemplate(array &$templates, string $name, string $source_prefix, array $entry): void
+    {
+        $templates[$name][$source_prefix] = $entry;
     }
 
     /**
