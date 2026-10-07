@@ -15,7 +15,7 @@ php -d memory_limit=4000M ../psalm -c psalm-tiny.xml --no-cache --no-progress \
 echo "Mixed in generated: $(grep -rho "\bMixed\b" "$OUT/src" | wc -l)"
 
 # Keep php-rt pointed at the vendored copy (transpiler re-emits its path each run).
-sed -i 's#^php-rt = .*#php-rt = { path = "../../php-rt" }#' "$OUT/Cargo.toml"
+sed -i.bak 's#^php-rt = .*#php-rt = { path = "../../php-rt" }#' "$OUT/Cargo.toml" && rm -f "$OUT/Cargo.toml.bak"
 
 echo "=== BUILD + RUN ==="
 cd rust
