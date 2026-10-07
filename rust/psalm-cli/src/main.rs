@@ -4,8 +4,9 @@
 //!
 //! `PSALM_SRC_ROOT` points at the PHP tree the crate was transpiled from: that is where
 //! `__DIR__` resolves, so the dictionaries and stubs Psalm loads relative to its own source
-//! are found. The project under analysis is simply the working directory, as with the
-//! interpreted CLI.
+//! are found. It defaults to the checkout this crate was built in (two levels above the
+//! crate), so it only has to be set when the workspace is built outside the PHP tree. The
+//! project under analysis is simply the working directory, as with the interpreted CLI.
 
 // Proving the generated exception type `Send` walks the whole object graph the program declares.
 #![recursion_limit = "1024"]
@@ -15,7 +16,14 @@ use php_rt::error::PhpThrowable;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let src_root = std::env::var("PSALM_SRC_ROOT")
-        .unwrap_or_else(|_| "/home/daniil/repos/psalm-port".to_string());
+        .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../..").to_string());
+    let src_root = match std::fs::canonicalize(&src_root) {
+        Ok(path) if path.join("src/Psalm").is_dir() => path.to_string_lossy().into_owned(),
+        _ => {
+            eprintln!("psalm-rs: no Psalm sources (src/Psalm) under {src_root}: set PSALM_SRC_ROOT to the PHP tree this binary was transpiled from");
+            std::process::exit(2);
+        }
+    };
 
     let handle = std::thread::Builder::new()
         .stack_size(512 * 1024 * 1024)

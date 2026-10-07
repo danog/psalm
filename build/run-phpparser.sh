@@ -1,6 +1,6 @@
 #!/bin/bash
 # regenerate, build and test the php-parser crate; writes build/pipeline.log
-cd /home/daniil/repos/psalm-port
+cd "$(dirname "$0")/.."
 php -d memory_limit=3000M ../psalm-transpiler/psalm -c psalm-transpile-phpparser.xml --no-cache --no-progress --threads=1 --scan-threads=4 --transpile-rust=rust/generated/php_parser > build/transpile.log 2>&1
 grep -n "\[transpiler\] [0-9]\|crashed\|Uncaught" build/transpile.log | head -3
 cd rust
