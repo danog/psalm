@@ -614,7 +614,7 @@ final class Scanner
                 // re-registering the stub's definition means exhuming it from the class cache: without one
                 // (a test that builds its own providers) whatever is registered has to stand
                 if ($this->codebase->register_stub_files && $provider->cache !== null && $provider->has($fq_classlike_name)) {
-                    $replaced = $provider->get($fq_classlike_name);
+                    $replaced = ($provider->getOrNull($fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name));
                     if (!$replaced->stubbed
                         && $replaced->stmt_location
                         && $this->config->isInProjectDirs($replaced->stmt_location->file_path)
@@ -643,14 +643,15 @@ final class Scanner
                         continue;
                     }
 
-                    $stub_storage = $provider->get($fq_classlike_name);
+                    $stub_storage = ($provider->getOrNull($fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name));
                     if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
                         // the stub storage and everything populated from it inherit the new members
                         $this->unpopulate($stub_storage, []);
                     }
                     foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
-                        if ($provider->has($dependent_name_lc)) {
-                            $provider->get($dependent_name_lc)->populated = false;
+                        $dependent_storage = $provider->getOrNull($dependent_name_lc);
+                        if ($dependent_storage !== null) {
+                            $dependent_storage->populated = false;
                             $provider->makeNew($dependent_name_lc);
                         }
                     }
