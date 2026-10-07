@@ -727,6 +727,12 @@ trait ExprTrait
         if (in_array($v->type->kind, $containers, true) && in_array($inf->kind, $containers, true)) {
             return $v;
         }
+        // likewise a list Psalm narrowed to a list shape (`list{T}` after `count($xs) === 1`): narrowing never
+        // changes a PHP value, so the container is kept rather than rebuilt as a tuple (and back into a list
+        // wherever it flows on); a context that really needs the tuple converts it there
+        if (in_array($v->type->kind, $containers, true) && $inf->kind === RustType::TUPLE) {
+            return $v;
+        }
         // a nullable handle Psalm knows to be set (`$x->m()` after `if ($x)`) is borrowed out of its option: the
         // place `(*x.as_ref().unwrap())` auto-refs as a receiver, so no clone of the option is unwrapped
         if ($v->type->kind === RustType::OPTION && $v->place !== null && $inf->kind === RustType::CLASS_

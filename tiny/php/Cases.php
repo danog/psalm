@@ -1919,9 +1919,40 @@ function case_template_entries(): string
         . '|' . template_entries(['P'], [0 => 'T', 1 => 'U of array<int>'], [1 => true]);
 }
 
+/**
+ * A list narrowed to a one-element shape by count() is read as the list it is (no tuple rebuilt and turned
+ * back into a list).
+ *
+ * @param list<string> $xs
+ * @return list<string>
+ */
+function count1_identity(array $xs): array
+{
+    if (count($xs) === 1) {
+        return $xs;
+    }
+    return array_reverse($xs);
+}
+
+/** @param list<int> $xs */
+function count1_first(array $xs): string
+{
+    if (count($xs) === 1) {
+        return 'one:' . $xs[0] . ':' . (string) current($xs);
+    }
+    return 'many:' . count($xs);
+}
+
+function case_count1_identity(): string
+{
+    return implode(',', count1_identity(['a'])) . '|' . implode(',', count1_identity(['a', 'b'])) . '|'
+        . count1_first([7]) . '|' . count1_first([1, 2]);
+}
+
 function run_all(): string
 {
     return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+        . check('count1_identity', case_count1_identity(), 'a|b,a|one:7:7|many:2')
         . check('template_entries', case_template_entries(), 'TIn:as:object;|P:of:impure;T:-:-;U:of:array<int>;')
         . check('cond_return', case_cond_return(), 'fallback:n7:n7')
         . check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
