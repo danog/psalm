@@ -37,6 +37,11 @@ abstract class SourceAnalyzer implements StatementsSource
 {
     protected SourceAnalyzer $source;
 
+    /** getFilePath() / getFileName() of the (fixed) source, cached: every CodeLocation asks for both */
+    private ?string $cached_file_path = null;
+
+    private ?string $cached_file_name = null;
+
     /**
      * @psalm-external-mutation-free
      */
@@ -97,14 +102,16 @@ abstract class SourceAnalyzer implements StatementsSource
     #[Override]
     public function getFileName(): string
     {
-        return $this->source->getFileName();
+        /** @psalm-suppress ImpurePropertyAssignment cache of an immutable value */
+        return $this->cached_file_name ??= $this->source->getFileName();
     }
 
     /** @psalm-mutation-free */
     #[Override]
     public function getFilePath(): string
     {
-        return $this->source->getFilePath();
+        /** @psalm-suppress ImpurePropertyAssignment cache of an immutable value */
+        return $this->cached_file_path ??= $this->source->getFilePath();
     }
 
     /** @psalm-mutation-free */
