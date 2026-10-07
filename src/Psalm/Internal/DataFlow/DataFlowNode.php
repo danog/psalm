@@ -476,6 +476,9 @@ final class DataFlowNode implements Stringable
         return $parent_nodes;
     }
 
+    /** @var array<string, lowercase-string> lowercased file names of getForAssignment() ids, by file name */
+    private static array $file_names_lc = [];
+
     /**
      * @psalm-pure
      */
@@ -488,7 +491,10 @@ final class DataFlowNode implements Stringable
         // the class invariant): two assignments at the same location get the same id, and nodes at
         // different locations get different ids. This is the only sanctioned way to attach a
         // location that is not derived from a FunctionLikeStorage.
-        $id = $var_id . ' from ' . strtolower($assignment_location->file_name)
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        $file_name_lc = self::$file_names_lc[$assignment_location->file_name]
+            ??= strtolower($assignment_location->file_name);
+        $id = $var_id . ' from ' . $file_name_lc
             . ':' . $assignment_location->raw_file_start . '-' . $assignment_location->raw_file_end;
 
         return self::make($id, $var_id, $assignment_location, $specialization_key);
