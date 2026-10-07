@@ -394,20 +394,8 @@ final class InternalCallMapHandler
         );
 
         /** @var non-empty-array<lowercase-string, array<int|string, string>> */
-        $call_map = match ($analyzer_version_int) {
-            70 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_70.php'),
-            71 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_71.php'),
-            72 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_72.php'),
-            73 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_73.php'),
-            74 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_74.php'),
-            80 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_80.php'),
-            81 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_81.php'),
-            82 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_82.php'),
-            83 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_83.php'),
-            84 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_84.php'),
-            85 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_85.php'),
-            default => throw new UnexpectedValueException('No call map for PHP version ' . $analyzer_version_int),
-        };
+        $call_map = self::loadCallMapVersion($analyzer_version_int)
+            ?? throw new UnexpectedValueException('No call map for PHP version ' . $analyzer_version_int);
 
         self::$call_map = $call_map;
         // the callables derived from the previous map describe the previous version's signatures
@@ -532,6 +520,57 @@ final class InternalCallMapHandler
         return isset(self::getCallMap()[strtolower($key)]);
     }
 
+
+    /**
+     * The callmap of one version (`70` for PHP 7.0), null for the versions that have none (75 to 79).
+     * Literal paths: the compiled program can only include files it resolves when it is built.
+     *
+     * @return non-empty-array<lowercase-string, array<int|string, string>>|null
+     */
+    private static function loadCallMapVersion(int $version): ?array
+    {
+        /** @var non-empty-array<lowercase-string, array<int|string, string>>|null */
+        return match ($version) {
+            70 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_70.php'),
+            71 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_71.php'),
+            72 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_72.php'),
+            73 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_73.php'),
+            74 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_74.php'),
+            80 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_80.php'),
+            81 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_81.php'),
+            82 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_82.php'),
+            83 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_83.php'),
+            84 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_84.php'),
+            85 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_85.php'),
+            default => null,
+        };
+    }
+
+    /**
+     * The first (oldest) callmap version listing each native function or method.
+     *
+     * @return array<lowercase-string, int>
+     */
+    private static function getFirstCallMapVersions(): array
+    {
+        if (self::$first_callmap_versions === null) {
+            self::$first_callmap_versions = [];
+            for ($version = self::MIN_CALLMAP_VERSION; $version <= self::MAX_CALLMAP_VERSION; ++$version) {
+                $call_map = self::loadCallMapVersion($version);
+                if ($call_map === null) { // e.g. 75 to 79
+                    continue;
+                }
+
+                // the first version listing a function wins: an explicit loop rather than array `+=`
+                foreach ($call_map as $function_id => $_) {
+                    self::$first_callmap_versions[$function_id] ??= $version;
+                }
+            }
+        }
+
+        return self::$first_callmap_versions;
+    }
+
     /**
      * The `analysis_php_version_id` that introduced a native function or method (`class::method`)
      * which is missing from the callmap of the analysed version, or null when it is available there
@@ -551,24 +590,7 @@ final class InternalCallMapHandler
             return null;
         }
 
-        if (self::$first_callmap_versions === null) {
-            self::$first_callmap_versions = [];
-            for ($version = self::MIN_CALLMAP_VERSION; $version <= self::MAX_CALLMAP_VERSION; ++$version) {
-                $file = dirname(__DIR__, 4) . "/dictionaries/CallMap_$version.php";
-                if (!file_exists($file)) { // e.g. 75 to 79
-                    continue;
-                }
-
-                /** @var array<lowercase-string, mixed> */
-                $call_map = require($file);
-                // the first (oldest) version listing a function wins: an explicit loop rather than array `+=`
-                foreach ($call_map as $function_id => $_) {
-                    self::$first_callmap_versions[$function_id] ??= $version;
-                }
-            }
-        }
-
-        $version = self::$first_callmap_versions[$key] ?? null;
+        $version = self::getFirstCallMapVersions()[$key] ?? null;
 
         // a key already in the oldest callmap predates the callmaps and cannot be dated
         if ($version === null || $version <= self::MIN_CALLMAP_VERSION) {
@@ -585,11 +607,11 @@ final class InternalCallMapHandler
     private static function isBundledWithPhp(string $key): bool
     {
         if (\defined('PSALM_COMPILED')) {
-            // no reflection in the compiled program, and its runtime has only what PHP bundles: a symbol it
-            // provides is bundled, which is what the version comparison below finds on a stock PHP
-            return str_contains($key, '::')
-                ? class_exists(explode('::', $key)[0], false)
-                : function_exists($key);
+            // no reflection in the compiled program, which also holds the analysed code when that is Psalm
+            // itself (so function_exists() is no test): a native symbol is one a callmap lists. Unlike the
+            // reflection below this also counts PECL symbols as bundled, so one first listed by a later callmap
+            // is dated by that version
+            return isset(self::getFirstCallMapVersions()[$key]);
         }
 
         try {
