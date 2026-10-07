@@ -744,6 +744,43 @@ trait LValueTrait
         return new Val($base->code . $access, $ft);
     }
 
+    /**
+     * The storage-typed read of `$e` through the restricted sub-hierarchy accessor of its receiver's root enum
+     * (see narrow()), or null when the receiver is not such a narrowed root.
+     */
+    public function subEnumFieldRead(Expr\PropertyFetch $e): ?Val
+    {
+        if (!$e->name instanceof Identifier) {
+            return null;
+        }
+        $name = $e->name->name;
+        $saved_prop_receiver = $this->in_prop_receiver;
+        $saved_prop_name = $this->prop_receiver_name;
+        $saved_prop_expr = $this->prop_receiver_expr;
+        $saved_sub_accessor = $this->sub_receiver_accessor;
+        $this->in_prop_receiver = true;
+        $this->prop_receiver_name = $name;
+        $this->prop_receiver_expr = $e->var;
+        $this->sub_receiver_accessor = null;
+        try {
+            $base = $this->receiver($e->var);
+            $sub_accessor = $this->sub_receiver_accessor;
+        } finally {
+            $this->in_prop_receiver = $saved_prop_receiver;
+            $this->prop_receiver_name = $saved_prop_name;
+            $this->prop_receiver_expr = $saved_prop_expr;
+            $this->sub_receiver_accessor = $saved_sub_accessor;
+        }
+        if ($sub_accessor === null || $base->type->kind !== RustType::CLASS_) {
+            return null;
+        }
+        $cls = $this->program->classOf($base->type);
+        if ($cls === null || isset($cls->fields[$name])) {
+            return null;
+        }
+        return new Val($base->applyOwned('.' . $sub_accessor[0] . '()'), $sub_accessor[1]);
+    }
+
     private function propertyFetch(Expr\PropertyFetch|Expr\NullsafePropertyFetch $e, bool $nullsafe): Val
     {
         if (!$e->name instanceof Identifier) {
@@ -757,15 +794,19 @@ trait LValueTrait
         $saved_prop_receiver = $this->in_prop_receiver;
         $saved_prop_name = $this->prop_receiver_name;
         $saved_prop_expr = $this->prop_receiver_expr;
+        $saved_sub_accessor = $this->sub_receiver_accessor;
         $this->in_prop_receiver = !$nullsafe;
         $this->prop_receiver_name = $name;
         $this->prop_receiver_expr = $e->var;
+        $this->sub_receiver_accessor = null;
         try {
             $base = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
+            $sub_accessor = $this->sub_receiver_accessor;
         } finally {
             $this->in_prop_receiver = $saved_prop_receiver;
             $this->prop_receiver_name = $saved_prop_name;
             $this->prop_receiver_expr = $saved_prop_expr;
+            $this->sub_receiver_accessor = $saved_sub_accessor;
         }
         $bt = $base->type;
         // a generic-typed receiver (`T` returned by a generic call) is read as the concrete type Psalm resolved
@@ -802,6 +843,10 @@ trait LValueTrait
             $field = $cls?->fields[$name] ?? null;
             if ($field !== null) {
                 return $this->narrow($this->fieldVal($base, $cls, $field, $field->type), $e);
+            }
+            if ($sub_accessor !== null) {
+                // the receiver stayed its root enum (see narrow()): read through the sub-hierarchy accessor
+                return $this->narrow(new Val($base->applyOwned('.' . $sub_accessor[0] . '()'), $sub_accessor[1]), $e);
             }
             if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
                 return $this->narrow(new Val($base->applyOwned('.' . $vf[0]->acc() . '_get()'), $vf[1]), $e);

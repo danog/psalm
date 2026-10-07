@@ -237,6 +237,16 @@ final class CrateEmitter
             }
             // dispatch accessors for variant-specific fields written/read through a base/interface enum
             // (MutableTypeVisitor pattern) — requested during body emission, may accrue as more bodies emit.
+            $sub_enum_field_accessors = $this->program->sub_enum_field_accessors;
+            ksort($sub_enum_field_accessors, SORT_STRING);
+            foreach ($sub_enum_field_accessors as $k => [$root, $sub, $sample, $acc_name]) {
+                if (isset($done_copies['sefa:' . $k])) {
+                    continue;
+                }
+                $done_copies['sefa:' . $k] = true;
+                $new = true;
+                $class_emitter->emitSubEnumFieldAccessor($root, $sub, $sample, $acc_name, $this->classModule($root));
+            }
             $enum_field_accessors = $this->program->enum_field_accessors;
             ksort($enum_field_accessors, SORT_STRING);
             foreach ($enum_field_accessors as $k => [$enum, $field, $ftype]) {

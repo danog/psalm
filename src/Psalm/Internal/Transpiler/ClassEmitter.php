@@ -942,6 +942,21 @@ final class ClassEmitter
         $w->line('}');
     }
 
+    /** The read accessor on `$root` restricted to `$sub`'s variants (see Program::requestSubEnumFieldAccessor). */
+    public function emitSubEnumFieldAccessor(ClassModel $root, ClassModel $sub, FieldModel $sample, string $name, Writer $w): void
+    {
+        $this->beginItem();
+        $h = $root->handle();
+        $arms = [];
+        foreach ($sub->concrete as $c) {
+            $arms[] = $h . '::' . $c->variant() . '(__h) => __h.' . $c->fields[$sample->name]->acc() . '_get()';
+        }
+        $w->line('impl ' . $h . ' {');
+        $w->line('#[inline] pub fn ' . $name . '(&self) -> ' . $sample->type->toRust() . ' { match self { ' . implode(', ', $arms)
+            . ', #[allow(unreachable_patterns)] _ => unreachable!("' . $name . ' on a ' . $h . ' outside ' . addslashes($sub->fqcn) . '") } }');
+        $w->line('}');
+    }
+
     public function emitSuperCopy(ClassModel $root, MethodModel $m, string $name, Writer $w): void
     {
         $this->beginItem();

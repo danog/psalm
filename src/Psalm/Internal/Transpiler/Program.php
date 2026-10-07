@@ -1233,6 +1233,22 @@ final class Program
      */
     public array $enum_field_accessors = [];
 
+    /**
+     * @var array<string, array{ClassModel, ClassModel, FieldModel, string}> read accessors on a dispatch enum restricted to
+     *   the variants of one of its sub-hierarchies (`Expr::p_name_get__in_<Variable>()`): a property read through a
+     *   receiver Psalm narrowed to that sub-hierarchy, when the root enum cannot serve the field (its variants store
+     *   it with different types). Keyed by rootLc::accessorName.
+     */
+    public array $sub_enum_field_accessors = [];
+
+    /** Request the read accessor of `$sample`'s field on `$root` restricted to `$sub`'s variants; returns its name. */
+    public function requestSubEnumFieldAccessor(ClassModel $root, ClassModel $sub, FieldModel $sample): string
+    {
+        $name = $sample->acc() . '_get__in_' . Names::classMangle($sub->fqcn);
+        $this->sub_enum_field_accessors[$root->lc() . '::' . $name] = [$root, $sub, $sample, $name];
+        return $name;
+    }
+
     /** Request set_/get_/mut dispatch for `$field` on the dispatch enum `$enum` (a variant-specific field). */
     public function requestEnumFieldAccessor(ClassModel $enum, FieldModel $field, RustType $type): void
     {

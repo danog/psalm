@@ -2850,7 +2850,8 @@ final class Builtins
     {
         $v = $b->expr($args[0]->value);
         if ($v->type->kind === RustType::CLASS_) {
-            return new Val($v->code . '.obj_id() as i64', RustType::int());
+            // `obj_id(&self)`: read through the place when there is one (no handle clone just to take its id)
+            return new Val('(' . $v->applyOwned('.obj_id()') . ' as i64)', RustType::int());
         }
         if (($typed = $b->casts->objIdOf($v->code, $v->type)) !== null) {
             return new Val($typed, RustType::int());

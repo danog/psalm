@@ -637,7 +637,12 @@ trait ExprTrait
             $this->warn('variable variable', $e);
             return $this->dead('variable variable', RustType::mixed());
         }
+        $sub_before = $this->sub_receiver_accessor;
         $v = $this->narrow($this->readVar($e->name), $e);
+        if ($this->sub_receiver_accessor !== $sub_before) {
+            // narrow() kept the root enum for a field read through the sub-hierarchy accessor: no downcast
+            return $v;
+        }
         // apply an active `instanceof` narrowing (from `$v instanceof X && ...`) as a downcast, so subclass-only
         // members resolve statically instead of via the dynamic protocol. Only a strict class->subclass narrowing.
         if (isset($this->narrowings[$e->name])) {
@@ -764,12 +769,45 @@ trait ExprTrait
             $ic = $this->program->classOf($inf);
             if ($vc !== null && $ic !== null && $ic !== $vc && !$ic->isLeaf() && !$vc->isLeaf()
                 && $ic->isSubclassOf($vc) && $ic->crate === $vc->crate && !$ic->has_downstream
-                && $this->rootEnumServesField($vc, $ic, $this->prop_receiver_name)
             ) {
-                return $v;
+                if ($this->rootEnumServesField($vc, $ic, $this->prop_receiver_name)) {
+                    return $v;
+                }
+                // the root's variants store the field with different types (`Expr::$name`), but the narrowed
+                // sub-hierarchy's all store it alike: read it through an accessor on the root enum restricted to
+                // the sub-hierarchy's variants, instead of cloning the handle into the sub-enum
+                $sample = $this->subEnumUniformField($ic, $this->prop_receiver_name);
+                if ($sample !== null) {
+                    $this->sub_receiver_accessor = [
+                        $this->program->requestSubEnumFieldAccessor($vc, $ic, $sample),
+                        $sample->type,
+                    ];
+                    return $v;
+                }
             }
         }
         return $this->casts->convertVal($v, $inf);
+    }
+
+    /**
+     * A field every concrete member of `$sub` stores with the same Rust type (each variant's `_get()` reads it,
+     * late-initialized or not): a sample of it, or null.
+     */
+    private function subEnumUniformField(ClassModel $sub, string $name): ?FieldModel
+    {
+        $sample = null;
+        foreach ($sub->concrete as $c) {
+            $cf = $c->fields[$name] ?? null;
+            if ($cf === null) {
+                return null;
+            }
+            if ($sample === null) {
+                $sample = $cf;
+            } elseif ($cf->type->toRust() !== $sample->type->toRust()) {
+                return null;
+            }
+        }
+        return $sample;
     }
 
     /**

@@ -1949,9 +1949,51 @@ function case_count1_identity(): string
         . count1_first([7]) . '|' . count1_first([1, 2]);
 }
 
+/** A root whose variants store `$name` with different types (as php-parser's Expr does). */
+abstract class P1Node
+{
+}
+
+/** A non-leaf sub-hierarchy (like Variable with Psalm's VirtualVariable) storing `$name` alike. */
+class P1Var extends P1Node
+{
+    public function __construct(public string|P1Node $name)
+    {
+    }
+}
+
+final class P1VirtualVar extends P1Var
+{
+}
+
+final class P1Call extends P1Node
+{
+    public function __construct(public int $name)
+    {
+    }
+}
+
+function p1_read(P1Node $n): string
+{
+    if ($n instanceof P1Var && is_string($n->name)) {
+        return 'v:' . $n->name;
+    }
+    if ($n instanceof P1Call) {
+        return 'c:' . $n->name;
+    }
+    return '?';
+}
+
+function case_sub_enum_read(): string
+{
+    return p1_read(new P1Var('x')) . ',' . p1_read(new P1VirtualVar('y')) . ',' . p1_read(new P1Call(3)) . ','
+        . p1_read(new P1Var(new P1Call(1)));
+}
+
 function run_all(): string
 {
     return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+        . check('sub_enum_read', case_sub_enum_read(), 'v:x,v:y,c:3,?')
         . check('count1_identity', case_count1_identity(), 'a|b,a|one:7:7|many:2')
         . check('template_entries', case_template_entries(), 'TIn:as:object;|P:of:impure;T:-:-;U:of:array<int>;')
         . check('cond_return', case_cond_return(), 'fallback:n7:n7')

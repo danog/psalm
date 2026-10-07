@@ -648,6 +648,15 @@ final class BodyEmitter
     /** The receiver expression of that fetch: only IT may stay un-narrowed, not expressions nested inside it. */
     public ?Expr $prop_receiver_expr = null;
 
+    /**
+     * Set by narrow() when the receiver of the property fetch being emitted was kept as its root dispatch enum
+     * (no clone + downcast to the sub-hierarchy Psalm narrowed it to): the restricted accessor to read the field
+     * through, and the field's type. Read and reset by propertyFetch().
+     *
+     * @var array{string, RustType}|null
+     */
+    public ?array $sub_receiver_accessor = null;
+
     /** Emit an expression used as a receiver (no clone for `$this`). */
     public function receiver(Expr $e): Val
     {
@@ -690,6 +699,14 @@ final class BodyEmitter
      */
     public function rawValue(Expr $e): Val
     {
+        // a field of a plain local Psalm narrowed to a sub-hierarchy: read through the root enum's restricted
+        // accessor (the same storage-typed value the place reads, without cloning the handle into the sub-enum)
+        if ($e instanceof Expr\PropertyFetch && $e->name instanceof \PhpParser\Node\Identifier
+            && $e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
+            && ($sub = $this->subEnumFieldRead($e)) !== null
+        ) {
+            return $sub;
+        }
         if (($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this')
             || ($e instanceof Expr\PropertyFetch && $e->name instanceof \PhpParser\Node\Identifier)
             || ($e instanceof Expr\StaticPropertyFetch && $e->name instanceof \PhpParser\Node\VarLikeIdentifier)
