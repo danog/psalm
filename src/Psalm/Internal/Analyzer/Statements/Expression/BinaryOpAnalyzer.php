@@ -522,7 +522,11 @@ final class BinaryOpAnalyzer
             $graph->addSource($taint_source);
         }
 
-        $literal_prefixes = ConcatAnalyzer::getConcatLiteralPrefixes($statements_analyzer, $stmt->left, $stmt->right);
+        $literal_prefixes = ConcatAnalyzer::getConcatLiteralPrefixes(
+            $statements_analyzer,
+            $stmt->left,
+            $stmt->right,
+        );
         $statements_analyzer->node_data->setLiteralPrefixes($stmt, $literal_prefixes);
 
         // after the start of a URL fixing its server (the left operand's, and the right operand's own literal start
@@ -533,7 +537,7 @@ final class BinaryOpAnalyzer
         ];
 
         // an object operand is concatenated as what its __toString returns
-        foreach ([$stmt->left, $stmt->right] as $index => $operand) {
+        foreach ([$stmt->left, $stmt->right] as $offset => $operand) {
             $operand_type = $statements_analyzer->node_data->getType($operand);
 
             if (!$operand_type) {
@@ -551,10 +555,9 @@ final class BinaryOpAnalyzer
                 $graph->addPath(
                     $parent_node,
                     $new_parent_node,
-                    // concatenated, an array is "Array": it takes no taint the flow put in an element of it
                     'concat' . CastAnalyzer::getArrayConversionSuffix($operand_type),
                     $added_taints,
-                    $operand_removed_taints[$index],
+                    $operand_removed_taints[$offset],
                 );
             }
         }

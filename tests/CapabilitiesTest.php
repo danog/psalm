@@ -30,6 +30,34 @@ final class CapabilitiesTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            'classImplementsOfAnObjectDoesNotAutoload' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function interfaces(object $object, string $class): array {
+                        return [class_implements($object), class_parents($class, false)];
+                    }',
+            ],
+            'debugZvalDumpOnlyRequiresIo' => [
+                'code' => '<?php
+                    /** @psalm-capabilities io */
+                    function dump(int $value): void {
+                        debug_zval_dump($value);
+                    }',
+            ],
+            'highlightStringReturningTheMarkupIsPure' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function highlight(string $code): string {
+                        return highlight_string($code, true);
+                    }',
+            ],
+            'listingTheAutoloadersOnlyReadsGlobals' => [
+                'code' => '<?php
+                    /** @psalm-capabilities read-globals */
+                    function autoloaders(): array {
+                        return spl_autoload_functions();
+                    }',
+            ],
             'traversableWithPurityCombinesWithIterable' => [
                 'code' => '<?php
                     /**
@@ -1077,6 +1105,65 @@ final class CapabilitiesTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            'classUsesOfAClassNameMayAutoload' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function hasTraits(string $class): bool {
+                        return class_uses($class) !== false;
+                    }',
+                'error_message' => 'ImpureFunctionCall',
+            ],
+            'settingTheAutoloadExtensionsWritesGlobals' => [
+                'code' => '<?php
+                    /** @psalm-mutation-free */
+                    function useExtensions(): string {
+                        return spl_autoload_extensions(".php");
+                    }',
+                'error_message' => 'ImpureFunctionCall',
+            ],
+            'vprintfRequiresIo' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function show(string $value): int {
+                        return vprintf("%s", [$value]);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on vprintf requires io',
+            ],
+            'vfprintfRequiresIo' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function show(string $value): int {
+                        return vfprintf(STDOUT, "%s", [$value]);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on vfprintf requires io',
+            ],
+            'highlightStringPrintingTheMarkupRequiresIo' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function highlight(string $code): bool {
+                        return highlight_string($code);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on highlight_string requires io',
+            ],
+            'highlightFileRequiresIo' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function highlight(string $file): string {
+                        return highlight_file($file, true);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on highlight_file requires io',
+            ],
+            'gzpassthruRequiresIo' => [
+                'code' => '<?php
+                    /**
+                     * @param resource $file
+                     * @psalm-pure
+                     */
+                    function show($file): int {
+                        return gzpassthru($file);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:7:32 - The context is pure but function call on gzpassthru requires io',
+            ],
             'fsockopenRequiresIo' => [
                 'code' => '<?php
                     /** @psalm-pure */
@@ -1567,6 +1654,21 @@ final class CapabilitiesTest extends TestCase
                         if ($b !== null) {
                             $b->x = 1;
                         }
+                    }',
+                'error_message' => 'ImpurePropertyAssignment',
+            ],
+            'varDocblockOnAssignmentKeepsAGlobalObjectGlobal' => [
+                'code' => '<?php
+                    final class Box {
+                        public int $x = 0;
+                        public static ?Box $g = null;
+                    }
+
+                    /** @psalm-capabilities read-globals|write-props */
+                    function leak(): void {
+                        /** @var Box */
+                        $b = Box::$g;
+                        $b->x = 1;
                     }',
                 'error_message' => 'ImpurePropertyAssignment',
             ],
@@ -2326,6 +2428,70 @@ final class CapabilitiesTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    public function testWriteGlobalsStaticCallForgetsSuperGlobalRefinements(): void
+    {
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessage('InvalidReturnStatement');
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                final class S {
+                    /** @psalm-capabilities read-globals, write-globals */
+                    public static function touchGlobals(): void { $_GET["x"] = "a"; }
+                }
+
+                function forget(): int {
+                    $_GET["x"] = 1;
+                    S::touchGlobals();
+                    return $_GET["x"];
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
+    public function testCallsThatCannotWriteGlobalsKeepSuperGlobalRefinements(): void
+    {
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                final class A { public ?int $x = null; }
+
+                /** @psalm-capabilities read-globals */
+                function readGlobals(): int { return count($_GET); }
+
+                /** @psalm-capabilities read-props, write-props */
+                function writeProps(A $a): void { $a->x = 2; }
+
+                /** @psalm-pure */
+                function pure(): int { return 1; }
+
+                function keepAfterReadGlobals(): int {
+                    $_GET["x"] = 1;
+                    readGlobals();
+                    return $_GET["x"];
+                }
+
+                function keepAfterWriteProps(A $a): int {
+                    $_GET["x"] = 1;
+                    writeProps($a);
+                    return $_GET["x"];
+                }
+
+                function keepAfterPure(): int {
+                    $_GET["x"] = 1;
+                    pure();
+                    return $_GET["x"];
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
     public function testWriteGlobalsMethodCallForgetsStaticPropertyRefinements(): void
     {
         $this->expectException(CodeException::class);
@@ -2348,6 +2514,62 @@ final class CapabilitiesTest extends TestCase
                     }
                     $g->touch();
                     return A::$x;
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
+    public function testMethodCallsThatCannotWriteGlobalsKeepStaticPropertyRefinements(): void
+    {
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        // refined inside the `if`, as refining a static property by an early return alone
+        // already turns it into mixed, which would hide whether the call kept the refinement
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                final class A { public static ?int $x = null; }
+
+                final class ReadGlobals {
+                    /** @psalm-capabilities read-globals */
+                    public function touch(): ?int { return A::$x; }
+                }
+
+                final class MutationFree {
+                    private int $n = 0;
+                    /** @psalm-mutation-free */
+                    public function touch(): int { return $this->n; }
+                }
+
+                final class WriteOwnProps {
+                    private int $n = 0;
+                    /** @psalm-capabilities read-props, write-this-props */
+                    public function touch(): void { $this->n++; }
+                }
+
+                function keepAfterReadGlobals(ReadGlobals $g): int {
+                    if (A::$x !== null) {
+                        $g->touch();
+                        return A::$x;
+                    }
+                    return 0;
+                }
+
+                function keepAfterMutationFree(MutationFree $g): int {
+                    if (A::$x !== null) {
+                        $g->touch();
+                        return A::$x;
+                    }
+                    return 0;
+                }
+
+                function keepAfterWriteOwnProps(WriteOwnProps $g): int {
+                    if (A::$x !== null) {
+                        $g->touch();
+                        return A::$x;
+                    }
+                    return 0;
                 }',
         );
 
@@ -2403,6 +2625,49 @@ final class CapabilitiesTest extends TestCase
                     }
                     S::w($a);
                     return $a->x;
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
+    public function testPureClassMethodCallsAreRememberedLikeImmutableOnes(): void
+    {
+        // without this setting, only the results of the mutation-free methods of immutable
+        // classes are remembered: a pure class, which cannot have state at all, is one
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                /** @psalm-immutable */
+                final class ImmutableResult {
+                    public function __construct(private ?string $error) {}
+
+                    public function getError(): ?string {
+                        return $this->error;
+                    }
+                }
+
+                /** @psalm-pure */
+                final class PureResult {
+                    public function getError(): ?string {
+                        return null;
+                    }
+                }
+
+                function immutableError(ImmutableResult $result): string {
+                    if ($result->getError() !== null) {
+                        return $result->getError();
+                    }
+                    return "";
+                }
+
+                function pureError(PureResult $result): string {
+                    if ($result->getError() !== null) {
+                        return $result->getError();
+                    }
+                    return "";
                 }',
         );
 

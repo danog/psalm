@@ -16,6 +16,7 @@ use Psalm\Exception\InvalidMethodOverrideException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\NewAnalyzer;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\FunctionDocblockComment;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -48,6 +49,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TCapabilities;
 use Psalm\Type\Atomic\TConditional;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
@@ -232,7 +234,11 @@ final class FunctionLikeDocblockScanner
                 $line,
             );
 
-            foreach (explode('|', $throw) as $throw_class) {
+            // Template parameters are not tracked for thrown exceptions,
+            // so `@throws Foo<Bar>` is treated like `@throws Foo`
+            $throw_classes = preg_replace('/<(?:[^<>]++|(?R))*+>/', '', $throw) ?? $throw;
+
+            foreach (explode('|', $throw_classes) as $throw_class) {
                 $throw_class = trim($throw_class);
 
                 if ($throw_class === '') {
@@ -1131,6 +1137,31 @@ final class FunctionLikeDocblockScanner
                 }
             }
 
+            // the @return of a constructor gives the type of the object it constructs, so it may only
+            // name the class itself (with its template and purity arguments)
+            if ($storage instanceof MethodStorage
+                && $classlike_storage
+                && !$classlike_storage->is_trait
+                && strtolower((string) $storage->cased_name) === '__construct'
+            ) {
+                foreach (NewAnalyzer::getConstructedAtomics($storage->return_type) as $atomic) {
+                    $constructed_names = [strtolower($classlike_storage->name), 'self', 'static'];
+
+                    if ($atomic instanceof TNamedObject
+                        && !in_array(strtolower($atomic->value), $constructed_names, true)
+                    ) {
+                        $storage->docblock_issues[] = new InvalidDocblock(
+                            'The @return of ' . $cased_function_id . ' must be the type of the object it constructs, '
+                            . $classlike_storage->name . ', not ' . $atomic->getId(),
+                            new CodeLocation($file_scanner, $stmt, null, true),
+                        );
+                        $storage->return_type = null;
+
+                        return;
+                    }
+                }
+            }
+
             /** @psalm-suppress UnusedMethodCall */
             $storage->return_type->queueClassLikesForScanning($codebase, $file_storage);
         } catch (TypeParseTreeException $e) {
@@ -1538,6 +1569,16 @@ final class FunctionLikeDocblockScanner
                     null,
                     $function_template_types + $class_template_types,
                     $type_aliases,
+                );
+
+                $storage->self_out_type_location = new CodeLocation(
+                    $file_scanner,
+                    $stmt,
+                    null,
+                    true,
+                    null,
+                    null,
+                    $docblock_info->self_out['line_number'],
                 );
             } catch (TypeParseTreeException $e) {
                 $storage->docblock_issues[] = new InvalidDocblock(

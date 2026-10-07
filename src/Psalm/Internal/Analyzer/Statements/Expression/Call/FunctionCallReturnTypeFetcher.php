@@ -279,6 +279,14 @@ final class FunctionCallReturnTypeFetcher
                 $stmt_type,
                 $context,
             );
+            $stmt_type = OutputStreamTaintAnalyzer::taintOpenedStream(
+                $statements_analyzer,
+                $function_id,
+                $stmt->getArgs(),
+                $stmt_type,
+                new CodeLocation($statements_analyzer->getSource(), $stmt),
+            );
+            OutputStreamTaintAnalyzer::taintFunctionWrite($statements_analyzer, $function_id, $stmt->getArgs());
             self::taintInternalSource(
                 $statements_analyzer,
                 $stmt,
@@ -627,6 +635,15 @@ final class FunctionCallReturnTypeFetcher
             $stmt_type,
             $context,
         );
+        // callmap-only conditional sinks (writes to fopen('php://output'))
+        $stmt_type = OutputStreamTaintAnalyzer::taintOpenedStream(
+            $statements_analyzer,
+            $callable_id,
+            $stmt->getArgs(),
+            $stmt_type,
+            new CodeLocation($statements_analyzer->getSource(), $stmt),
+        );
+        OutputStreamTaintAnalyzer::taintFunctionWrite($statements_analyzer, $callable_id, $stmt->getArgs());
         // callmap-only unconditional sources (socket_read(), curl_exec(), ...)
         self::taintInternalSource(
             $statements_analyzer,
@@ -1443,15 +1460,6 @@ final class FunctionCallReturnTypeFetcher
     }
 
     /**
-     * The parameters of builtins whose taints the return value holds as they are given, though the builtin escapes
-     * those of its other parameters: http_build_query() encodes the keys and values of $data, but neither the prefix
-     * it adds to numeric keys nor the separator.
-     */
-    private const UNESCAPED_RETURN_FLOWS = [
-        'http_build_query' => ['numeric_prefix' => true, 'arg_separator' => true],
-    ];
-
-    /**
      * The taints the values of a sprintf() call can't have once formatted with any of $formats: those of a number, for
      * the values they only format as numbers (or not at all)
      *
@@ -1511,7 +1519,16 @@ final class FunctionCallReturnTypeFetcher
     }
 
     /**
-     * @param array<PhpParser\Node\Arg>   $args
+     * The parameters of builtins whose taints the return value holds as they are given, though the builtin escapes
+     * those of its other parameters: http_build_query() encodes the keys and values of $data, but neither the prefix
+     * it adds to numeric keys nor the separator.
+     */
+    private const UNESCAPED_RETURN_FLOWS = [
+        'http_build_query' => ['numeric_prefix' => true, 'arg_separator' => true],
+    ];
+
+    /**
+     * @param array<int, PhpParser\Node\Arg> $args
      * @param array<int, int> $arg_removed_taints the taints removed from the flows of some of $args only, by index
      * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */

@@ -225,7 +225,8 @@ final class MethodCallPurityAnalyzer
             if ((!$method_storage->mutation_free_assumed
                     || $method_storage->final
                     || $method_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE)
-                && ($method_storage->containing_class_capabilities === Capabilities::MUTATION_FREE
+                // the class is immutable, or pure
+                && (Capabilities::allows(Capabilities::MUTATION_FREE, $method_storage->containing_class_capabilities)
                     || $config->remember_property_assignments_after_call
                 )
             ) {
@@ -235,7 +236,10 @@ final class MethodCallPurityAnalyzer
                 ) {
                     $stmt->setAttribute('memoizable', true);
 
-                    if ($method_storage->containing_class_capabilities === Capabilities::MUTATION_FREE) {
+                    if (Capabilities::allows(
+                        Capabilities::MUTATION_FREE,
+                        $method_storage->containing_class_capabilities,
+                    )) {
                         $stmt->setAttribute('pure', true);
                     }
                 }
@@ -325,7 +329,7 @@ final class MethodCallPurityAnalyzer
                 }
             }
         } elseif (!$config->remember_property_assignments_after_call) {
-            // the method cannot write properties, but may still write static properties and superglobals
+            // the method cannot write properties, but may still write static ones
             $context->removeMutableObjectVars(false, $method_capabilities);
         }
     }

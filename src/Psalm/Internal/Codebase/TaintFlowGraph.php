@@ -46,11 +46,18 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 
+use function array_pop;
 use function array_unshift;
+use function count;
 use function end;
+use function implode;
+use function ksort;
 use function min;
 use function strcmp;
+use function strlen;
+use function strpos;
 use function strtolower;
+use function substr;
 
 /**
  * @internal
@@ -68,6 +75,12 @@ final class TaintFlowGraph extends DataFlowGraph
      * unspecialized base id and specialization key (see DataFlowNode::make()).
      */
     public const SPECIALIZATION_SEPARATOR = ' specialized in ';
+
+    /**
+     * How many nested calls the search for the generators what is sent can be sent to matches (see
+     * linkGeneratorSends()): recursive calls nest without end.
+     */
+    private const GENERATOR_SEND_CALL_DEPTH = 8;
 
     /** @var array<string, DataFlowNode> */
     private array $sources = [];
@@ -91,6 +104,29 @@ final class TaintFlowGraph extends DataFlowGraph
      * @var array<string, true>
      */
     private array $specialized_calls = [];
+
+    /**
+     * The return node id of each generator function-like => the node of what is sent to it (see
+     * linkGeneratorSends())
+     *
+     * @var array<string, DataFlowNode>
+     */
+    private array $generator_sent_nodes = [];
+
+    /**
+     * The node of what is sent to a generator => the parent nodes of that generator (see linkGeneratorSends())
+     *
+     * @var array<string, array<string, true>>
+     */
+    private array $generator_sends = [];
+
+    /**
+     * The ids of the nodes holding a stream that writes to the response (see OutputStreamTaintAnalyzer). Only used
+     * while analysing the function-like they are in, so never merged by addGraph().
+     *
+     * @var array<string, true>
+     */
+    private array $output_streams = [];
 
     /**
      * Call sites specialized speculatively, before knowing whether the callee is pure:
@@ -482,6 +518,32 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
+     * Records that the generators of the function-like with the return node $return_node get what is sent to
+     * them through $sent_node.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addGenerator(DataFlowNode $return_node, DataFlowNode $sent_node): void
+    {
+        $this->generator_sent_nodes[$return_node->id] = $sent_node;
+    }
+
+    /**
+     * Records that what flows into $sent_node is sent to the generator with the parent nodes $generator_nodes.
+     *
+     * @param array<string, DataFlowNode> $generator_nodes
+     * @psalm-external-mutation-free
+     */
+    public function addGeneratorSend(DataFlowNode $sent_node, array $generator_nodes): void
+    {
+        $this->nodes[$sent_node->id] = $sent_node;
+
+        foreach ($generator_nodes as $generator_node) {
+            $this->generator_sends[$sent_node->id][$generator_node->id] = true;
+        }
+    }
+
+    /**
      * @psalm-external-mutation-free
      */
     public function addSource(DataFlowNode $node): void
@@ -514,6 +576,32 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
+     * Records that $node holds a stream writing to the response
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addOutputStream(DataFlowNode $node): void
+    {
+        $this->output_streams[$node->id] = true;
+    }
+
+    /**
+     * Whether a value of $type may be a stream writing to the response
+     *
+     * @psalm-mutation-free
+     */
+    public function isOutputStream(Union $type): bool
+    {
+        foreach ($type->parent_nodes as $parent_node_id => $_) {
+            if (isset($this->output_streams[$parent_node_id])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @psalm-external-mutation-free
      */
     public function addGraph(self $other): void
@@ -522,6 +610,11 @@ final class TaintFlowGraph extends DataFlowGraph
         $this->sinks += $other->sinks;
         $this->nodes += $other->nodes;
         $this->specialized_calls += $other->specialized_calls;
+        $this->generator_sent_nodes += $other->generator_sent_nodes;
+
+        foreach ($other->generator_sends as $key => $map) {
+            $this->generator_sends[$key] = ($this->generator_sends[$key] ?? []) + $map;
+        }
 
         foreach ($other->param_keys as $key => $map) {
             $this->param_keys[$key] = ($this->param_keys[$key] ?? []) + $map;
@@ -659,6 +752,12 @@ final class TaintFlowGraph extends DataFlowGraph
 
         $this->despecializeImpureCalls($codebase);
 
+        if ($this->generator_sends) {
+            $reverse = $this->getReverseEdges();
+            $this->linkGeneratorSends($reverse);
+            unset($reverse);
+        }
+
         // Remove all specializations without an outgoing edge
         foreach ($this->specializations as $k => &$map) {
             foreach ($map as $kk => $specialized_id) {
@@ -695,6 +794,193 @@ final class TaintFlowGraph extends DataFlowGraph
         $resolution->resolve($progress);
 
         $progress->taskDone(0);
+    }
+
+    /**
+     * Links what is sent to a generator (see Generator::send()) to the yield expressions of the
+     * generator function-likes it can come from, and what is sent to a generator delegating to another
+     * (`yield from`) to the yield expressions of the latter.
+     *
+     * Which function-likes a generator can come from is only known once the whole graph is built: they
+     * are the generator function-likes whose return nodes reach the parent nodes of the generator. The
+     * search for them goes backwards from those parent nodes, matching the calls it leaves through
+     * their arguments with the ones it entered through their returns, as the resolution walk does. It
+     * stops at the first such return node of each path: a generator a generator yields is not linked,
+     * nor one from a function-like without a body (unknown origin).
+     *
+     * What is sent to the generator of a specialized call goes into its specialization, so that it only
+     * reaches that call's body walk.
+     *
+     * @param array<string, array<string, true>> $reverse see getReverseEdges()
+     * @param-out array<string, array<string, true>> $reverse
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
+     */
+    private function linkGeneratorSends(array &$reverse): void
+    {
+        // the graphs of the forked workers are merged in any order: keep the edges added the same
+        ksort($this->generator_sends);
+
+        foreach ($this->generator_sends as $send_id => $generator_ids) {
+            ksort($generator_ids);
+
+            $send_node = $this->nodes[$send_id];
+
+            // [node id, specialization keys of the calls entered through their returns, innermost last]
+            $queue = [];
+            $visited = [];
+
+            foreach ($generator_ids as $generator_id => $_) {
+                $queue[] = [$generator_id, []];
+                $visited[$generator_id . "\0"] = true;
+            }
+
+            while ($queue) {
+                [$id, $calls] = array_pop($queue);
+
+                [$unspecialized_id, $specialization_key] = self::splitSpecializedId($id);
+
+                if (isset($this->generator_sent_nodes[$unspecialized_id])) {
+                    $this->linkGeneratorSend($reverse, $send_node, $unspecialized_id, $specialization_key);
+
+                    continue;
+                }
+
+                foreach ($reverse[$id] ?? [] as $from_id => $_) {
+                    $from_calls = $calls;
+
+                    if ($specialization_key !== null && $from_id === $unspecialized_id) {
+                        // into the body of a call through its return
+                        $from_calls[] = $specialization_key;
+
+                        if (count($from_calls) > self::GENERATOR_SEND_CALL_DEPTH) {
+                            // too deep (recursion): any call matches
+                            $from_calls = [];
+                        }
+                    } else {
+                        [$from_unspecialized_id, $from_specialization_key] = self::splitSpecializedId($from_id);
+
+                        if ($from_unspecialized_id === $id) {
+                            // out of a body through the arguments of a call: the one entered, if any
+                            if ($from_calls && end($from_calls) !== $from_specialization_key) {
+                                continue;
+                            }
+
+                            array_pop($from_calls);
+                        }
+                    }
+
+                    $state_key = $from_id . "\0" . implode("\0", $from_calls);
+
+                    if (!isset($visited[$state_key])) {
+                        $visited[$state_key] = true;
+                        $queue[] = [$from_id, $from_calls];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Links $send_node to what is sent to the generators of the function-like with the return node
+     * $return_node_id, in the specialization $specialization_key if given.
+     *
+     * @param array<string, array<string, true>> $reverse see getReverseEdges()
+     * @param-out array<string, array<string, true>> $reverse
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
+     */
+    private function linkGeneratorSend(
+        array &$reverse,
+        DataFlowNode $send_node,
+        string $return_node_id,
+        ?string $specialization_key,
+    ): void {
+        $sent_node = $this->generator_sent_nodes[$return_node_id];
+
+        if ($specialization_key !== null) {
+            $sent_node = $sent_node->withSpecialization(
+                $sent_node->id . self::SPECIALIZATION_SEPARATOR . $specialization_key,
+                $sent_node->id,
+                $specialization_key,
+                null,
+            );
+
+            $this->addNode($sent_node);
+            self::linkSpecialization($reverse, $sent_node->id);
+        }
+
+        $this->addPath($send_node, $sent_node, 'generator-send');
+        $reverse[$sent_node->id][$send_node->id] = true;
+    }
+
+    /**
+     * The unspecialized id and the specialization key of the node $id, or $id and null if it is not specialized
+     *
+     * @return array{string, ?string}
+     * @psalm-pure
+     */
+    private static function splitSpecializedId(string $id): array
+    {
+        $separator_pos = strpos($id, self::SPECIALIZATION_SEPARATOR);
+
+        if ($separator_pos === false) {
+            return [$id, null];
+        }
+
+        return [
+            substr($id, 0, $separator_pos),
+            substr($id, $separator_pos + strlen(self::SPECIALIZATION_SEPARATOR)),
+        ];
+    }
+
+    /**
+     * The edges of the graph from their destinations to their origins, with the specialization links (see
+     * linkSpecialization()) in both directions, for linkGeneratorSends() (TaintFlowResolution computes its own).
+     *
+     * @return array<string, array<string, true>>
+     * @psalm-capabilities read-props
+     */
+    private function getReverseEdges(): array
+    {
+        $reverse = [];
+
+        foreach ($this->forward_edges as $from_id => $destinations) {
+            self::linkSpecialization($reverse, $from_id);
+
+            foreach ($destinations as $to_id => $_) {
+                $reverse[$to_id][$from_id] = true;
+                self::linkSpecialization($reverse, $to_id);
+            }
+        }
+
+        foreach ($this->nodes as $node) {
+            if ($node->unspecialized_id !== null) {
+                $reverse[$node->id][$node->unspecialized_id] = true;
+                $reverse[$node->unspecialized_id][$node->id] = true;
+            }
+        }
+
+        return $reverse;
+    }
+
+    /**
+     * If $id is a specialized node id, records a link between it and its unspecialized base in both directions
+     *
+     * @param array<string, array<string, true>> $reverse
+     * @param-out array<string, array<string, true>> $reverse
+     * @psalm-pure
+     */
+    private static function linkSpecialization(array &$reverse, string $id): void
+    {
+        $pos = strpos($id, self::SPECIALIZATION_SEPARATOR);
+
+        if ($pos === false) {
+            return;
+        }
+
+        $unspecialized_id = substr($id, 0, $pos);
+
+        $reverse[$id][$unspecialized_id] = true;
+        $reverse[$unspecialized_id][$id] = true;
     }
 
     /**
