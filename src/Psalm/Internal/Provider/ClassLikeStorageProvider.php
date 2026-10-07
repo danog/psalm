@@ -51,19 +51,29 @@ final class ClassLikeStorageProvider
      */
     public function get(string $fq_classlike_name): ClassLikeStorage
     {
+        return $this->getOrNull($fq_classlike_name)
+            ?? throw new InvalidArgumentException('Could not get class storage for ' . strtolower($fq_classlike_name));
+    }
+
+    /**
+     * The storage of a class-like, null when there is none: for lookups that may miss, which would otherwise
+     * use an exception as control flow (an unwind per miss in the compiled program).
+     *
+     * @psalm-mutation-free
+     */
+    public function getOrNull(string $fq_classlike_name): ?ClassLikeStorage
+    {
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
         $known = self::$by_spelling[$fq_classlike_name] ?? null;
         if ($known !== null) {
             return $known;
         }
-        $fq_classlike_name_lc = strtolower($fq_classlike_name);
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        if (!isset(self::$storage[$fq_classlike_name_lc])) {
-            throw new InvalidArgumentException('Could not get class storage for ' . $fq_classlike_name_lc);
+        $storage = self::$storage[strtolower($fq_classlike_name)] ?? null;
+        if ($storage === null) {
+            return null;
         }
 
-        /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        $storage = self::$storage[$fq_classlike_name_lc];
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
         self::$by_spelling[$fq_classlike_name] = $storage;
         return $storage;

@@ -176,9 +176,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         MethodIdentifier $method_id,
         bool $with_pseudo = false,
     ): ?int {
-        try {
-            $method_storage = $codebase->methods->getStorage($method_id, $with_pseudo);
-        } catch (UnexpectedValueException) {
+        $method_storage = $codebase->methods->getStorageOrNull($method_id, $with_pseudo);
+        if ($method_storage === null) {
             return null;
         }
 

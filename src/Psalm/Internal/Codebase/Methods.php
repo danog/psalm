@@ -1112,10 +1112,32 @@ final class Methods
     /** @psalm-mutation-free */
     public function getStorage(MethodIdentifier $method_id, bool $with_pseudo = false): MethodStorage
     {
-        try {
-            $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
-        } catch (InvalidArgumentException $e) {
-            throw new UnexpectedValueException($e->getMessage());
+        $method_storage = $this->getStorageOrNull($method_id, $with_pseudo);
+        if ($method_storage === null) {
+            if (!$this->classlike_storage_provider->has($method_id->fq_class_name)) {
+                throw new UnexpectedValueException(
+                    'Could not get class storage for ' . strtolower($method_id->fq_class_name),
+                );
+            }
+
+            throw new UnexpectedValueException(
+                '$storage should not be null for ' . $method_id,
+            );
+        }
+
+        return $method_storage;
+    }
+
+    /**
+     * The storage of a method, null when its class or the method is unknown (see getStorage()).
+     *
+     * @psalm-mutation-free
+     */
+    public function getStorageOrNull(MethodIdentifier $method_id, bool $with_pseudo = false): ?MethodStorage
+    {
+        $class_storage = $this->classlike_storage_provider->getOrNull($method_id->fq_class_name);
+        if ($class_storage === null) {
+            return null;
         }
 
         $method_name = $method_id->method_name;
@@ -1124,12 +1146,6 @@ final class Methods
             $method_storage = $class_storage->pseudo_methods[$method_name]
                 ?? $class_storage->pseudo_static_methods[$method_name]
                 ?? null;
-        }
-
-        if ($method_storage === null) {
-            throw new UnexpectedValueException(
-                '$storage should not be null for ' . $method_id,
-            );
         }
 
         return $method_storage;
