@@ -19,7 +19,9 @@ use Psalm\Exception\UnresolvableConstantException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
+use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
+use Psalm\Internal\Analyzer\Statements\Expression\DestructorAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
 use Psalm\Internal\Codebase\MutationInfo;
@@ -31,6 +33,7 @@ use Psalm\Internal\PhpVisitor\NodeCounterVisitor;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
+use Psalm\Internal\Type\IterationPurity;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -55,18 +58,21 @@ use Psalm\Issue\UnusedClosureParam;
 use Psalm\Issue\UnusedDocblockParam;
 use Psalm\Issue\UnusedParam;
 use Psalm\IssueBuffer;
+use Psalm\Node\Expr\VirtualPropertyFetch;
 use Psalm\Node\Expr\VirtualVariable;
 use Psalm\Node\Stmt\VirtualWhile;
+use Psalm\Node\VirtualIdentifier;
 use Psalm\Node\VirtualNode;
 use Psalm\Plugin\EventHandler\Event\AfterFunctionLikeAnalysisEvent;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\FunctionStorage;
 use Psalm\Storage\MethodStorage;
-use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
+use Psalm\Type\Atomic\TCapabilities;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TMixed;
@@ -79,16 +85,15 @@ use function array_combine;
 use function array_diff_key;
 use function array_key_exists;
 use function array_keys;
+use function array_map;
 use function array_merge;
 use function array_search;
 use function array_values;
 use function count;
 use function end;
-use function implode;
 use function in_array;
 use function is_string;
 use function krsort;
-use function max;
 use function mb_strpos;
 use function md5;
 use function microtime;
@@ -97,6 +102,7 @@ use function str_ends_with;
 use function str_starts_with;
 use function strpos;
 use function strtolower;
+use function strval;
 use function substr;
 
 use const SORT_NUMERIC;
@@ -135,16 +141,13 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
     public bool $track_mutations = false;
 
-    /** @var Mutations::LEVEL_* */
-    public int $inferred_mutations = Mutations::LEVEL_NONE;
+    public int $inferred_capabilities = Capabilities::NONE;
 
     /**
      * The mutations performed by this function-like itself, excluding those of
      * the unannotated callees in $deferred_callees.
-     *
-     * @var Mutations::LEVEL_*
      */
-    public int $intrinsic_mutations = Mutations::LEVEL_NONE;
+    public int $intrinsic_capabilities = Capabilities::NONE;
 
     /**
      * The unannotated project function-likes called by this function-like
@@ -154,6 +157,32 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * @var array<string, bool>
      */
     public array $deferred_callees = [];
+
+    /**
+     * Whether the parameter default values are being analysed: what they do is recorded in
+     * $param_default_intrinsic_capabilities and $param_default_callees instead.
+     */
+    public bool $tracking_param_defaults = false;
+
+    /**
+     * The mutations performed by the parameter default values themselves.
+     */
+    public int $param_default_intrinsic_capabilities = Capabilities::NONE;
+
+    /**
+     * The unannotated project function-likes called by the parameter default values.
+     *
+     * @var array<string, bool>
+     */
+    public array $param_default_callees = [];
+
+    /**
+     * The purity templates of the enclosing scopes this closure called closures of: its purity
+     * depends on them, so its type carries them (name => template).
+     *
+     * @var array<string, TTemplateParam>
+     */
+    public array $used_purity_templates = [];
 
     /**
      * Holds param nodes for functions with func_get_args calls
@@ -375,6 +404,19 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             );
         }
 
+        $context->capabilities = $storage->capabilities;
+        if ($storage instanceof MethodStorage) {
+            if (
+                // Allow constructors to mutate (override immutability)
+                str_ends_with((string) $storage->cased_name, '__construct')
+
+                // ???
+                || $storage->mutation_free_assumed
+            ) {
+                $context->capabilities |= Capabilities::EXTERNAL_MUTATION_FREE;
+            }
+        }
+
         $check_stmts = $this->processParams(
             $statements_analyzer,
             $storage,
@@ -384,6 +426,22 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $context,
             (bool) $template_types,
         );
+
+        $this->taintPromotedProperties($statements_analyzer, $context);
+        // the context of an arrow function is that of the function-like it is in
+        $context->by_ref_param_out_nodes = [];
+
+        // see ArgumentsAnalyzer::getByRefParamOutNode() and FunctionCallReturnTypeFetcher::taintCallableReturnType()
+        $out_method_id = $cased_method_id ?? ($this instanceof ClosureAnalyzer ? $this->getClosureId() : null);
+
+        if ($out_method_id !== null && $codebase->taint_flow_graph) {
+            foreach ($storage->params as $offset => $param) {
+                if ($param->by_ref) {
+                    $context->by_ref_param_out_nodes['$' . $param->name]
+                        = DataFlowNode::getForMethodArgumentOut($out_method_id, $offset, $storage);
+                }
+            }
+        }
 
         if ($byref_uses) {
             $ref_context = clone $context;
@@ -405,27 +463,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             );
 
             foreach ($byref_uses as $var_id => $_) {
-                $byref_vars[$var_id] = $ref_context->vars_in_scope[$var_id];
-                $context->vars_in_scope[$var_id] = $ref_context->vars_in_scope[$var_id];
+                // unsetting the variable only drops the closure's own reference to it: what the
+                // closure wrote through the reference before is not known anymore
+                $byref_type = $ref_context->vars_in_scope[$var_id] ?? Type::getMixed();
+
+                $byref_vars[$var_id] = $byref_type;
+                $context->vars_in_scope[$var_id] = $byref_type;
             }
         }
-
-        $context->allowed_mutations = $storage->allowed_mutations;
-        if ($storage instanceof MethodStorage) {
-            if (
-                // Allow constructors to mutate (override immutability)
-                str_ends_with((string) $storage->cased_name, '__construct')
-
-                // ???
-                || $storage->mutation_free_assumed
-            ) {
-                $context->allowed_mutations = max(
-                    $context->allowed_mutations,
-                    Mutations::LEVEL_INTERNAL_READ_WRITE,
-                );
-            }
-        }
-
 
         foreach ($storage->unused_docblock_parameters as $param_name => $param_location) {
             if ($storage->has_undertyped_native_parameters) {
@@ -480,6 +525,32 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $check_stmts = false;
         }
 
+        // the type @psalm-self-out gives is checked like a @return type: its classes must exist, and its
+        // template and purity arguments must fit their bounds
+        if ($storage instanceof MethodStorage && $storage->self_out_type && $storage->self_out_type_location) {
+            $classlike_storage = $context->self ? $codebase->classlike_storage_provider->get($context->self) : null;
+
+            /** @psalm-suppress UnusedMethodCall This call actually has the side effect of creating issues */
+            TypeExpander::expandUnion(
+                $codebase,
+                $storage->self_out_type,
+                $classlike_storage->name ?? null,
+                $classlike_storage->name ?? null,
+                $classlike_storage->parent_class ?? null,
+                true,
+                true,
+            )->setFromDocblock()->check(
+                $this,
+                $storage->self_out_type_location,
+                $storage->suppressed_issues,
+                [],
+                false,
+                false,
+                false,
+                $context,
+            );
+        }
+
         if (!$check_stmts) {
             return false;
         }
@@ -523,6 +594,22 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         $statements_analyzer->analyze($function_stmts, $context, $global_context);
 
+        // the objects created here that are still held when the function-like ends die with it
+        $param_ids = [];
+
+        foreach ($this->function->params as $param) {
+            if ($param->var instanceof PhpParser\Node\Expr\Variable && is_string($param->var->name)) {
+                $param_ids['$' . $param->var->name] = true;
+            }
+        }
+
+        DestructorAnalyzer::chargeDroppedObjects(
+            $statements_analyzer,
+            $context,
+            array_values($function_stmts),
+            $param_ids,
+        );
+
         if ($statements_analyzer->owns_type_variable_tracker) {
             $statements_analyzer->type_variable_tracker->reconcile(
                 $codebase,
@@ -535,29 +622,28 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             && ($this->function instanceof Function_
                 || $this->function instanceof ClassMethod
                 || $this->function instanceof Closure
+                || $this->function instanceof ArrowFunction
             )
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
             if ($storage instanceof MethodStorage
                 && $storage->has_mutations_annotation
-                && $storage->containing_class_allowed_mutations < $storage->allowed_mutations
+                && !Capabilities::allows($storage->containing_class_capabilities, $storage->capabilities)
             ) {
                 IssueBuffer::maybeAdd(
                     new ImpureFunctionCall(
-                        $storage->cased_name . ' is marked @'.Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[
-                            $storage->allowed_mutations
-                        ].' but its containing class is marked with a lower level of allowed mutations'
-                        .', @'.Mutations::TO_ATTRIBUTE_CLASSLIKE[
-                            $storage->containing_class_allowed_mutations
-                        ],
+                        $storage->cased_name . ' is marked @'
+                            . Capabilities::toFunctionAnnotation($storage->capabilities)
+                            . ' but its containing class allows fewer capabilities'
+                        .', @'.Capabilities::toClassAnnotation($storage->containing_class_capabilities),
                         $storage->location,
                     ),
                     $storage->suppressed_issues,
                 );
             }
 
-            if ($this->function->stmts === null) {
+            if ($this->function->getStmts() === null) {
                 $isVoid = $storage->return_type
                     ? $storage->return_type->isVoid()
                     : false;
@@ -582,30 +668,36 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
             if ($isVoid
                 && !$this->function instanceof Closure
+                && !$this->function instanceof ArrowFunction
                 && !(
                     $storage->throw_locations
                     || $storage->throws
                 )
+                // its effects may be those of the closures it is given
+                && $storage->purity_from_templates === []
             ) {
-                $this->signalMutation(
-                    Mutations::LEVEL_INTERNAL_READ,
-                    $context,
-                    'pure functions cannot have void return type'
-                    .' (at least one non-empty return statement or @throws annotation is required)',
-                    ImpureFunctionCall::class,
-                    $this->function,
-                    null,
-                    true,
-                );
+                // a function that may neither read state nor have an effect (no write, no
+                // by-reference write, no IO) and returns nothing is useless: not pure by intent
+                $this->signalMutationOnlyInferred(Capabilities::MUTATION_FREE);
+
+                if (Capabilities::allows(Capabilities::READ_GLOBALS, $context->capabilities)) {
+                    IssueBuffer::maybeAdd(
+                        new ImpureFunctionCall(
+                            'pure functions cannot have void return type'
+                            . ' (at least one non-empty return statement or @throws annotation is required)',
+                            new CodeLocation($this, $this->function),
+                        ),
+                        $this->getSuppressedIssues(),
+                    );
+                }
             }
 
-            if ($this->function->stmts === null) {
+            if ($this->function->getStmts() === null) {
                 if (!$storage->has_mutations_annotation && $storage->location) {
                     IssueBuffer::maybeAdd(
                         new MissingAbstractPureAnnotation(
-                            $storage->cased_name . ' must be marked with one of @'
-                            .implode(', @', Mutations::TO_ATTRIBUTE_FUNCTIONLIKE)
-                            .' to aid security analysis',
+                            $storage->cased_name . ' must be marked with one of @psalm-pure,'
+                            . ' @psalm-capabilities or @psalm-impure to aid security analysis',
                             $storage->location,
                         ),
                         $storage->suppressed_issues,
@@ -615,18 +707,32 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 // the final level depends on the callees' levels: resolved after analysis,
                 // which reports MissingPureAnnotation and queues the fix (see MutationLevelResolver)
                 $codebase->code_use_graph->addMutationInfo($node_id, new MutationInfo(
-                    $this->intrinsic_mutations,
-                    $storage->allowed_mutations,
-                    $this->deferred_callees,
-                    $storage->location,
-                    $storage->cased_name ?? '{closure}',
-                    $storage->suppressed_issues,
-                    $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
-                    $this->function->getStartFilePos(),
-                    true,
-                    // inline callbacks are not worth annotating, closures assigned to a variable are
-                    !$this->function instanceof Closure
-                        || $this->function->getAttributes()->assigned_var_id !== null,
+                    // the calls of an unannotated overridden method may run any of its overrides,
+                    // which could do anything: annotating it would restrict them
+                    intrinsic: $storage instanceof MethodStorage
+                        && $storage->overridden_somewhere
+                        && !$storage->has_mutations_annotation
+                            ? Capabilities::ALL
+                            : $this->intrinsic_capabilities,
+                    allowed: $storage->capabilities,
+                    callees: $this->deferred_callees,
+                    default_intrinsic: $this->param_default_intrinsic_capabilities,
+                    default_callees: $this->param_default_callees,
+                    location: $storage->location,
+                    cased_name: $storage->cased_name ?? '{closure}',
+                    suppressed_issues: $storage->suppressed_issues,
+                    class: $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
+                    start: $this->function->getStartFilePos(),
+                    fresh: true,
+                    // inline callbacks are not worth annotating, closures assigned to a variable are;
+                    // an explicit `@psalm-impure` is a deliberate choice (e.g. a hook overrides may use
+                    // freely), not a missing annotation, and so is the explicit annotation of an
+                    // overridden method: it is what its overrides may do, not what its own body does
+                    report: (!($this->function instanceof Closure || $this->function instanceof ArrowFunction)
+                            || $this->function->getAttributes()->assigned_var_id !== null)
+                        && !($storage->has_mutations_annotation
+                            && ($storage->capabilities === Capabilities::ALL
+                                || ($storage instanceof MethodStorage && $storage->overridden_somewhere))),
                 ));
             }
         }
@@ -745,18 +851,36 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $new_closure_return_type = $closure_return_type;
                 }
 
+                // the closure's purity: what its body does, plus the purity templates of the
+                // enclosing scopes it relies on
+                $closure_purity = self::getClosurePurity($this->inferred_capabilities, $this->used_purity_templates);
+
+                // consuming the generator a generator closure returns runs its body; the generator
+                // is a new one at every call
+                if ($storage->has_yield && $new_closure_return_type !== null) {
+                    $new_closure_return_type = IterationPurity::bindGenerators(
+                        $new_closure_return_type,
+                        self::getClosurePurity(
+                            $this->inferred_capabilities & ~Capabilities::READ_PROPS,
+                            $this->used_purity_templates,
+                        ),
+                    )->setProperties(['reference_free' => true]);
+                }
+
+                // a closure is a fresh object: its enclosing scope may call it freely
                 $statements_analyzer->node_data->setType(
                     $this->function,
                     new Union([
                         new TClosure(
                             $closure_atomic->params,
                             $new_closure_return_type,
-                            $this->inferred_mutations,
+                            $closure_purity,
                             $closure_atomic->byref_uses,
                             $closure_atomic->extra_types,
                             $closure_atomic->from_docblock,
+                            $closure_atomic->callable_id,
                         ),
-                    ]),
+                    ], ['reference_free' => true]),
                 );
             }
         }
@@ -884,23 +1008,40 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             && $this->function instanceof ClassMethod
             && $cased_method_id
             && $storage->specialize_call
+            && $storage->location
             && isset($context->vars_in_scope['$this'])
             && $context->vars_in_scope['$this']->parent_nodes
         ) {
-            $method_source = DataFlowNode::getForMethodReturn(
-                $cased_method_id,
-                $storage,
-            );
+            // what the method leaves in the object, apart from what it returns: see MethodCallReturnTypeFetcher
+            $this_out_node = DataFlowNode::getForAssignment('$this out of ' . $cased_method_id, $storage->location);
 
-            $codebase->taint_flow_graph->addNode($method_source);
+            $codebase->taint_flow_graph->addNode($this_out_node);
 
             foreach ($context->vars_in_scope['$this']->parent_nodes as $parent_node) {
                 $codebase->taint_flow_graph->addPath(
                     $parent_node,
-                    $method_source,
+                    $this_out_node,
                     '$this',
                 );
             }
+        }
+
+        // what the end of the function-like leaves in its by-reference parameters (see ReturnAnalyzer
+        // for what each return leaves)
+        self::taintByRefParamsOut($codebase, $context);
+
+        if ($cased_method_id !== null
+            && $this instanceof MethodAnalyzer
+            && $context->self !== null
+            && $overridden_method_ids
+        ) {
+            self::taintOverriddenByRefParamsOut(
+                $codebase,
+                $storage,
+                $cased_method_id,
+                $context->self,
+                $overridden_method_ids,
+            );
         }
 
         // Class methods are analyzed deferred, therefor it's required to
@@ -1091,6 +1232,211 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
+     * The values the by-reference parameters of a function-like hold where it returns, with $context,
+     * flow into what the variables passed to them hold after the call (see
+     * ArgumentsAnalyzer::handlePossiblyMatchingByRefParam()).
+     */
+    public static function taintByRefParamsOut(Codebase $codebase, Context $context): void
+    {
+        foreach ($context->by_ref_param_out_nodes as $var_id => $_) {
+            self::taintByRefParamOut($codebase, $context, $var_id);
+        }
+    }
+
+    /**
+     * The by-reference parameter $var_id stops referencing the variable passed to it (unset(), =&, global,
+     * static, ...): that variable keeps what the parameter holds now.
+     */
+    public static function unbindByRefParam(Codebase $codebase, Context $context, string $var_id): void
+    {
+        if (isset($context->by_ref_param_out_nodes[$var_id])) {
+            self::taintByRefParamOut($codebase, $context, $var_id);
+
+            unset($context->by_ref_param_out_nodes[$var_id]);
+        }
+    }
+
+    private static function taintByRefParamOut(Codebase $codebase, Context $context, string $var_id): void
+    {
+        if (!$codebase->taint_flow_graph
+            || !isset($context->by_ref_param_out_nodes[$var_id])
+            || !isset($context->vars_in_scope[$var_id])
+        ) {
+            return;
+        }
+
+        $out_node = $context->by_ref_param_out_nodes[$var_id];
+
+        $codebase->taint_flow_graph->addNode($out_node);
+
+        foreach ($context->vars_in_scope[$var_id]->parent_nodes as $parent_node) {
+            $codebase->taint_flow_graph->addPath($parent_node, $out_node, 'param-out');
+        }
+    }
+
+    /**
+     * The method id of the out nodes of the by-reference parameters of a method called as $method_id
+     * (see DataFlowNode::getForMethodArgumentOut()): the body of a method of a trait is analyzed as one
+     * of each class using it.
+     *
+     * @psalm-capabilities read-props
+     */
+    public static function getByRefParamsOutMethodId(Codebase $codebase, MethodIdentifier $method_id): string
+    {
+        $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id;
+        $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id) ?? $declaring_method_id;
+
+        return $appearing_method_id->fq_class_name
+            . '::' . $codebase->methods->getStorage($declaring_method_id)->cased_name;
+    }
+
+    /**
+     * A call of a method a method overrides may run it: what it leaves in its by-reference parameters is
+     * left to that call too.
+     *
+     * @param array<string, MethodIdentifier> $overridden_method_ids
+     */
+    private static function taintOverriddenByRefParamsOut(
+        Codebase $codebase,
+        FunctionLikeStorage $storage,
+        string $cased_method_id,
+        string $fq_class_name,
+        array $overridden_method_ids,
+    ): void {
+        if (!$codebase->taint_flow_graph) {
+            return;
+        }
+
+        $overridden_method_ids = array_map(strval(...), $overridden_method_ids);
+        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+
+        // the classes a method overridden is called through (see getByRefParamsOutMethodId())
+        foreach ($class_storage->parent_classes + $class_storage->class_implements as $ancestor) {
+            $ancestor_method_id = new MethodIdentifier($ancestor, strtolower((string) $storage->cased_name));
+            $declaring_method_id = $codebase->methods->getDeclaringMethodId($ancestor_method_id);
+
+            if ($declaring_method_id === null
+                || !in_array((string) $declaring_method_id, $overridden_method_ids, true)
+            ) {
+                continue;
+            }
+
+            $overridden_storage = $codebase->methods->getStorage($declaring_method_id);
+            $overridden_cased_method_id = self::getByRefParamsOutMethodId($codebase, $ancestor_method_id);
+
+            foreach ($storage->params as $offset => $param) {
+                if (!$param->by_ref
+                    || !isset($overridden_storage->params[$offset])
+                    || !$overridden_storage->params[$offset]->by_ref
+                ) {
+                    continue;
+                }
+
+                $out_node = DataFlowNode::getForMethodArgumentOut($cased_method_id, $offset, $storage);
+                $overridden_out_node = DataFlowNode::getForMethodArgumentOut(
+                    $overridden_cased_method_id,
+                    $offset,
+                    $overridden_storage,
+                );
+
+                $codebase->taint_flow_graph->addNode($out_node);
+                $codebase->taint_flow_graph->addNode($overridden_out_node);
+                $codebase->taint_flow_graph->addPath($out_node, $overridden_out_node, 'param-out');
+            }
+        }
+    }
+
+    /**
+     * @param list<FunctionLikeParameter> $params
+     * @param list<Param> $param_stmts
+     */
+    /**
+     * Analyses a parameter default value. Like in Hack, a default value is evaluated with no
+     * capabilities, or with the globals when the function-like may write them, whatever the
+     * function-like may otherwise do. Function-likes without a purity annotation are not
+     * restricted, so `new` in the defaults of unannotated code stays free.
+     */
+    private function analyzeParamDefault(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $default,
+        Context $context,
+    ): void {
+        $capabilities = $context->capabilities;
+        $track_mutations = $this->track_mutations;
+
+        $context->capabilities = self::getParamDefaultCapabilities($capabilities);
+        $context->inside_param_default = true;
+        // what the default values do is recorded separately: an annotation of the function-like
+        // must allow them to do it (see MutationLevelResolver)
+        $this->track_mutations = true;
+        $this->tracking_param_defaults = true;
+
+        ExpressionAnalyzer::analyze($statements_analyzer, $default, $context);
+
+        $this->tracking_param_defaults = false;
+        $this->track_mutations = $track_mutations;
+        $context->inside_param_default = false;
+        $context->capabilities = $capabilities;
+    }
+
+    /**
+     * The capabilities the parameter default values of a function-like with $capabilities may use.
+     *
+     * @psalm-pure
+     */
+    public static function getParamDefaultCapabilities(int $capabilities): int
+    {
+        if ($capabilities === Capabilities::ALL) {
+            return Capabilities::ALL;
+        }
+
+        return ($capabilities & Capabilities::WRITE_GLOBALS) !== 0
+            ? $capabilities & (Capabilities::READ_GLOBALS | Capabilities::WRITE_GLOBALS)
+            : Capabilities::NONE;
+    }
+
+    /**
+     * A promoted constructor parameter is assigned to its property: what the constructor is given flows into it,
+     * as with `$this->name = $name`.
+     */
+    private function taintPromotedProperties(StatementsAnalyzer $statements_analyzer, Context $context): void
+    {
+        if (!$statements_analyzer->getCodebase()->taint_flow_graph
+            || !$this->function instanceof ClassMethod
+            || $this->function->name->toLowerString() !== '__construct'
+            || !isset($context->vars_in_scope['$this'])
+        ) {
+            return;
+        }
+
+        foreach ($this->function->params as $param) {
+            $var = $param->var;
+            if (!$param->isPromoted() || !$var instanceof PhpParser\Node\Expr\Variable || !is_string($var->name)) {
+                continue;
+            }
+
+            $name = $var->name;
+            if (!isset($context->vars_in_scope['$' . $name])) {
+                continue;
+            }
+
+            $attributes = $param->getAttributes();
+            InstancePropertyAssignmentAnalyzer::analyze(
+                $statements_analyzer,
+                new VirtualPropertyFetch(
+                    new VirtualVariable('this', $attributes),
+                    new VirtualIdentifier($name, $attributes),
+                    $attributes,
+                ),
+                $name,
+                new VirtualVariable($name, $var->getAttributes()),
+                $context->vars_in_scope['$' . $name],
+                $context,
+            );
+        }
+    }
+
+    /**
      * @param list<FunctionLikeParameter> $params
      * @param list<Param> $param_stmts
      */
@@ -1150,9 +1496,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                 $statements_analyzer->data_flow_graph->addNode($param_assignment);
 
-                if ($cased_method_id !== null) {
+                // the arguments a closure is called with through a variable flow into its parameters, see
+                // FunctionCallReturnTypeFetcher::taintCallableReturnType()
+                $param_method_id = $cased_method_id
+                    ?? ($this instanceof ClosureAnalyzer ? $this->getClosureId() : null);
+
+                if ($param_method_id !== null) {
                     $type_source = DataFlowNode::getForMethodArgument(
-                        $cased_method_id,
+                        $param_method_id,
                         $offset,
                         $storage,
                         null,
@@ -1269,7 +1620,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             if (!$function_param->type_location || !$function_param->location) {
                 if ($parser_param && $parser_param->default) {
-                    ExpressionAnalyzer::analyze($statements_analyzer, $parser_param->default, $context);
+                    $this->analyzeParamDefault($statements_analyzer, $parser_param->default, $context);
                 }
 
                 continue;
@@ -1320,7 +1671,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
 
             if ($parser_param && $parser_param->default) {
-                ExpressionAnalyzer::analyze($statements_analyzer, $parser_param->default, $context);
+                $this->analyzeParamDefault($statements_analyzer, $parser_param->default, $context);
 
                 $default_type = $statements_analyzer->node_data->getType($parser_param->default);
 
@@ -1750,6 +2101,32 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         return $this->getClosureId();
     }
 
+    /**
+     * The storage this analyzer was created with (the one of the function-like being analysed).
+     *
+     * @psalm-mutation-free
+     */
+    public function getStorage(): FunctionLikeStorage
+    {
+        return $this->storage;
+    }
+
+    /**
+     * A purity made of capabilities and purity templates, where no capabilities (`pure`) are left
+     * out of a union with templates: `P|pure` is just `P`.
+     *
+     * @param array<string, TTemplateParam> $templates
+     * @psalm-pure
+     */
+    private static function getClosurePurity(int $capabilities, array $templates): Union
+    {
+        if ($capabilities === Capabilities::NONE && $templates !== []) {
+            return new Union(array_values($templates));
+        }
+
+        return new Union([new TCapabilities($capabilities), ...array_values($templates)]);
+    }
+
     public function getFunctionLikeStorage(?StatementsAnalyzer $statements_analyzer = null): FunctionLikeStorage
     {
         $codebase = $this->codebase;
@@ -1986,7 +2363,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         return null;
                     }
                 }
-            } elseif ($context->self) {
+            } elseif ($context->self !== null) {
                 if ($appearing_class_storage->template_types) {
                     $template_params = [];
 
@@ -2219,15 +2596,16 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $closure_type = new TClosure(
                 $storage->params,
                 $closure_return_type,
-                $storage->allowed_mutations,
+                $storage->capabilities,
                 $storage instanceof FunctionStorage ? $storage->byref_uses : [],
+                callable_id: $this->getClosureId(),
             );
 
             $type_provider->setType(
                 $this->function,
                 new Union([
                     $closure_type,
-                ]),
+                ], ['reference_free' => true]),
             );
         } else {
             throw new UnexpectedValueException('Impossible');

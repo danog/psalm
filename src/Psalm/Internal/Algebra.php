@@ -80,7 +80,7 @@ final class Algebra
      *
      * @param list<Clause>  $clauses
      * @return list<Clause>
-     * @psalm-pure
+     * @psalm-capabilities write-refs
      */
     public static function simplifyCNF(array $clauses): array
     {
@@ -369,6 +369,7 @@ final class Algebra
      * @param  array<string, bool> $cond_referenced_var_ids
      * @param  array<string, array<int, list<Assertion>>> $active_truths
      * @return array<string, list<list<Assertion>>>
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public static function getTruthsFromFormula(
         array $clauses,

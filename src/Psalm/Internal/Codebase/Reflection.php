@@ -11,11 +11,11 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionStorage;
 use Psalm\Storage\MethodStorage;
-use Psalm\Storage\Mutations;
 use Psalm\Storage\PropertyStorage;
 use Psalm\Type;
 use Psalm\Type\Union;
@@ -43,6 +43,17 @@ use const PHP_VERSION_ID;
  */
 final class Reflection
 {
+    /**
+     * Builtin methods known to have no effect. Creating or rebinding a closure is not an effect:
+     * what the closure does is carried by its type, which ClosureReturnTypeProvider keeps.
+     */
+    private const PURE_METHODS = [
+        'datetimezone::__construct' => true,
+        'closure::bind' => true,
+        'closure::bindto' => true,
+        'closure::fromcallable' => true,
+    ];
+
     /**
      * @var array<string, FunctionStorage>
      */
@@ -256,6 +267,7 @@ final class Reflection
 
         $storage->cased_name = $method->name;
         $storage->defining_fqcln = $method->class;
+        $storage->builtin = $method->isInternal();
 
         if ($method_name_lc === $fq_class_name_lc) {
             $this->codebase->methods->setDeclaringMethodId(
@@ -277,10 +289,10 @@ final class Reflection
         $storage->is_static = $method->isStatic();
         $storage->abstract = $method->isAbstract();
 
-        if ($method_name_lc === '__construct' && $fq_class_name_lc === 'datetimezone') {
-            $storage->allowed_mutations = Mutations::LEVEL_NONE;
+        if (isset(self::PURE_METHODS[$fq_class_name_lc . '::' . $method_name_lc])) {
+            $storage->capabilities = Capabilities::NONE;
         } else {
-            $storage->allowed_mutations = Mutations::LEVEL_ALL;
+            $storage->capabilities = Capabilities::ALL;
         }
 
         $class_storage->declaring_method_ids[$method_name_lc] = new MethodIdentifier(
@@ -311,6 +323,7 @@ final class Reflection
             }
 
             $storage->setParams($callables[0]->params);
+            InternalCallMapHandler::addReturnTaintFlows($storage, $method_id);
 
             $storage->return_type = $callables[0]->return_type;
             /** @psalm-suppress UnusedMethodCall */
@@ -380,6 +393,7 @@ final class Reflection
             }
 
             $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+            $storage->builtin = $reflection_function->isInternal();
 
             if (InternalCallMapHandler::inCallMap($function_id)) {
                 $callmap_callable = InternalCallMapHandler::getCallableFromCallMapById(
@@ -395,6 +409,7 @@ final class Reflection
                 && $callmap_callable->return_type !== null
             ) {
                 $storage->setParams($callmap_callable->params);
+                InternalCallMapHandler::addReturnTaintFlows($storage, $function_id);
                 $storage->return_type = $callmap_callable->return_type;
             } else {
                 $reflection_params = $reflection_function->getParameters();
@@ -413,7 +428,7 @@ final class Reflection
                 }
             }
 
-            $storage->allowed_mutations = Mutations::LEVEL_NONE;
+            $storage->capabilities = Capabilities::NONE;
 
             $storage->required_param_count = 0;
 

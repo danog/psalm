@@ -31,6 +31,7 @@ use function get_object_vars;
  *      from_calculation?: bool,
  *      from_property?: bool,
  *      from_static_property?: bool,
+ *      from_global_state?: bool,
  *      initialized?: bool,
  *      initialized_class?: ?string,
  *      checked?: bool,
@@ -87,6 +88,13 @@ final class Union implements TypeNode
      * like __construct() to be initialized in
      */
     public bool $from_static_property = false;
+
+    /**
+     * Whether the value was reached from global state: read from a static property, a
+     * superglobal or a `global` variable, returned by a callee that reads globals, or fetched
+     * from such a value. Mutating it needs the write-globals capability.
+     */
+    public bool $from_global_state = false;
 
     /**
      * Whether the property that this type has been derived from has been initialized in a constructor
@@ -182,6 +190,7 @@ final class Union implements TypeNode
         'from_calculation' => 'from_calculation',
         'from_property' => 'from_property',
         'from_static_property' => 'from_static_property',
+        'from_global_state' => 'from_global_state',
         'initialized' => 'initialized',
         'initialized_class' => 'initialized_class',
         'checked' => 'checked',
@@ -233,6 +242,7 @@ final class Union implements TypeNode
         return $this->hasCombineEquivalentAtomics($other)
             && $this->from_docblock === $other->from_docblock
             && $this->from_calculation === $other->from_calculation
+            && $this->from_global_state === $other->from_global_state
             && $this->ignore_nullable_issues === $other->ignore_nullable_issues
             && $this->ignore_falsable_issues === $other->ignore_falsable_issues
             && $this->reference_free === $other->reference_free
@@ -348,6 +358,10 @@ final class Union implements TypeNode
             $obj ??= clone $this;
             $obj->from_static_property = $properties['from_static_property'];
         }
+        if (array_key_exists('from_global_state', $properties) && $this->from_global_state !== $properties['from_global_state']) {
+            $obj ??= clone $this;
+            $obj->from_global_state = $properties['from_global_state'];
+        }
         if (array_key_exists('initialized', $properties) && $this->initialized !== $properties['initialized']) {
             $obj ??= clone $this;
             $obj->initialized = $properties['initialized'];
@@ -461,7 +475,7 @@ final class Union implements TypeNode
         if (!$parent_nodes) {
             return $this;
         }
-        $parent_nodes = $this->parent_nodes + $parent_nodes;
+        $parent_nodes = DataFlowNode::combineParentNodes($this->parent_nodes, $parent_nodes);
         if ($parent_nodes === $this->parent_nodes) {
             return $this;
         }

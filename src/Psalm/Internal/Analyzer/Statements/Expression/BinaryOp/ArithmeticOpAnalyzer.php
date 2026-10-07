@@ -272,7 +272,7 @@ final class ArithmeticOpAnalyzer
             if ($has_string_increment && $statements_source) {
                 IssueBuffer::maybeAdd(
                     new StringIncrement(
-                        'Possibly unintended string increment',
+                        'Incrementing a non-numeric string is deprecated since PHP 8.5, use str_increment() instead',
                         new CodeLocation($statements_source, $left),
                     ),
                     $statements_source->getSuppressedIssues(),
@@ -1039,6 +1039,9 @@ final class ArithmeticOpAnalyzer
         return false;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private static function analyzeOperandsBetweenIntRange(
         PhpParser\Node $parent,
         ?Union &$result_type,
@@ -1140,6 +1143,7 @@ final class ArithmeticOpAnalyzer
     /**
      * @param TIntRange|TInt $left_type_part
      * @param TIntRange|TInt $right_type_part
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private static function analyzeOperandsBetweenIntRangeAndInt(
         PhpParser\Node $parent,
@@ -1157,6 +1161,9 @@ final class ArithmeticOpAnalyzer
         self::analyzeOperandsBetweenIntRange($parent, $result_type, $left_type_part, $right_type_part);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private static function analyzeMulBetweenIntRange(
         PhpParser\Node\Expr\BinaryOp\Mul $parent,
         ?Union &$result_type,
@@ -1334,6 +1341,9 @@ final class ArithmeticOpAnalyzer
         $result_type = Type::combineUnionTypes($new_result_type, $result_type);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private static function analyzePowBetweenIntRange(
         ?Union &$result_type,
         TIntRange $left_type_part,
@@ -1407,6 +1417,9 @@ final class ArithmeticOpAnalyzer
         $result_type = Type::combineUnionTypes($new_result_type, $result_type);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private static function analyzeModBetweenIntRange(
         ?Union &$result_type,
         TIntRange $left_type_part,

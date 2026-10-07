@@ -1918,6 +1918,9 @@ final class SimpleAssertionReconciler extends Reconciler
         return $intersection;
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     private static function reconcileHasArrayKey(
         Union $existing_var_type,
         HasArrayKey $assertion,
@@ -2876,6 +2879,7 @@ final class SimpleAssertionReconciler extends Reconciler
 
     /**
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private static function reconcileClassConstant(
         Codebase $codebase,

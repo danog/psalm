@@ -6,12 +6,14 @@ namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Storage\Capabilities;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TCallable;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
+use Psalm\Type\Atomic\TCapabilities;
 use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TConditional;
@@ -130,6 +132,52 @@ final class AtomicTypeComparator
 
         if ($input_type_part instanceof TNever) {
             return true;
+        }
+
+        if ($input_type_part instanceof TCapabilities || $container_type_part instanceof TCapabilities) {
+            // a purity template fits wherever its bound does
+            if ($input_type_part instanceof TTemplateParam) {
+                foreach ($input_type_part->as->getAtomicTypes() as $as_type_part) {
+                    if (!self::isContainedBy($codebase, $as_type_part, $container_type_part)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            // a conditional purity argument (`[$param is array ? pure : P]`) fits if both branches do
+            if ($input_type_part instanceof TConditional) {
+                $branch_type_parts = array_merge(
+                    array_values($input_type_part->if_type->getAtomicTypes()),
+                    array_values($input_type_part->else_type->getAtomicTypes()),
+                );
+
+                foreach ($branch_type_parts as $branch_type_part) {
+                    if (!self::isContainedBy($codebase, $branch_type_part, $container_type_part)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            // a capability set fits a purity template if every value of the template allows it,
+            // i.e. its lower bound does: `pure` fits `Closure[P]` for any P
+            if ($input_type_part instanceof TCapabilities
+                && $container_type_part instanceof TTemplateParam
+                && Capabilities::isPurityType($container_type_part->as)
+            ) {
+                return Capabilities::allows(
+                    self::getPurityTemplateLowerBound($codebase, $container_type_part),
+                    $input_type_part->capabilities,
+                );
+            }
+
+            // a capability set is a subtype of every superset: pure fits anywhere, impure only in impure
+            return $input_type_part instanceof TCapabilities
+                && $container_type_part instanceof TCapabilities
+                && Capabilities::allows($container_type_part->capabilities, $input_type_part->capabilities);
         }
 
         if ($input_type_part instanceof TMixed
@@ -867,5 +915,21 @@ final class AtomicTypeComparator
         ) || ($first_comparison_result->type_coerced
             && $second_comparison_result->type_coerced
         );
+    }
+
+    /**
+     * The capabilities every value of a purity template has: its lower bound
+     * (`@psalm-purity-template write-props <= C`), which only a class purity template can declare.
+     *
+     * @psalm-capabilities read-props
+     */
+    private static function getPurityTemplateLowerBound(Codebase $codebase, TTemplateParam $template): int
+    {
+        if (!$codebase->classlike_storage_provider->has($template->defining_class)) {
+            return Capabilities::NONE;
+        }
+
+        return $codebase->classlike_storage_provider->get($template->defining_class)
+            ->template_lower_bounds[$template->param_name] ?? Capabilities::NONE;
     }
 }

@@ -73,6 +73,9 @@ final class DocumentationTest extends TestCase
      */
     private const INTENTIONALLY_UNDOCUMENTED_ANNOTATIONS = [
         '@psalm-self-out', // Not documented as it's a legacy alias of @psalm-this-out
+        // Not documented as they are legacy aliases of @psalm-capabilities
+        '@psalm-mutation-free',
+        '@psalm-external-mutation-free',
         '@psalm-variadic',
     ];
 
@@ -343,6 +346,11 @@ final class DocumentationTest extends TestCase
                     $ignored_issues = ['MissingParamType'];
                     break;
 
+                case 'TaintedSSRF':
+                    // a URL can name a local file too
+                    $ignored_issues = ['TaintedFile'];
+                    break;
+
                 case 'UnusedClass':
                 case 'UnusedMethod':
                     $ignored_issues = ['UnusedVariable'];
@@ -369,6 +377,10 @@ final class DocumentationTest extends TestCase
                 case 'MissingOverrideAttribute':
                 case 'MissingClassConstType':
                     $php_version = '8.3';
+                    break;
+
+                case 'OverriddenFinalProperty':
+                    $php_version = '8.4';
                     break;
             }
             if (str_starts_with($issue_name, 'Taint')) {

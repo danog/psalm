@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Codebase;
 
 use Psalm\CodeLocation;
-use Psalm\Storage\Mutations;
 
 /**
  * The mutations performed by an analysed function-like.
@@ -19,15 +18,19 @@ use Psalm\Storage\Mutations;
 final class MutationInfo
 {
     /**
-     * @param Mutations::LEVEL_*  $intrinsic
-     * @param Mutations::LEVEL_*  $allowed
+     * @param int                 $intrinsic         the capabilities the body itself requires (a Capabilities bitmask)
+     * @param int                 $allowed           the capabilities the function-like is annotated with
      * @param array<string, bool> $callees
+     * @param int                 $default_intrinsic the capabilities its parameter defaults require
+     * @param array<string, bool> $default_callees   the unannotated function-likes its parameter defaults call
      * @param array<array-key, string>  $suppressed_issues
      */
     public function __construct(
         public int $intrinsic,
         public int $allowed,
         public array $callees,
+        public int $default_intrinsic,
+        public array $default_callees,
         public CodeLocation $location,
         public string $cased_name,
         public array $suppressed_issues,

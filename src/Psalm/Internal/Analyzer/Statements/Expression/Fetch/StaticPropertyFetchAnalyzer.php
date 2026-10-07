@@ -9,12 +9,14 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImpureStaticProperty;
+use Psalm\Issue\InvalidStringClass;
 use Psalm\Issue\ParentNotFound;
 use Psalm\Issue\UndefinedPropertyAssignment;
 use Psalm\Issue\UndefinedPropertyFetch;
@@ -23,16 +25,20 @@ use Psalm\Node\Expr\VirtualPropertyFetch;
 use Psalm\Node\Expr\VirtualStaticPropertyFetch;
 use Psalm\Node\Expr\VirtualVariable;
 use Psalm\Node\Name\VirtualFullyQualified;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
+use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TClassString;
+use Psalm\Type\Atomic\TDependentGetClass;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Atomic\TString;
 use Psalm\Type\Union;
 
 use function count;
 use function explode;
 use function in_array;
+use function ltrim;
 use function strtolower;
 
 /**
@@ -103,6 +109,7 @@ final class StaticPropertyFetchAnalyzer
                     new CodeLocation($statements_analyzer->getSource(), $stmt->class),
                     $context,
                     $statements_analyzer->getSuppressedIssues(),
+                    new ClassLikeNameOptions(context: $context),
                 ) !== true) {
                     return false;
                 }
@@ -194,9 +201,9 @@ final class StaticPropertyFetchAnalyzer
         }
 
         $statements_analyzer->signalMutation(
-            Mutations::LEVEL_INTERNAL_READ_WRITE,
+            Capabilities::READ_GLOBALS,
             $context,
-            'static property',
+            'reading a static property',
             ImpureStaticProperty::class,
             $stmt,
         );
@@ -328,6 +335,21 @@ final class StaticPropertyFetchAnalyzer
             return false;
         }
 
+        // unsetting a property is a write, so the set visibility applies
+        if ($context->inside_unset
+            && ClassLikeAnalyzer::checkPropertyVisibility(
+                $property_id,
+                $context,
+                $statements_analyzer,
+                new CodeLocation($statements_analyzer->getSource(), $stmt),
+                $statements_analyzer->getSuppressedIssues(),
+                true,
+                true,
+            ) === false
+        ) {
+            return false;
+        }
+
         $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
 
         if ($codebase->alter_code) {
@@ -448,28 +470,47 @@ final class StaticPropertyFetchAnalyzer
         foreach ($stmt_class_type->getAtomicTypes() as $class_atomic_type) {
             $statements_analyzer->node_data = clone $statements_analyzer->node_data;
 
-            $string_type = ($class_atomic_type instanceof TClassString
-                    && $class_atomic_type->as_type !== null)
-                ? $class_atomic_type->as_type->value
-                : ($class_atomic_type instanceof TLiteralString
-                    ? $class_atomic_type->value
-                    : null);
+            $fq_class_names = self::getClassNamesFromClassStringType($class_atomic_type);
 
-            if ($string_type) {
-                $new_stmt_name = new VirtualFullyQualified(
-                    $string_type,
-                    $stmt_class->getAttributes(),
-                );
+            if ($fq_class_names !== null) {
+                $fake_stmt_type = null;
 
-                $fake_static_property = new VirtualStaticPropertyFetch(
-                    $new_stmt_name,
-                    $stmt->name,
-                    $stmt->getAttributes(),
-                );
+                foreach ($fq_class_names as $fq_class_name) {
+                    $new_stmt_name = new VirtualFullyQualified(
+                        $fq_class_name,
+                        $stmt_class->getAttributes(),
+                    );
 
-                self::analyze($statements_analyzer, $fake_static_property, $context);
+                    $fake_static_property = new VirtualStaticPropertyFetch(
+                        $new_stmt_name,
+                        $stmt->name,
+                        $stmt->getAttributes(),
+                    );
 
-                $fake_stmt_type = $statements_analyzer->node_data->getType($fake_static_property) ?? Type::getMixed();
+                    self::analyze($statements_analyzer, $fake_static_property, $context);
+
+                    $fake_stmt_type = Type::combineUnionTypes(
+                        $fake_stmt_type,
+                        $statements_analyzer->node_data->getType($fake_static_property) ?? Type::getMixed(),
+                        $codebase,
+                    );
+                }
+            } elseif ($class_atomic_type instanceof TString) {
+                // A string that doesn't name a known class can't be analyzed as an object either
+                if (!$class_atomic_type instanceof TClassString
+                    && !$class_atomic_type instanceof TDependentGetClass
+                    && !$codebase->config->allow_string_standin_for_class
+                ) {
+                    IssueBuffer::maybeAdd(
+                        new InvalidStringClass(
+                            'String cannot be used as a class',
+                            new CodeLocation($statements_analyzer->getSource(), $stmt),
+                        ),
+                        $statements_analyzer->getSuppressedIssues(),
+                    );
+                }
+
+                $fake_stmt_type = Type::getMixed();
             } else {
                 $fake_var_name = '__fake_var_' . $stmt->getStartFilePos();
 
@@ -505,5 +546,42 @@ final class StaticPropertyFetchAnalyzer
         }
 
         $statements_analyzer->node_data->setType($stmt, $stmt_type);
+    }
+
+    /**
+     * Returns the classes named by a string type used as the class in `$class::$property`,
+     * or null when the type does not name specific classes.
+     *
+     * @return non-empty-list<string>|null
+     * @psalm-capabilities read-props
+     */
+    public static function getClassNamesFromClassStringType(Atomic $class_type): ?array
+    {
+        if ($class_type instanceof TClassString) {
+            return $class_type->as_type !== null ? [$class_type->as_type->value] : null;
+        }
+
+        if ($class_type instanceof TDependentGetClass) {
+            $fq_class_names = [];
+
+            foreach ($class_type->as_type->getAtomicTypes() as $object_type) {
+                if (!$object_type instanceof TNamedObject) {
+                    return null;
+                }
+
+                $fq_class_names[] = $object_type->value;
+            }
+
+            return $fq_class_names;
+        }
+
+        if ($class_type instanceof TLiteralString) {
+            // A class string is always fully qualified, so "\Foo" and "Foo" name the same class
+            $fq_class_name = ltrim($class_type->value, '\\');
+
+            return $fq_class_name !== '' ? [$fq_class_name] : null;
+        }
+
+        return null;
     }
 }

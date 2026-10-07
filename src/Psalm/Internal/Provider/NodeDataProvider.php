@@ -15,6 +15,7 @@ use Psalm\NodeTypeProvider;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Possibilities;
 use Psalm\Type\Union;
+use SplObjectStorage;
 
 use function spl_object_id;
 
@@ -30,12 +31,16 @@ final class NodeDataProvider implements NodeTypeProvider
      */
     private NodeDataStore $store;
 
+    /** @var SplObjectStorage<Expr, list<string>> */
+    private SplObjectStorage $node_literal_prefixes;
+
     public bool $cache_assertions = true;
 
     /** @psalm-mutation-free */
     public function __construct()
     {
         $this->store = new NodeDataStore();
+        $this->node_literal_prefixes = new SplObjectStorage();
     }
 
     #[Override]
@@ -123,6 +128,25 @@ final class NodeDataProvider implements NodeTypeProvider
         return $this->store->node_if_false_assertions[spl_object_id($node)] ?? null;
     }
 
+    /**
+     * The literal strings a string concatenation or interpolation can start with (see
+     * ConcatAnalyzer::getLiteralPrefixes())
+     *
+     * @param list<string> $prefixes
+     */
+    public function setLiteralPrefixes(Expr $node, array $prefixes): void
+    {
+        $this->node_literal_prefixes[$node] = $prefixes;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    public function getLiteralPrefixes(Expr $node): ?array
+    {
+        return $this->node_literal_prefixes[$node] ?? null;
+    }
+
     /** @psalm-mutation-free */
     public function isPureCompatible(Expr $node): bool
     {
@@ -135,5 +159,6 @@ final class NodeDataProvider implements NodeTypeProvider
     {
         $id = spl_object_id($node);
         unset($this->store->node_types[$id], $this->store->node_assertions[$id]);
+        unset($this->node_literal_prefixes[$node]);
     }
 }

@@ -180,7 +180,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 new CodeLocation($source, $stmt->var),
                 $context,
                 $statements_analyzer->getSuppressedIssues(),
-                new ClassLikeNameOptions(true, false, true, true, $lhs_type_part->from_docblock),
+                new ClassLikeNameOptions(true, false, true, true, $lhs_type_part->from_docblock, context: $context),
                 $context->check_classes,
             );
         }
@@ -226,7 +226,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                         $return_type_candidate = new Union([new TClosure(
                             $method_storage->params,
                             $method_storage->return_type,
-                            $method_storage->allowed_mutations,
+                            $method_storage->capabilities,
                         )]);
                     }
                 }
@@ -415,6 +415,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                     $all_intersection_return_type,
                     $result,
                     $lhs_type_part,
+                    $lhs_var_id,
                 );
 
                 if ($new_call_context) {
@@ -483,6 +484,15 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             return;
         }
+
+        MethodAnalyzer::checkMethodAvailability(
+            $codebase,
+            $method_id,
+            new CodeLocation($source, $stmt->name),
+            $statements_analyzer->getSuppressedIssues(),
+            false,
+            $context,
+        );
 
         $old_node_data = $statements_analyzer->node_data;
 
@@ -837,7 +847,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
     ): array {
         $naive_method_exists = false;
 
-        foreach ($class_storage->namedMixins as $mixin) {
+        foreach ($class_storage->getNamedMixinsForLookup() as $mixin) {
             if (!$class_storage->mixin_declaring_fqcln) {
                 continue;
             }

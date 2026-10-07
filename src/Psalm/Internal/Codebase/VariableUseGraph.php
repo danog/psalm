@@ -27,11 +27,24 @@ final class VariableUseGraph extends DataFlowGraph
     private array $origin_locations_by_id = [];
 
     /**
+     * @param ?TaintFlowGraph $taint_flow_graph The taint graph built alongside this one, if any: the
+     *                                          speculative specializations of its nodes are removed
+     *                                          here (see TaintFlowGraph::withoutSpeculativeSpecialization())
+     * @psalm-mutation-free
+     */
+    public function __construct(
+        private readonly ?TaintFlowGraph $taint_flow_graph = null,
+    ) {
+    }
+
+    /**
      * @psalm-external-mutation-free
      */
     #[Override]
     public function addNode(DataFlowNode $node): void
     {
+        $node = $this->taint_flow_graph?->withoutSpeculativeSpecialization($node) ?? $node;
+
         $this->nodes[$node->id] = $node;
     }
 
@@ -46,6 +59,11 @@ final class VariableUseGraph extends DataFlowGraph
         int $added_taints = 0,
         int $removed_taints = 0,
     ): void {
+        if ($this->taint_flow_graph) {
+            $from = $this->taint_flow_graph->withoutSpeculativeSpecialization($from);
+            $to = $this->taint_flow_graph->withoutSpeculativeSpecialization($to);
+        }
+
         $from_id = $from->id;
         $to_id = $to->id;
 
@@ -68,11 +86,14 @@ final class VariableUseGraph extends DataFlowGraph
         $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length);
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public function isVariableUsed(DataFlowNode $assignment_node): bool
     {
         $visited_source_ids = [];
 
-        $sources = [$assignment_node];
+        $sources = [$this->taint_flow_graph?->withoutSpeculativeSpecialization($assignment_node) ?? $assignment_node];
 
         for ($i = 0; count($sources) && $i < 200; $i++) {
             $new_child_nodes = [];
@@ -97,9 +118,13 @@ final class VariableUseGraph extends DataFlowGraph
 
     /**
      * @return list<CodeLocation>
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public function getOriginLocations(DataFlowNode $assignment_node): array
     {
+        $assignment_node = $this->taint_flow_graph?->withoutSpeculativeSpecialization($assignment_node)
+            ?? $assignment_node;
+
         if (isset($this->origin_locations_by_id[$assignment_node->id])) {
             return $this->origin_locations_by_id[$assignment_node->id];
         }
@@ -143,6 +168,7 @@ final class VariableUseGraph extends DataFlowGraph
      * @param array<string, bool> $visited_source_ids
      * @param array<string, DataFlowNode> $child_nodes
      * @param-out array<string, DataFlowNode> $child_nodes
+     * @psalm-capabilities write-refs|read-props
      */
     private function getChildNodes(
         array &$child_nodes,
@@ -200,6 +226,7 @@ final class VariableUseGraph extends DataFlowGraph
      * @param array<string, bool> $visited_source_ids
      * @param list<DataFlowNode> $new_parent_nodes
      * @param-out list<DataFlowNode> $new_parent_nodes
+     * @psalm-capabilities write-refs|read-props
      */
     private function getParentNodes(
         array &$new_parent_nodes,

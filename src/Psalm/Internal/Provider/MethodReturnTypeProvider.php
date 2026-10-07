@@ -10,7 +10,7 @@ use Closure;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
-use Psalm\Internal\Provider\ReturnTypeProvider\ClosureFromCallableReturnTypeProvider;
+use Psalm\Internal\Provider\ReturnTypeProvider\ClosureReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\DateTimeModifyReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\DomNodeAppendChild;
 use Psalm\Internal\Provider\ReturnTypeProvider\ImagickPixelColorReturnTypeProvider;
@@ -42,7 +42,7 @@ final class MethodReturnTypeProvider
         $this->registerClass(new DomNodeAppendChild());
         $this->registerClass(new ImagickPixelColorReturnTypeProvider());
         $this->registerClass(new PdoStatementReturnTypeProvider());
-        $this->registerClass(new ClosureFromCallableReturnTypeProvider());
+        $this->registerClass(new ClosureReturnTypeProvider());
         $this->registerClass(new DateTimeModifyReturnTypeProvider());
     }
 

@@ -394,6 +394,7 @@
             <xs:element name="NullPropertyFetch" type="PropertyIssueHandlerType" minOccurs="0" />
             <xs:element name="NullReference" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="OverriddenFinalConstant" type="ClassConstantIssueHandlerType" minOccurs="0" />
+            <xs:element name="OverriddenFinalProperty" type="PropertyIssueHandlerType" minOccurs="0" />
             <xs:element name="OverriddenInterfaceConstant" type="ClassConstantIssueHandlerType" minOccurs="0" />
             <xs:element name="OverriddenMethodAccess" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="OverriddenPropertyAccess" type="PropertyIssueHandlerType" minOccurs="0" />
@@ -481,6 +482,8 @@
             <xs:element name="TaintedSystemSecret" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="TaintedTextWithQuotes" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="TaintedUnserialize" type="IssueHandlerType" minOccurs="0" />
+            <xs:element name="TaintedUrlComponent" type="IssueHandlerType" minOccurs="0" />
+            <xs:element name="TaintedUrlPath" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="TaintedUserSecret" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="TaintedXpath" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="TooFewArguments" type="ArgumentIssueHandlerType" minOccurs="0" />

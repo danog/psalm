@@ -422,8 +422,21 @@ final class ExpressionResolver
                 if (InternalCallMapHandler::inCallMap($function_name_node->value)) {
                     return true;
                 }
+
+                // a native function of a newer PHP than the analysed one, as guarded by the polyfill of it
+                if (InternalCallMapHandler::getIntroducingPhpVersionId($function_name_node->value) !== null) {
+                    return false;
+                }
             } elseif (function_exists($function_name_node->value)) {
-                return (new ReflectionFunction($function_name_node->value))->isInternal();
+                $reflection_function = new ReflectionFunction($function_name_node->value);
+
+                if (!$reflection_function->isInternal()) {
+                    return false;
+                }
+
+                // a native function the runtime has but the analysed PHP version does not, as
+                // guarded by the polyfill of it
+                return InternalCallMapHandler::getIntroducingPhpVersionId($reflection_function->getName()) === null;
             }
         }
 

@@ -64,6 +64,7 @@ use Psalm\Storage\MethodStorage;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TClassConstant;
+use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -92,6 +93,7 @@ use function is_numeric;
 use function krsort;
 use function ksort;
 use function ltrim;
+use function min;
 use function preg_match;
 use function preg_replace;
 use function str_contains;
@@ -359,7 +361,7 @@ final class Codebase
      * (or the top-level code of the file of $location).
      *
      * @param lowercase-string $fq_class_name_lc
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToClass(
         string $fq_class_name_lc,
@@ -382,7 +384,7 @@ final class Codebase
      *
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name without the leading `$`
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToProperty(
         string $fq_class_name_lc,
@@ -415,7 +417,7 @@ final class Codebase
      * return value as used too.
      *
      * @param lowercase-string $function_id
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToFunctionLike(
         string $function_id,
@@ -453,7 +455,7 @@ final class Codebase
      * referencing code is re-analysed if the method gets added.
      *
      * @param lowercase-string $method_id
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToMissingMethod(
         string $method_id,
@@ -476,7 +478,7 @@ final class Codebase
      *
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name without the leading `$`
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToMissingProperty(
         string $fq_class_name_lc,
@@ -497,7 +499,7 @@ final class Codebase
     /**
      * @param lowercase-string $fq_class_name_lc
      * @param string $const_name case-sensitive constant name
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToClassConstant(
         string $fq_class_name_lc,
@@ -520,7 +522,7 @@ final class Codebase
      * through a `use` import alias of the given file, so that it gets
      * re-analysed when the import changes.
      *
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addReferenceToUseAlias(
         string $alias,
@@ -835,7 +837,7 @@ final class Codebase
 
     /**
      * @param array<string, string> $files_to_analyze
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addFilesToAnalyze(array $files_to_analyze): void
     {
@@ -856,7 +858,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getFileContents(string $file_path): string
     {
@@ -880,7 +882,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function createClassLikeStorage(string $fq_classlike_name): ClassLikeStorage
     {
@@ -923,7 +925,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function createFileStorageForPath(string $file_path): FileStorage
     {
@@ -1011,7 +1013,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getClosureStorage(string $file_path, string $closure_id): FunctionStorage
     {
@@ -1069,7 +1071,7 @@ final class Codebase
     /**
      * Check whether a class/interface exists
      *
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function classOrInterfaceExists(
         string $fq_class_name,
@@ -1087,7 +1089,7 @@ final class Codebase
      * Check whether a class/interface exists
      *
      * @psalm-assert-if-true class-string|interface-string|enum-string $fq_class_name
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function classOrInterfaceOrEnumExists(
         string $fq_class_name,
@@ -1111,7 +1113,7 @@ final class Codebase
     /**
      * Determine whether or not a given class exists
      *
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function classExists(
         string $fq_class_name,
@@ -1148,7 +1150,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function interfaceExists(
         string $fq_interface_name,
@@ -1317,13 +1319,16 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getMethodReturnsByRef(MethodIdentifier $method_id): bool
     {
         return $this->methods->getMethodReturnsByRef($method_id);
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
+     */
     public function getMethodReturnTypeLocation(
         MethodIdentifier $method_id,
         ?CodeLocation &$defined_location = null,
@@ -1370,7 +1375,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function invalidateInformationForFile(string $file_path): void
     {
@@ -1391,7 +1396,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getFunctionStorageForSymbol(string $file_path, string $symbol): ?FunctionLikeStorage
     {
@@ -2554,7 +2559,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addTemporaryFileChanges(string $file_path, string $new_content, ?int $version = null): void
     {
@@ -2562,7 +2567,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function removeTemporaryFileChanges(string $file_path): void
     {
@@ -2634,6 +2639,7 @@ final class Codebase
      * ```
      *
      * @return array{Union, Union}
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     public function getKeyValueParamsForTraversableObject(Atomic $type): array
     {
@@ -2661,7 +2667,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addTaintSource(
         Union $expr_type,
@@ -2685,7 +2691,7 @@ final class Codebase
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function addTaintSink(
         string $taint_id,
@@ -2727,5 +2733,76 @@ final class Codebase
     public static function transformPhpVersionId(int $php_version_id, int $div): int
     {
         return intdiv($php_version_id, $div);
+    }
+
+    /**
+     * Renders a php_version_id (e.g. 8_05_00) as a `major.minor` string for messages.
+     *
+     * @psalm-pure
+     */
+    public static function getPhpVersionString(int $php_version_id): string
+    {
+        return self::transformPhpVersionId($php_version_id, 10_000)
+            . '.' . self::transformPhpVersionId($php_version_id % 10_000, 100);
+    }
+
+    /**
+     * Whether a native class-like stubbed with a newer `@since` than the analysed PHP version is
+     * provided by a polyfill the project's composer autoloader can load (e.g. `Stringable` from
+     * symfony/polyfill-php80). Such polyfills are usually never scanned, since the stub already
+     * defines the class, so the autoloader is asked directly.
+     */
+    public function isClassLikePolyfilled(string $fq_classlike_name): bool
+    {
+        return $this->config->getComposerFilePathForClassLike($fq_classlike_name) !== false;
+    }
+
+    /**
+     * The lowest PHP version the code at this point runs on, when a guard raised it above the
+     * analysed one: a PHP_VERSION_ID comparison, or a `*_exists()` check of a newer native symbol.
+     * Null otherwise.
+     *
+     * @psalm-capabilities read-props
+     */
+    public function getGuardedPhpVersionId(?Context $context): ?int
+    {
+        $type = $context?->vars_in_scope[Context::PHP_VERSION_ID_VAR_ID] ?? null;
+
+        if ($type === null) {
+            return null;
+        }
+
+        $min = null;
+        foreach ($type->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof TLiteralInt) {
+                $atomic_min = $atomic->value;
+            } elseif ($atomic instanceof TIntRange && $atomic->min_bound !== null) {
+                $atomic_min = $atomic->min_bound;
+            } else {
+                return null;
+            }
+
+            $min = $min === null ? $atomic_min : min($min, $atomic_min);
+        }
+
+        return $min > $this->analysis_php_version_id ? $min : null;
+    }
+
+    /**
+     * The tail shared by the Undefined* messages reported when a native symbol (introduced in
+     * `$since_php_version_id`) is used on an older analysed PHP version without a polyfill. Prefix
+     * it with the symbol, e.g. "Function foo ". `symfony/polyfill-php<major><minor>` is the polyfill
+     * package for that version (e.g. symfony/polyfill-php81).
+     *
+     * @psalm-capabilities read-props
+     */
+    public function getUnavailableSymbolMessageSuffix(int $since_php_version_id): string
+    {
+        $since = self::getPhpVersionString($since_php_version_id);
+
+        return 'is not defined for the analysed PHP version '
+            . self::getPhpVersionString($this->analysis_php_version_id)
+            . ' (it was introduced in PHP ' . $since . '); install symfony/polyfill-php'
+            . str_replace('.', '', $since) . ', define a polyfill, or raise the analysed PHP version';
     }
 }

@@ -114,7 +114,6 @@ final class Json
      */
     private static function scrubString(string $value): string
     {
-        /** @psalm-suppress ImpureFunctionCall */
         return preg_replace_callback(
             self::INVALID_UTF_REGEXP,
             static fn(array $matches): string => '<Invalid UTF-8: 0x' . bin2hex((string) ($matches[0] ?? '')) . '>',

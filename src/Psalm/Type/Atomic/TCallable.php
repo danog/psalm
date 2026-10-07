@@ -8,14 +8,14 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\FunctionLikeParameter;
-use Psalm\Storage\Mutations;
-use Psalm\Type\Atomic;
-use Psalm\Type\Union;
-use Psalm\Type\MutableTypeVisitor;
-use Psalm\Type\TypeVisitor;
-use Psalm\Type\TypeNode;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
+use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeNode;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\Union;
 
 use function assert;
 
@@ -36,7 +36,7 @@ final class TCallable extends Atomic
      * Constructs a new instance of a generic type
      *
      * @param list<FunctionLikeParameter> $params
-     * @param Mutations::LEVEL_* $allowed_mutations
+     * @param int|Union $purity A capability set or a purity type (see {@see CallableTrait::$purity})
      * @param ?non-empty-lowercase-string $callable_id The id of the underlying function/method, when
      *                                        known. Metadata only - it does not affect the structural
      *                                        type - and is used to re-dispatch taint sinks/sources on invocation.
@@ -44,13 +44,13 @@ final class TCallable extends Atomic
     public function __construct(
         ?array $params = null,
         ?Union $return_type = null,
-        int $allowed_mutations = Mutations::LEVEL_EXTERNAL,
+        int|Union $purity = Capabilities::ALL,
         bool $from_docblock = false,
         public ?string $callable_id = null,
     ) {
         $this->params = $params;
         $this->return_type = $return_type;
-        $this->allowed_mutations = $allowed_mutations;
+        $this->purity = self::purityFrom($purity);
         parent::__construct($from_docblock);
     }
 
@@ -87,7 +87,7 @@ final class TCallable extends Atomic
         return new static(
             $replaced[0],
             $replaced[1],
-            $this->allowed_mutations,
+            $replaced[2],
             $this->from_docblock,
             $this->callable_id,
         );
@@ -126,7 +126,7 @@ final class TCallable extends Atomic
         return new static(
             $replaced[0],
             $replaced[1],
-            $this->allowed_mutations,
+            $replaced[2],
             $this->from_docblock,
             $this->callable_id,
         );
@@ -143,6 +143,9 @@ final class TCallable extends Atomic
             }
         }
         if ($this->return_type !== null && $visitor->traverse($this->return_type) === false) {
+            return false;
+        }
+        if ($visitor->traverse($this->purity) === false) {
             return false;
         }
         return true;
@@ -195,6 +198,19 @@ final class TCallable extends Atomic
                 $node = $self;
                 return false;
             }
+        }
+        $value = $self->purity;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->purity) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->purity = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
         }
         $node = $self;
         return true;

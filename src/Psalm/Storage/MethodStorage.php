@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Psalm\CodeLocation;
 use Psalm\Type\Union;
 
 /**
@@ -42,8 +43,7 @@ final class MethodStorage extends FunctionLikeStorage
      */
     public bool $mutation_free_assumed = false;
     
-    /** @var Mutations::LEVEL_* */
-    public int $containing_class_allowed_mutations = Mutations::LEVEL_ALL;
+    public int $containing_class_capabilities = Capabilities::ALL;
 
     /**
      * @var ?array<string, bool>
@@ -51,6 +51,8 @@ final class MethodStorage extends FunctionLikeStorage
     public ?array $this_property_mutations = null;
 
     public ?Union $self_out_type = null;
+
+    public ?CodeLocation $self_out_type_location = null;
 
     public ?Union $if_this_is_type = null;
     public bool $stubbed = false;

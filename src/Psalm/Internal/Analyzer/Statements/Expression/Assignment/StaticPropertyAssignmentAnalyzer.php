@@ -11,6 +11,7 @@ use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ClassAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\StaticPropertyFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
@@ -18,14 +19,15 @@ use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImplicitToStringCast;
+use Psalm\Issue\ImpureStaticProperty;
 use Psalm\Issue\InvalidPropertyAssignmentValue;
 use Psalm\Issue\MixedPropertyTypeCoercion;
 use Psalm\Issue\PossiblyInvalidPropertyAssignmentValue;
 use Psalm\Issue\PropertyTypeCoercion;
 use Psalm\Issue\UndefinedPropertyAssignment;
 use Psalm\IssueBuffer;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
-use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
 
@@ -53,6 +55,14 @@ final class StaticPropertyAssignmentAnalyzer
             $statements_analyzer,
         );
 
+        $statements_analyzer->signalMutation(
+            Capabilities::WRITE_GLOBALS,
+            $context,
+            'writing a static property',
+            ImpureStaticProperty::class,
+            $stmt,
+        );
+
         $lhs_type = $statements_analyzer->node_data->getType($stmt->class);
 
         if (!$lhs_type) {
@@ -63,21 +73,20 @@ final class StaticPropertyAssignmentAnalyzer
 
         $prop_name = $stmt->name;
 
+        $fq_class_names = [];
+
         foreach ($lhs_type->getAtomicTypes() as $lhs_atomic_type) {
-            if ($lhs_atomic_type instanceof TClassString) {
-                if (!$lhs_atomic_type->as_type) {
-                    continue;
-                }
-
-                $lhs_atomic_type = $lhs_atomic_type->as_type;
+            if ($lhs_atomic_type instanceof TNamedObject) {
+                $fq_class_names[] = $lhs_atomic_type->value;
+            } else {
+                $fq_class_names = [
+                    ...$fq_class_names,
+                    ...StaticPropertyFetchAnalyzer::getClassNamesFromClassStringType($lhs_atomic_type) ?? [],
+                ];
             }
+        }
 
-            if (!$lhs_atomic_type instanceof TNamedObject) {
-                continue;
-            }
-
-            $fq_class_name = $lhs_atomic_type->value;
-
+        foreach ($fq_class_names as $fq_class_name) {
             if (!$prop_name instanceof PhpParser\Node\Identifier) {
                 $was_inside_general_use = $context->inside_general_use;
 
@@ -139,6 +148,8 @@ final class StaticPropertyAssignmentAnalyzer
                 $statements_analyzer,
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
                 $statements_analyzer->getSuppressedIssues(),
+                true,
+                true,
             ) === false) {
                 return false;
             }
@@ -266,7 +277,7 @@ final class StaticPropertyAssignmentAnalyzer
                 if ($union_comparison_results->type_coerced_from_mixed) {
                     IssueBuffer::maybeAdd(
                         new MixedPropertyTypeCoercion(
-                            $var_id . ' expects \'' . $class_property_type->getId() . '\', '
+                            ($var_id ?? $property_id) . ' expects \'' . $class_property_type->getId() . '\', '
                                 . ' parent type `' . $assignment_value_type->getId() . '` provided',
                             new CodeLocation(
                                 $statements_analyzer->getSource(),
@@ -280,7 +291,7 @@ final class StaticPropertyAssignmentAnalyzer
                 } else {
                     IssueBuffer::maybeAdd(
                         new PropertyTypeCoercion(
-                            $var_id . ' expects \'' . $class_property_type->getId() . '\', '
+                            ($var_id ?? $property_id) . ' expects \'' . $class_property_type->getId() . '\', '
                                 . ' parent type \'' . $assignment_value_type->getId() . '\' provided',
                             new CodeLocation(
                                 $statements_analyzer->getSource(),
@@ -297,7 +308,7 @@ final class StaticPropertyAssignmentAnalyzer
             if ($union_comparison_results->to_string_cast) {
                 IssueBuffer::maybeAdd(
                     new ImplicitToStringCast(
-                        $var_id . ' expects \'' . $class_property_type . '\', '
+                        ($var_id ?? $property_id) . ' expects \'' . $class_property_type . '\', '
                             . '\'' . $assignment_value_type . '\' provided with a __toString method',
                         new CodeLocation(
                             $statements_analyzer->getSource(),
@@ -313,7 +324,7 @@ final class StaticPropertyAssignmentAnalyzer
                 if (UnionTypeComparator::canBeContainedBy($codebase, $assignment_value_type, $class_property_type)) {
                     if (IssueBuffer::accepts(
                         new PossiblyInvalidPropertyAssignmentValue(
-                            $var_id . ' with declared type \''
+                            ($var_id ?? $property_id) . ' with declared type \''
                                 . $class_property_type->getId() . '\' cannot be assigned type \''
                                 . $assignment_value_type->getId() . '\'',
                             new CodeLocation(
@@ -329,7 +340,7 @@ final class StaticPropertyAssignmentAnalyzer
                 } else {
                     if (IssueBuffer::accepts(
                         new InvalidPropertyAssignmentValue(
-                            $var_id . ' with declared type \'' . $class_property_type->getId()
+                            ($var_id ?? $property_id) . ' with declared type \'' . $class_property_type->getId()
                                 . '\' cannot be assigned type \''
                                 . $assignment_value_type->getId() . '\'',
                             new CodeLocation(

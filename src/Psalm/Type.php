@@ -7,17 +7,20 @@ namespace Psalm;
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Plugin\EventHandler\Event\StringInterpreterEvent;
+use Psalm\Storage\Capabilities;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallableObject;
+use Psalm\Type\Atomic\TCapabilities;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TFalse;
@@ -368,6 +371,26 @@ abstract class Type
     }
 
     /**
+     * The empty capability set, as a purity (`iterable[pure]`).
+     *
+     * @psalm-pure
+     */
+    public static function getPure(bool $from_docblock = false): Union
+    {
+        return new Union([new TCapabilities(Capabilities::NONE, $from_docblock)]);
+    }
+
+    /**
+     * The set of all capabilities, as a purity (`iterable[impure]`).
+     *
+     * @psalm-pure
+     */
+    public static function getImpure(bool $from_docblock = false): Union
+    {
+        return new Union([new TCapabilities(Capabilities::ALL, $from_docblock)]);
+    }
+
+    /**
      * @psalm-pure
      */
     public static function getScalar(bool $from_docblock = false): Union
@@ -686,6 +709,7 @@ abstract class Type
             'from_calculation' => $type_1->from_calculation || $type_2->from_calculation,
             'from_property' => false,
             'from_static_property' => false,
+            'from_global_state' => $type_1->from_global_state || $type_2->from_global_state,
             'initialized' => $type_1->initialized && $type_2->initialized,
             'initialized_class' => null,
             'checked' => false,
@@ -703,7 +727,7 @@ abstract class Type
             'allow_mutations' => true,
             'has_mutations' => true,
             'different' => false,
-            'parent_nodes' => $type_1->parent_nodes + $type_2->parent_nodes,
+            'parent_nodes' => DataFlowNode::combineParentNodes($type_1->parent_nodes, $type_2->parent_nodes),
         ]);
     }
 
@@ -763,6 +787,10 @@ abstract class Type
                 $properties['explicit_never'] = true;
             }
 
+            if ($type_1->from_global_state || $type_2->from_global_state) {
+                $properties['from_global_state'] = true;
+            }
+
             if ($type_1->had_template && $type_2->had_template) {
                 $properties['had_template'] = true;
             }
@@ -786,7 +814,10 @@ abstract class Type
             }
 
             if ($type_1->parent_nodes || $type_2->parent_nodes) {
-                $properties['parent_nodes'] = $type_1->parent_nodes + $type_2->parent_nodes;
+                $properties['parent_nodes'] = DataFlowNode::combineParentNodes(
+                $type_1->parent_nodes,
+                $type_2->parent_nodes,
+            );
             }
 
             if ($type_1->by_ref || $type_2->by_ref) {
@@ -820,7 +851,10 @@ abstract class Type
         }
 
         if ($type_1->parent_nodes || $type_2->parent_nodes) {
-            $properties['parent_nodes'] = $type_1->parent_nodes + $type_2->parent_nodes;
+            $properties['parent_nodes'] = DataFlowNode::combineParentNodes(
+                $type_1->parent_nodes,
+                $type_2->parent_nodes,
+            );
         }
 
         if ($type_1->by_ref || $type_2->by_ref) {

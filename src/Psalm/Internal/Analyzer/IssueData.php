@@ -46,6 +46,8 @@ final class IssueData
         public ?array $other_references = null,
         public readonly ?string $dupe_key = null,
         ?string $documentation_url = null,
+        /** Whether the issue is a {@see \Psalm\Issue\SecurityIssue} */
+        public readonly bool $is_security = false,
     ) {
         $this->link = match (true) {
             $documentation_url !== null => $documentation_url,
@@ -77,6 +79,7 @@ final class IssueData
      *     taint_trace: ?list<DataFlowNodeData|array{label: string, entry_path_type: string}>,
      *     other_references: ?list<DataFlowNodeData>,
      *     dupe_key: ?string,
+     *     is_security: bool,
      *     link: string,
      * }
      */
@@ -106,6 +109,7 @@ final class IssueData
             'taint_trace' => $this->taint_trace,
             'other_references' => $this->other_references,
             'dupe_key' => $this->dupe_key,
+            'is_security' => $this->is_security,
         ];
     }
 }

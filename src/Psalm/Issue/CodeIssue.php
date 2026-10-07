@@ -119,6 +119,7 @@ abstract class CodeIssue
                 : null,
             $this->dupe_key,
             static::DOCUMENTATION_URL,
+            $this instanceof SecurityIssue,
         );
     }
 }

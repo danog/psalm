@@ -44,6 +44,8 @@ final class XmlReport extends Report
                         // replace null values, as XML serializers tend to have problems with them
                         $data['taint_trace'] ??= '';
 
+                        $data['is_security'] = $data['is_security'] ? 'true' : 'false';
+
                         if (null !== $data['other_references']) {
                             $data['other_references'] = array_map(
                                 /** @return DataFlowNodeDataArray */

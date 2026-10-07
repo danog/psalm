@@ -3053,7 +3053,7 @@ final class AssertAnnotationTest extends TestCase
                 ',
                 'assertions' => [
                     '$object===' => 'stdClass',
-                    '$callable===' => 'impure-callable',
+                    '$callable===' => 'callable[impure]',
                 ],
                 'ignored_issues' => [],
                 'php_version' => '8.1',
@@ -3452,7 +3452,7 @@ final class AssertAnnotationTest extends TestCase
 
                     function requiresString(string $_str): void {}
                 ',
-                'error_message' => 'A::__get is not mutation-free',
+                'error_message' => 'A::__get needs more than read-props',
             ],
             'randomValueFromMagicGetterIsNotMutationFree' => [
                 'code' => '<?php

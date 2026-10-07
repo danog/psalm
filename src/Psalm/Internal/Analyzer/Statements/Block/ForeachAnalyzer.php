@@ -13,17 +13,26 @@ use Psalm\Exception\DocblockParseException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
+use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\CallPurityResolver;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallPurityAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\MethodCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Scope\LoopScope;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
+use Psalm\Internal\Type\TemplateInferredTypeReplacer;
+use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImpureMethodCall;
 use Psalm\Issue\InvalidDocblock;
@@ -39,7 +48,8 @@ use Psalm\IssueBuffer;
 use Psalm\Node\Expr\VirtualMethodCall;
 use Psalm\Node\VirtualIdentifier;
 use Psalm\Storage\Assertion;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
+use Psalm\Storage\MethodStorage;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -63,6 +73,7 @@ use UnexpectedValueException;
 
 use function array_keys;
 use function array_map;
+use function array_pop;
 use function array_search;
 use function array_values;
 use function assert;
@@ -254,7 +265,6 @@ final class ForeachAnalyzer
         if ($iterator_type) {
             if (self::checkIteratorType(
                 $statements_analyzer,
-                $stmt,
                 $stmt->expr,
                 $iterator_type,
                 $codebase,
@@ -266,6 +276,14 @@ final class ForeachAnalyzer
             ) {
                 return false;
             }
+
+            [$key_type, $value_type] = self::taintObjectIteration(
+                $statements_analyzer,
+                $stmt->expr,
+                $iterator_type,
+                $key_type,
+                $value_type,
+            );
         }
 
         $foreach_context = clone $context;
@@ -317,6 +335,8 @@ final class ForeachAnalyzer
             // When assigning as reference, it removes any previous
             // reference, so it's no longer from a previous confusing scope
             unset($foreach_context->references_possibly_from_confusing_scope['$' . $stmt->valueVar->name]);
+
+            FunctionLikeAnalyzer::unbindByRefParam($codebase, $foreach_context, '$' . $stmt->valueVar->name);
         }
 
         AssignmentAnalyzer::analyze(
@@ -385,6 +405,28 @@ final class ForeachAnalyzer
             throw new UnexpectedValueException('There should be an inner loop context');
         }
 
+        if ($stmt->byRef
+            && $stmt->valueVar instanceof PhpParser\Node\Expr\Variable
+            && is_string($stmt->valueVar->name)
+        ) {
+            self::addItemsWrittenByRef(
+                $statements_analyzer,
+                $stmt,
+                '$' . $stmt->valueVar->name,
+                $context,
+                $inner_loop_context,
+                $loop_scope,
+            );
+
+            self::taintItemsWrittenByRef(
+                $statements_analyzer,
+                $stmt,
+                '$' . $stmt->valueVar->name,
+                $context,
+                $inner_loop_context,
+            );
+        }
+
         $foreach_context->loop_scope = null;
 
         $context->vars_possibly_in_scope = [
@@ -400,12 +442,244 @@ final class ForeachAnalyzer
     }
 
     /**
-     * @param PhpParser\Node\Stmt\Foreach_|PhpParser\Node\Expr\YieldFrom $stmt
+     * The items of the array a foreach by reference iterates over may hold, after the loop, what the value variable
+     * holds where an iteration ends or where the loop is left, under each of their keys. Not what it held before the
+     * loop: the context after the loop has it where the loop was not entered, but then nothing was written.
+     */
+    private static function addItemsWrittenByRef(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Stmt\Foreach_ $stmt,
+        string $value_var_id,
+        Context $context,
+        Context $inner_loop_context,
+        LoopScope $loop_scope,
+    ): void {
+        $array_var_id = ExpressionIdentifier::getExtendedVarId(
+            $stmt->expr,
+            $statements_analyzer->getFQCLN(),
+            $statements_analyzer,
+        );
+
+        if ($array_var_id === null || !isset($context->vars_in_scope[$array_var_id])) {
+            return;
+        }
+
+        $codebase = $statements_analyzer->getCodebase();
+
+        $written_type = null;
+
+        // where an iteration ends, and where the loop is broken out of (see BreakAnalyzer), whether the variable
+        // was defined before the loop or not
+        foreach ([
+            $inner_loop_context->vars_in_scope[$value_var_id] ?? null,
+            $loop_scope->possibly_redefined_loop_parent_vars[$value_var_id] ?? null,
+            $loop_scope->possibly_defined_loop_parent_vars[$value_var_id] ?? null,
+        ] as $item_type) {
+            if ($item_type !== null) {
+                $written_type = Type::combineUnionTypes($item_type, $written_type, $codebase);
+            }
+        }
+
+        if ($written_type === null) {
+            return;
+        }
+
+        $written_type = $written_type->setProperties(['by_ref' => false, 'parent_nodes' => []]);
+
+        $array_type = $context->vars_in_scope[$array_var_id];
+
+        $atomic_types = [];
+
+        foreach ($array_type->getAtomicTypes() as $atomic_type) {
+            if ($atomic_type instanceof TKeyedArray) {
+                $properties = [];
+
+                foreach ($atomic_type->properties as $key => $property) {
+                    $properties[$key] = Type::combineUnionTypes($property, $written_type, $codebase)
+                        ->setPossiblyUndefined($property->possibly_undefined);
+                }
+
+                $atomic_type = TKeyedArray::make(
+                    $properties,
+                    $atomic_type->class_strings,
+                    $atomic_type->fallback_params === null ? null : [
+                        $atomic_type->fallback_params[0],
+                        Type::combineUnionTypes($atomic_type->fallback_params[1], $written_type, $codebase),
+                    ],
+                    $atomic_type->is_list,
+                    $atomic_type->from_docblock,
+                );
+            } elseif ($atomic_type instanceof TArray && !$atomic_type->isEmptyArray()) {
+                $atomic_type = $atomic_type->setTypeParams([
+                    $atomic_type->type_params[0],
+                    Type::combineUnionTypes($atomic_type->type_params[1], $written_type, $codebase),
+                ]);
+            }
+
+            $atomic_types[] = $atomic_type;
+        }
+
+        $context->vars_in_scope[$array_var_id] = $array_type->setTypes($atomic_types);
+        $context->removeDescendents($array_var_id, $array_type, null, $statements_analyzer);
+    }
+
+    /**
+     * What a foreach by reference writes through its value variable is in the array it iterates over
+     * (see ArrayAssignmentAnalyzer): what the variable holds where an iteration ends, and where the loop
+     * is left.
+     */
+    private static function taintItemsWrittenByRef(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Stmt\Foreach_ $stmt,
+        string $value_var_id,
+        Context $context,
+        Context $inner_loop_context,
+    ): void {
+        if (!($graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())) {
+            return;
+        }
+
+        $array_var_id = ExpressionIdentifier::getExtendedVarId(
+            $stmt->expr,
+            $statements_analyzer->getFQCLN(),
+            $statements_analyzer,
+        );
+
+        if ($array_var_id === null || !isset($context->vars_in_scope[$array_var_id])) {
+            return;
+        }
+
+        $item_parent_nodes = [];
+
+        foreach ([$inner_loop_context, $context] as $item_context) {
+            if (isset($item_context->vars_in_scope[$value_var_id])) {
+                $item_parent_nodes += $item_context->vars_in_scope[$value_var_id]->parent_nodes;
+            }
+        }
+
+        if (!$item_parent_nodes) {
+            return;
+        }
+
+        $array_node = DataFlowNode::getForAssignment(
+            $array_var_id,
+            new CodeLocation($statements_analyzer->getSource(), $stmt->expr),
+        );
+
+        $graph->addNode($array_node);
+
+        foreach ($item_parent_nodes as $parent_node) {
+            $graph->addPath($parent_node, $array_node, 'arrayvalue-assignment');
+        }
+
+        foreach ($context->vars_in_scope[$array_var_id]->parent_nodes as $parent_node) {
+            $graph->addPath($parent_node, $array_node, '=');
+        }
+
+        $array_type = $context->vars_in_scope[$array_var_id]->setParentNodes([$array_node->id => $array_node]);
+
+        $context->vars_in_scope[$array_var_id] = $array_type;
+
+        // the property iterated over holds them too (see InstancePropertyAssignmentAnalyzer)
+        if ($stmt->expr instanceof PhpParser\Node\Expr\PropertyFetch
+            && $stmt->expr->name instanceof PhpParser\Node\Identifier
+            && ($object_type = $statements_analyzer->node_data->getType($stmt->expr->var))
+            && $object_type->isSingle()
+            && ($object_atomic_type = $object_type->getSingleAtomic()) instanceof TNamedObject
+        ) {
+            $codebase = $statements_analyzer->getCodebase();
+            $property_id = $object_atomic_type->value . '::$' . $stmt->expr->name->name;
+            $declaring_class = $codebase->properties->getDeclaringClassForProperty($property_id, true);
+
+            if ($declaring_class !== null
+                && !($class_storage = $codebase->classlike_storage_provider->get($declaring_class))
+                    ->specialize_instance
+            ) {
+                InstancePropertyAssignmentAnalyzer::taintUnspecializedProperty(
+                    $statements_analyzer,
+                    $graph,
+                    $stmt->expr,
+                    $property_id,
+                    $class_storage,
+                    $array_type,
+                    $context,
+                    $array_var_id,
+                );
+            }
+        }
+    }
+
+    /**
+     * The keys and values an object iterated over gives come from what it holds: a generator, what it yields (see
+     * YieldAnalyzer::taintGenerator()), another Traversable, what it was given. An array gives its keys and values
+     * through their own types.
+     *
+     * @return array{?Union, ?Union}
+     */
+    private static function taintObjectIteration(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $expr,
+        Union $iterator_type,
+        ?Union $key_type,
+        ?Union $value_type,
+    ): array {
+        // only taints: the variable use graph keeps the origins of mixed keys and values to report them
+        $graph = $statements_analyzer->taint_flow_graph;
+
+        if (!$graph || !$iterator_type->parent_nodes) {
+            return [$key_type, $value_type];
+        }
+
+        $iterates_object = false;
+
+        $atomic_types = $iterator_type->getAtomicTypes();
+
+        while ($atomic_types) {
+            $atomic_type = array_pop($atomic_types);
+
+            // a template parameter iterates over what its bound does
+            if ($atomic_type instanceof TTemplateParam) {
+                $atomic_types = [...$atomic_types, ...$atomic_type->as->getAtomicTypes()];
+                continue;
+            }
+
+            if ($atomic_type instanceof TNamedObject
+                || $atomic_type instanceof TObject
+                || $atomic_type instanceof TIterable
+                || $atomic_type instanceof TMixed
+            ) {
+                $iterates_object = true;
+            }
+        }
+
+        if (!$iterates_object) {
+            return [$key_type, $value_type];
+        }
+
+        $location = new CodeLocation($statements_analyzer->getSource(), $expr);
+
+        $key_node = DataFlowNode::getForAssignment('foreach key', $location);
+        $value_node = DataFlowNode::getForAssignment('foreach value', $location);
+
+        $graph->addNode($key_node);
+        $graph->addNode($value_node);
+
+        foreach ($iterator_type->parent_nodes as $parent_node) {
+            $graph->addPath($parent_node, $key_node, 'arraykey-fetch');
+            $graph->addPath($parent_node, $value_node, 'arrayvalue-fetch');
+        }
+
+        return [
+            ($key_type ?? Type::getMixed())->addParentNodes([$key_node->id => $key_node]),
+            ($value_type ?? Type::getMixed())->addParentNodes([$value_node->id => $value_node]),
+        ];
+    }
+
+    /**
      * @return false|null
      */
     public static function checkIteratorType(
         StatementsAnalyzer $statements_analyzer,
-        PhpParser\NodeAbstract $stmt,
         PhpParser\Node\Expr $expr,
         Union $iterator_type,
         Codebase $codebase,
@@ -532,11 +806,11 @@ final class ForeachAnalyzer
                 );
 
                 $statements_analyzer->signalMutation(
-                    Mutations::LEVEL_ALL,
+                    Capabilities::ALL,
                     $context,
-                    'possibly-mutating iterator',
+                    'iterating over an unknown object',
                     ImpureMethodCall::class,
-                    $stmt,
+                    $expr,
                 );
             } elseif ($iterator_atomic_type instanceof TIterable) {
                 if ($iterator_atomic_type->extra_types) {
@@ -550,6 +824,8 @@ final class ForeachAnalyzer
 
                 $intersection_value_type = null;
                 $intersection_key_type = null;
+                // each part of an intersection bounds what iterating over the value may do
+                $iteration_capabilities = Capabilities::ALL;
 
                 foreach ($iterator_atomic_types as $iat) {
                     if (!$iat instanceof TIterable) {
@@ -557,6 +833,8 @@ final class ForeachAnalyzer
                     }
 
                     [$key_type_part, $value_type_part] = $iat->type_params;
+
+                    $iteration_capabilities &= CallPurityResolver::resolvePurity($iat->purity, $statements_analyzer);
 
                     if (!$intersection_value_type) {
                         $intersection_value_type = $value_type_part;
@@ -596,12 +874,13 @@ final class ForeachAnalyzer
 
                 $has_valid_iterator = true;
 
+                // what iterating over the iterable may do is its purity
                 $statements_analyzer->signalMutation(
-                    Mutations::LEVEL_ALL,
+                    $iteration_capabilities,
                     $context,
-                    'possibly-mutating Traversable::getIterator',
+                    'iterating over ' . $iterator_atomic_type->getId(),
                     ImpureMethodCall::class,
-                    $stmt,
+                    $expr,
                 );
             } elseif ($iterator_atomic_type instanceof TNamedObject) {
                 if ($iterator_atomic_type->value !== 'Traversable' &&
@@ -639,12 +918,23 @@ final class ForeachAnalyzer
                     $raw_object_types[] = $iterator_atomic_type->value;
                 }
 
+                // foreach calls the Iterator methods (or getIterator() and then those of the
+                // iterator it returns) implicitly: what they may do is what the loop may do
                 $statements_analyzer->signalMutation(
-                    Mutations::LEVEL_ALL,
+                    self::getIterationCapabilities(
+                        $statements_analyzer,
+                        $codebase,
+                        $iterator_atomic_type,
+                        $expr,
+                        $context,
+                        // freshly created iterators are recognised by their type; `$this` is not
+                        // fresh, moving it along needs write-this-props
+                        false,
+                    ),
                     $context,
-                    'possibly-mutating iterator',
+                    'iterating over ' . $iterator_atomic_type->getId(),
                     ImpureMethodCall::class,
-                    $stmt,
+                    $expr,
                 );
             }
         }
@@ -773,8 +1063,11 @@ final class ForeachAnalyzer
                     }
 
                     $was_inside_call = $context->inside_call;
+                    $was_inside_type_only_call = $context->inside_type_only_call;
 
                     $context->inside_call = true;
+                    // only the iterator's type is wanted here: the loop is charged for the call
+                    $context->inside_type_only_call = true;
 
                     MethodCallAnalyzer::analyze(
                         $statements_analyzer,
@@ -783,6 +1076,7 @@ final class ForeachAnalyzer
                     );
 
                     $context->inside_call = $was_inside_call;
+                    $context->inside_type_only_call = $was_inside_type_only_call;
 
                     if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
                         $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
@@ -979,6 +1273,9 @@ final class ForeachAnalyzer
         }
     }
 
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-refs
+     */
     public static function getKeyValueParamsForTraversableObject(
         Atomic $iterator_atomic_type,
         Codebase $codebase,
@@ -1056,6 +1353,208 @@ final class ForeachAnalyzer
         }
     }
 
+    /**
+     * The capabilities iterating over an object needs: those of the `Iterator` methods foreach
+     * calls implicitly (rewind, valid, current, key, next), or of `getIterator()` and then of the
+     * iterator it returns, which is taken to be freshly created. Reading and mutating the
+     * iterator's own state is fine when it is `$this` or was just created (a generator function
+     * always returns a new generator). Iterating an object whose methods are not known may do
+     * anything.
+     */
+    private static function getIterationCapabilities(
+        StatementsAnalyzer $statements_analyzer,
+        Codebase $codebase,
+        Atomic $iterator_atomic_type,
+        PhpParser\Node\Expr $expr,
+        Context $context,
+        bool $receiver_is_fresh,
+        int $depth = 0,
+    ): int {
+        if (!$iterator_atomic_type instanceof TNamedObject
+            || $depth > 3
+            || !$codebase->classlikes->classOrInterfaceExists($iterator_atomic_type->value)
+        ) {
+            return Capabilities::ALL;
+        }
+
+        $fq_class_name = $iterator_atomic_type->value;
+
+        if (self::classLikeIs($codebase, $context, $fq_class_name, 'IteratorAggregate')) {
+            $declaring_method_id = $codebase->methods->getDeclaringMethodId(
+                new MethodIdentifier($fq_class_name, 'getiterator'),
+            );
+
+            if ($declaring_method_id === null) {
+                return Capabilities::ALL;
+            }
+
+            $method_storage = $codebase->methods->getStorage($declaring_method_id);
+
+            $capabilities = self::getImplicitMethodCapabilities(
+                $statements_analyzer,
+                $codebase,
+                $iterator_atomic_type,
+                $expr,
+                $declaring_method_id,
+                $method_storage,
+                $receiver_is_fresh,
+            );
+
+            $iterator_type = $method_storage->return_type ?? $method_storage->signature_return_type;
+
+            if ($iterator_type === null) {
+                return Capabilities::ALL;
+            }
+
+            // `Traversable[TPurity]<TKey, TValue>` as bound by the aggregate
+            $iterator_type = TemplateInferredTypeReplacer::replace(
+                $iterator_type,
+                new TemplateResult([], self::collectClassTemplateParams(
+                    $codebase,
+                    $iterator_atomic_type,
+                    $expr,
+                    $declaring_method_id,
+                )),
+                $codebase,
+            );
+
+            foreach ($iterator_type->getAtomicTypes() as $returned_iterator_type) {
+                $capabilities |= self::getIterationCapabilities(
+                    $statements_analyzer,
+                    $codebase,
+                    $returned_iterator_type,
+                    $expr,
+                    $context,
+                    true,
+                    $depth + 1,
+                );
+            }
+
+            return $capabilities;
+        }
+
+        // Generator has the Iterator methods without declaring the interface
+        if (strtolower($fq_class_name) === 'generator'
+            || self::classLikeIs($codebase, $context, $fq_class_name, 'Iterator')
+        ) {
+            $capabilities = Capabilities::NONE;
+
+            foreach (['rewind', 'valid', 'current', 'key', 'next'] as $method_name) {
+                $declaring_method_id = $codebase->methods->getDeclaringMethodId(
+                    new MethodIdentifier($fq_class_name, $method_name),
+                );
+
+                if ($declaring_method_id === null) {
+                    return Capabilities::ALL;
+                }
+
+                $capabilities |= self::getImplicitMethodCapabilities(
+                    $statements_analyzer,
+                    $codebase,
+                    $iterator_atomic_type,
+                    $expr,
+                    $declaring_method_id,
+                    $codebase->methods->getStorage($declaring_method_id),
+                    $receiver_is_fresh,
+                );
+            }
+
+            return $capabilities;
+        }
+
+        if (strtolower($fq_class_name) === 'traversable') {
+            // an iterator of unknown kind, whose purity template says all that iterating it may do
+            $traversable_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $purity_index = array_search('TPurity', array_keys($traversable_storage->template_types ?? []), true);
+
+            if ($purity_index === false
+                || !$iterator_atomic_type instanceof TGenericObject
+                || !isset($iterator_atomic_type->type_params[$purity_index])
+            ) {
+                return Capabilities::ALL;
+            }
+
+            return CallPurityResolver::resolvePurity(
+                $iterator_atomic_type->type_params[$purity_index],
+                $statements_analyzer,
+            );
+        }
+
+        // a Traversable implemented by the engine
+        return Capabilities::ALL;
+    }
+
+    /**
+     * What one of the methods foreach calls implicitly costs, given the iterator: its own
+     * capabilities, less mutating the iterator itself when that is fresh, plus the iterator's
+     * purity template (`Iterator[pure]<int, int>`, `Generator[io]<int, int, mixed, void>`) when
+     * the method depends on it.
+     */
+    private static function getImplicitMethodCapabilities(
+        StatementsAnalyzer $statements_analyzer,
+        Codebase $codebase,
+        TNamedObject $iterator_atomic_type,
+        PhpParser\Node\Expr $expr,
+        MethodIdentifier $declaring_method_id,
+        MethodStorage $method_storage,
+        bool $receiver_is_fresh,
+    ): int {
+        // foreach passes no arguments, so writing by-reference parameters costs nothing
+        $capabilities = MethodCallPurityAnalyzer::getMethodCapabilities(
+            $statements_analyzer,
+            $expr,
+            $method_storage,
+            $receiver_is_fresh,
+        ) & ~Capabilities::WRITE_REFS;
+
+        return CallPurityResolver::getCallCapabilities(
+            $statements_analyzer,
+            $codebase,
+            $method_storage,
+            $capabilities,
+            null,
+            self::collectClassTemplateParams($codebase, $iterator_atomic_type, $expr, $declaring_method_id),
+            MethodCallPurityAnalyzer::isThis($expr),
+            MethodCallPurityAnalyzer::isFromGlobalState($statements_analyzer, $expr),
+        );
+    }
+
+    /**
+     * The templates of the iterated class as bound by its type (`Iterator[pure]<int, int>`).
+     *
+     * @return array<string, array<string, Union>>
+     */
+    private static function collectClassTemplateParams(
+        Codebase $codebase,
+        TNamedObject $iterator_atomic_type,
+        PhpParser\Node\Expr $expr,
+        MethodIdentifier $declaring_method_id,
+    ): array {
+        return ClassTemplateParamCollector::collect(
+            $codebase,
+            $codebase->methods->getClassLikeStorageForMethod($declaring_method_id),
+            $codebase->classlike_storage_provider->get($iterator_atomic_type->value),
+            $declaring_method_id->method_name,
+            $iterator_atomic_type,
+            $expr instanceof PhpParser\Node\Expr\Variable && $expr->name === 'this',
+        ) ?? [];
+    }
+
+    /**
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
+     */
+    private static function classLikeIs(
+        Codebase $codebase,
+        Context $context,
+        string $fq_class_name,
+        string $parent,
+    ): bool {
+        return strtolower($fq_class_name) === strtolower($parent)
+            || $codebase->classImplements($fq_class_name, $parent)
+            || ($codebase->interfaceExists($fq_class_name, null, $context)
+                && $codebase->interfaceExtends($fq_class_name, $parent));
+    }
+
     private static function getFakeMethodCallType(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $foreach_expr,
@@ -1082,8 +1581,11 @@ final class ForeachAnalyzer
         }
 
         $was_inside_call = $context->inside_call;
+        $was_inside_type_only_call = $context->inside_type_only_call;
 
         $context->inside_call = true;
+        // only the value's type is wanted here: the loop is charged for the call
+        $context->inside_type_only_call = true;
 
         MethodCallAnalyzer::analyze(
             $statements_analyzer,
@@ -1092,6 +1594,7 @@ final class ForeachAnalyzer
         );
 
         $context->inside_call = $was_inside_call;
+        $context->inside_type_only_call = $was_inside_type_only_call;
 
         if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
             $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
