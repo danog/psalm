@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
-use InvalidArgumentException;
 use PhpParser;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticPropertyFetch;
@@ -270,9 +269,8 @@ final class AtomicPropertyFetchAnalyzer
                 foreach ($class_storage->getNamedMixinsForLookup() as $mixin) {
                     $new_property_id = $mixin->value . '::$' . $prop_name;
 
-                    try {
-                        $new_class_storage = ($codebase->classlike_storage_provider->getOrNull($mixin->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($mixin->value));
-                    } catch (InvalidArgumentException) {
+                    $new_class_storage = $codebase->classlike_storage_provider->getOrNull($mixin->value);
+                    if ($new_class_storage === null) {
                         $new_class_storage = null;
                     }
 

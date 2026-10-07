@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
-use InvalidArgumentException;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -1682,9 +1681,8 @@ final class ArgumentsAnalyzer
             $statements_analyzer,
         );
 
-        try {
-            $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull($declaring_property_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_property_class));
-        } catch (InvalidArgumentException) {
+        $declaring_class_storage = $codebase->classlike_storage_provider->getOrNull($declaring_property_class);
+        if ($declaring_class_storage === null) {
             return;
         }
 

@@ -668,9 +668,8 @@ final class Analyzer
         foreach ($file_storage->classlikes_in_file as $fq_class_name_lc => $_) {
             $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode($fq_class_name_lc));
 
-            try {
-                $classlike_storage = ($codebase->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $codebase->classlike_storage_provider->getOrNull($fq_class_name_lc);
+            if ($classlike_storage === null) {
                 continue;
             }
 

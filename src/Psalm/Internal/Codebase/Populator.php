@@ -127,9 +127,8 @@ final class Populator
 
         foreach ($this->classlike_storage_provider->getNew() as $class_storage) {
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
-                try {
-                    $dependee_storage = ($this->classlike_storage_provider->getOrNull($dependent_classlike_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_classlike_lc));
-                } catch (InvalidArgumentException) {
+                $dependee_storage = $this->classlike_storage_provider->getOrNull($dependent_classlike_lc);
+                if ($dependee_storage === null) {
                     continue;
                 }
 
@@ -408,9 +407,8 @@ final class Populator
             } elseif ($atomic instanceof TTemplateParam) {
                 $capabilities |= $this->resolveCapabilitiesType($atomic->as, $depth);
             } elseif ($atomic instanceof TTypeAlias && $depth < 10) {
-                try {
-                    $alias_storage = ($this->classlike_storage_provider->getOrNull($atomic->declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($atomic->declaring_fq_classlike_name));
-                } catch (InvalidArgumentException) {
+                $alias_storage = $this->classlike_storage_provider->getOrNull($atomic->declaring_fq_classlike_name);
+                if ($alias_storage === null) {
                     return Capabilities::ALL;
                 }
 
@@ -869,9 +867,8 @@ final class Populator
             ),
         );
 
-        try {
-            $parent_storage = ($storage_provider->getOrNull($parent_storage_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($parent_storage_class));
-        } catch (InvalidArgumentException) {
+        $parent_storage = $storage_provider->getOrNull($parent_storage_class);
+        if ($parent_storage === null) {
             $this->progress->debug('Populator could not find dependency (' . __LINE__ . ")\n");
 
             $storage->invalid_dependencies[$parent_storage_class] = true;
@@ -1012,9 +1009,8 @@ final class Populator
 
             $visited[$mixin_name_lc] = true;
 
-            try {
-                $mixin_storage = ($this->classlike_storage_provider->getOrNull($mixin_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($mixin_name_lc));
-            } catch (InvalidArgumentException) {
+            $mixin_storage = $this->classlike_storage_provider->getOrNull($mixin_name_lc);
+            if ($mixin_storage === null) {
                 // A missing mixin target is reported as UndefinedDocblockClass where it is declared. Unlike a
                 // missing parent it is not recorded as an invalid dependency, which would turn every call on
                 // the host into MixedMethodCall.
@@ -1297,9 +1293,8 @@ final class Populator
         }
 
         foreach ($storage->referenced_classlikes as $fq_class_name) {
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name);
+            if ($classlike_storage === null) {
                 continue;
             }
 
@@ -1314,9 +1309,8 @@ final class Populator
             }
 
             foreach ($classlike_storage->used_traits as $used_trait) {
-                try {
-                    $trait_storage = ($this->classlike_storage_provider->getOrNull($used_trait) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($used_trait));
-                } catch (InvalidArgumentException) {
+                $trait_storage = $this->classlike_storage_provider->getOrNull($used_trait);
+                if ($trait_storage === null) {
                     continue;
                 }
 
@@ -1357,9 +1351,8 @@ final class Populator
         }
 
         foreach ($storage->required_classes as $required_classlike) {
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($required_classlike) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($required_classlike));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($required_classlike);
+            if ($classlike_storage === null) {
                 continue;
             }
 

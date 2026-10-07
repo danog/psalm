@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
-use InvalidArgumentException;
 use Override;
 use Psalm\CodeLocation;
 use Psalm\CodeLocation\DocblockTypeLocation;
@@ -192,9 +191,8 @@ final class TypeChecker extends TypeVisitor
     {
         $codebase = $this->source->getCodebase();
 
-        try {
-            $class_storage = ($codebase->classlike_storage_provider->getOrNull(strtolower($atomic->value)) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing(strtolower($atomic->value)));
-        } catch (InvalidArgumentException) {
+        $class_storage = $codebase->classlike_storage_provider->getOrNull(strtolower($atomic->value));
+        if ($class_storage === null) {
             return;
         }
 

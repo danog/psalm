@@ -1197,9 +1197,8 @@ abstract class Type
         if (!$type instanceof TNamedObject) {
             return null;
         }
-        try {
-            $storage = ($codebase->classlike_storage_provider->getOrNull($type->value) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($type->value));
-        } catch (InvalidArgumentException) {
+        $storage = $codebase->classlike_storage_provider->getOrNull($type->value);
+        if ($storage === null) {
             // Ignore non-existing classes during initial scan
             return $type;
         }

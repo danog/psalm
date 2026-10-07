@@ -114,9 +114,8 @@ final class Methods
 
         $fq_class_name = strtolower($this->classlikes->getUnAliasedName($fq_class_name));
 
-        try {
-            $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
-        } catch (InvalidArgumentException) {
+        $class_storage = $this->classlike_storage_provider->getOrNull($fq_class_name);
+        if ($class_storage === null) {
             return false;
         }
 
@@ -1150,9 +1149,8 @@ final class Methods
     /** @psalm-mutation-free */
     public function hasStorage(MethodIdentifier $method_id): bool
     {
-        try {
-            $class_storage = ($this->classlike_storage_provider->getOrNull($method_id->fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($method_id->fq_class_name));
-        } catch (InvalidArgumentException) {
+        $class_storage = $this->classlike_storage_provider->getOrNull($method_id->fq_class_name);
+        if ($class_storage === null) {
             return false;
         }
 

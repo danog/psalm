@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
 use Exception;
-use InvalidArgumentException;
 use LogicException;
 use PhpParser;
 use PhpParser\Node\Expr\BinaryOp\Concat;
@@ -250,9 +249,8 @@ final class ClassLikeNodeScanner
                     $storage->aliases = $this->aliases;
 
                     foreach ($storage->dependent_classlikes as $dependent_name_lc => $_) {
-                        try {
-                            $dependent_storage = ($this->codebase->classlike_storage_provider->getOrNull($dependent_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($dependent_name_lc));
-                        } catch (InvalidArgumentException) {
+                        $dependent_storage = $this->codebase->classlike_storage_provider->getOrNull($dependent_name_lc);
+                        if ($dependent_storage === null) {
                             continue;
                         }
                         $dependent_storage->populated = false;

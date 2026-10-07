@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
-use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Type;
 use Psalm\Type\Atomic;
@@ -1473,9 +1472,8 @@ final class TypeCombiner
      */
     private static function getClassLikes(Codebase $codebase, string $fq_classlike_name): array
     {
-        try {
-            $class_storage = ($codebase->classlike_storage_provider->getOrNull($fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_classlike_name));
-        } catch (InvalidArgumentException) {
+        $class_storage = $codebase->classlike_storage_provider->getOrNull($fq_classlike_name);
+        if ($class_storage === null) {
             return [];
         }
 

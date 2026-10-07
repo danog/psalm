@@ -46,7 +46,6 @@ use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTypeVariable;
 use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
-use UnexpectedValueException;
 
 use function count;
 use function preg_match;
@@ -589,9 +588,8 @@ final class ConcatAnalyzer
                             : null,
                         $statements_analyzer->getFilePath(),
                     )) {
-                        try {
-                            $storage = ($codebase->methods->getStorageOrNull($to_string_method_id) ?? throw $codebase->methods->missing($to_string_method_id));
-                        } catch (UnexpectedValueException) {
+                        $storage = $codebase->methods->getStorageOrNull($to_string_method_id);
+                        if ($storage === null) {
                             continue;
                         }
 

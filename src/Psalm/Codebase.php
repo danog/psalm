@@ -2319,9 +2319,8 @@ final class Codebase
         $aliases = null;
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name => $_) {
-            try {
-                $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
-            } catch (Exception) {
+            $class_storage = $this->classlike_storage_provider->getOrNull($fq_class_name);
+            if ($class_storage === null) {
                 continue;
             }
 

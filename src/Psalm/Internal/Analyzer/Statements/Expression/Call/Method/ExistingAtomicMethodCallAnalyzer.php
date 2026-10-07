@@ -48,7 +48,6 @@ use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Union;
-use UnexpectedValueException;
 
 use function array_filter;
 use function array_map;
@@ -224,9 +223,8 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
-        try {
-            $method_storage = ($codebase->methods->getStorageOrNull($declaring_method_id ?? $method_id) ?? throw $codebase->methods->missing($declaring_method_id ?? $method_id));
-        } catch (UnexpectedValueException) {
+        $method_storage = $codebase->methods->getStorageOrNull($declaring_method_id ?? $method_id);
+        if ($method_storage === null) {
             $method_storage = null;
         }
 

@@ -813,9 +813,8 @@ final class ArrayFunctionArgumentsAnalyzer
                             strtolower($method_name),
                         );
 
-                        try {
-                            $method_storage = ($codebase->methods->getStorageOrNull($function_id_part) ?? throw $codebase->methods->missing($function_id_part));
-                        } catch (UnexpectedValueException) {
+                        $method_storage = $codebase->methods->getStorageOrNull($function_id_part);
+                        if ($method_storage === null) {
                             // the method may not exist, but we're suppressing that issue
                             continue;
                         }

@@ -552,9 +552,8 @@ final class Functions
                             'count',
                         );
 
-                        try {
-                            $storage = ($codebase->methods->getStorageOrNull($count_method_id) ?? throw $codebase->methods->missing($count_method_id));
-                        } catch (Exception) {
+                        $storage = $codebase->methods->getStorageOrNull($count_method_id);
+                        if ($storage === null) {
                             continue;
                         }
                         $mutations |= MethodCallPurityAnalyzer::getMethodCapabilities(

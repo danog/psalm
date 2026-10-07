@@ -2170,9 +2170,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 null,
             );
 
-            try {
-                $interface_storage = ($classlike_storage_provider->getOrNull($fq_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name));
-            } catch (InvalidArgumentException) {
+            $interface_storage = $classlike_storage_provider->getOrNull($fq_interface_name);
+            if ($interface_storage === null) {
                 return false;
             }
 
@@ -2204,9 +2203,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
 
         foreach ($storage->class_implements as $fq_interface_name_lc => $fq_interface_name) {
-            try {
-                $interface_storage = ($classlike_storage_provider->getOrNull($fq_interface_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name_lc));
-            } catch (InvalidArgumentException) {
+            $interface_storage = $classlike_storage_provider->getOrNull($fq_interface_name_lc);
+            if ($interface_storage === null) {
                 return false;
             }
 

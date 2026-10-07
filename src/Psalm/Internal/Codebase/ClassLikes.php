@@ -868,9 +868,8 @@ final class ClassLikes
         $code_use_graph->removeEdgesOfTypes(CodeUseGraph::STRUCTURAL_EDGES);
 
         foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+            if ($classlike_storage === null) {
                 continue;
             }
 
@@ -904,9 +903,8 @@ final class ClassLikes
         }
 
         foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+            if ($classlike_storage === null) {
                 continue;
             }
 
@@ -948,9 +946,8 @@ final class ClassLikes
 
                 foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
                     if (!isset($parent_method_ids[$fq_interface_name_lc])) {
-                        try {
-                            $interface_storage = ($this->classlike_storage_provider->getOrNull($fq_interface_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name_lc));
-                        } catch (InvalidArgumentException) {
+                        $interface_storage = $this->classlike_storage_provider->getOrNull($fq_interface_name_lc);
+                        if ($interface_storage === null) {
                             continue;
                         }
 
@@ -987,9 +984,8 @@ final class ClassLikes
                 return false;
             }
 
-            try {
-                $owner_storage = ($this->classlike_storage_provider->getOrNull($owner_class) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($owner_class));
-            } catch (InvalidArgumentException) {
+            $owner_storage = $this->classlike_storage_provider->getOrNull($owner_class);
+            if ($owner_storage === null) {
                 // unknown class, e.g. a caller made up by a plugin
                 return true;
             }
@@ -999,9 +995,8 @@ final class ClassLikes
         });
 
         foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name_lc));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+            if ($classlike_storage === null) {
                 continue;
             }
             if ($classlike_storage->location
@@ -1202,9 +1197,8 @@ final class ClassLikes
 
             [$destination_fq_class_name, $destination_name] = explode('::', $destination);
 
-            try {
-                $classlike_storage = ($this->classlike_storage_provider->getOrNull($destination_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($destination_fq_class_name));
-            } catch (InvalidArgumentException) {
+            $classlike_storage = $this->classlike_storage_provider->getOrNull($destination_fq_class_name);
+            if ($classlike_storage === null) {
                 continue;
             }
 
@@ -2018,9 +2012,8 @@ final class ClassLikes
                 $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
                 $declaring_method_name = $declaring_method_id->method_name;
 
-                try {
-                    $declaring_classlike_storage = ($this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_classlike_name));
-                } catch (InvalidArgumentException) {
+                $declaring_classlike_storage = $this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name);
+                if ($declaring_classlike_storage === null) {
                     continue;
                 }
 
@@ -2124,9 +2117,8 @@ final class ClassLikes
                         }
 
                         foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
-                            try {
-                                $interface_storage = ($this->classlike_storage_provider->getOrNull($fq_interface_name_lc) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_interface_name_lc));
-                            } catch (InvalidArgumentException) {
+                            $interface_storage = $this->classlike_storage_provider->getOrNull($fq_interface_name_lc);
+                            if ($interface_storage === null) {
                                 continue;
                             }
 
@@ -2290,9 +2282,8 @@ final class ClassLikes
                 $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
                 $declaring_method_name = $declaring_method_id->method_name;
 
-                try {
-                    $declaring_classlike_storage = ($this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_classlike_name));
-                } catch (InvalidArgumentException) {
+                $declaring_classlike_storage = $this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name);
+                if ($declaring_classlike_storage === null) {
                     continue;
                 }
 
@@ -2359,9 +2350,8 @@ final class ClassLikes
                 $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
                 $declaring_method_name = $declaring_method_id->method_name;
 
-                try {
-                    $declaring_classlike_storage = ($this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($declaring_fq_classlike_name));
-                } catch (InvalidArgumentException) {
+                $declaring_classlike_storage = $this->classlike_storage_provider->getOrNull($declaring_fq_classlike_name);
+                if ($declaring_classlike_storage === null) {
                     continue;
                 }
 

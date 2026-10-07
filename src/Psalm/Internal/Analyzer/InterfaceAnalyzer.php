@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer;
 
 use Attribute;
-use InvalidArgumentException;
 use LogicException;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -81,9 +80,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                     return;
                 }
 
-                try {
-                    $extended_interface_storage = ($codebase->classlike_storage_provider->getOrNull($extended_interface_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($extended_interface_name));
-                } catch (InvalidArgumentException) {
+                $extended_interface_storage = $codebase->classlike_storage_provider->getOrNull($extended_interface_name);
+                if ($extended_interface_storage === null) {
                     continue;
                 }
 
