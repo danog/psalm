@@ -45,9 +45,9 @@ use function count;
 use function explode;
 use function gettype;
 use function in_array;
-use function preg_match;
-use function preg_replace;
+use function strrpos;
 use function strtolower;
+use function substr;
 
 /**
  * @internal
@@ -243,6 +243,12 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         return null;
     }
 
+    /** names that are reserved as the last segment of a class name */
+    private const RESERVED_TYPE_NAMES = [
+        'int' => true, 'float' => true, 'bool' => true, 'string' => true, 'void' => true, 'null' => true,
+        'false' => true, 'true' => true, 'object' => true, 'mixed' => true,
+    ];
+
     /**
      * @param  array<array-key, string>    $suppressed_issues
      */
@@ -275,16 +281,19 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
+        if ($fq_class_name[0] === '\\') {
+            $fq_class_name = substr($fq_class_name, 1);
+        }
 
         if (in_array($fq_class_name, ['callable', 'iterable', 'self', 'static', 'parent'], true)) {
             return true;
         }
 
-        if (preg_match(
-            '/(^|\\\)(int|float|bool|string|void|null|false|true|object|mixed)$/i',
-            $fq_class_name,
-        ) || strtolower($fq_class_name) === 'resource'
+        // the last name segment is a reserved type name (no regex: this runs for every class name use)
+        $last_separator = strrpos($fq_class_name, '\\');
+        $last_segment_lc = strtolower($last_separator === false ? $fq_class_name : substr($fq_class_name, $last_separator + 1));
+        if (isset(self::RESERVED_TYPE_NAMES[$last_segment_lc])
+            || ($last_separator === false && $last_segment_lc === 'resource')
         ) {
             $class_name_parts = explode('\\', $fq_class_name);
             $class_name = array_pop($class_name_parts);
