@@ -584,6 +584,14 @@ final class InternalCallMapHandler
 
     private static function isBundledWithPhp(string $key): bool
     {
+        if (\defined('PSALM_COMPILED')) {
+            // no reflection in the compiled program, and its runtime has only what PHP bundles: a symbol it
+            // provides is bundled, which is what the version comparison below finds on a stock PHP
+            return str_contains($key, '::')
+                ? class_exists(explode('::', $key)[0], false)
+                : function_exists($key);
+        }
+
         try {
             if (str_contains($key, '::')) {
                 $class = explode('::', $key)[0];
