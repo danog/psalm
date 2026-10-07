@@ -118,74 +118,77 @@ trait UnionTrait
      */
     public function __construct(array $types, array $properties = [])
     {
-        if (array_key_exists('from_docblock', $properties)) {
-            $this->from_docblock = $properties['from_docblock'];
-        }
-        if (array_key_exists('from_calculation', $properties)) {
-            $this->from_calculation = $properties['from_calculation'];
-        }
-        if (array_key_exists('from_property', $properties)) {
-            $this->from_property = $properties['from_property'];
-        }
-        if (array_key_exists('from_static_property', $properties)) {
-            $this->from_static_property = $properties['from_static_property'];
-        }
-        if (array_key_exists('from_global_state', $properties)) {
-            $this->from_global_state = $properties['from_global_state'];
-        }
-        if (array_key_exists('initialized', $properties)) {
-            $this->initialized = $properties['initialized'];
-        }
-        if (array_key_exists('initialized_class', $properties)) {
-            $this->initialized_class = $properties['initialized_class'];
-        }
-        if (array_key_exists('checked', $properties)) {
-            $this->checked = $properties['checked'];
-        }
-        if (array_key_exists('failed_reconciliation', $properties)) {
-            $this->failed_reconciliation = $properties['failed_reconciliation'];
-        }
-        if (array_key_exists('ignore_nullable_issues', $properties)) {
-            $this->ignore_nullable_issues = $properties['ignore_nullable_issues'];
-        }
-        if (array_key_exists('ignore_falsable_issues', $properties)) {
-            $this->ignore_falsable_issues = $properties['ignore_falsable_issues'];
-        }
-        if (array_key_exists('ignore_isset', $properties)) {
-            $this->ignore_isset = $properties['ignore_isset'];
-        }
-        if (array_key_exists('possibly_undefined', $properties)) {
-            $this->possibly_undefined = $properties['possibly_undefined'];
-        }
-        if (array_key_exists('possibly_undefined_from_try', $properties)) {
-            $this->possibly_undefined_from_try = $properties['possibly_undefined_from_try'];
-        }
-        if (array_key_exists('explicit_never', $properties)) {
-            $this->explicit_never = $properties['explicit_never'];
-        }
-        if (array_key_exists('had_template', $properties)) {
-            $this->had_template = $properties['had_template'];
-        }
-        if (array_key_exists('from_template_default', $properties)) {
-            $this->from_template_default = $properties['from_template_default'];
-        }
-        if (array_key_exists('by_ref', $properties)) {
-            $this->by_ref = $properties['by_ref'];
-        }
-        if (array_key_exists('reference_free', $properties)) {
-            $this->reference_free = $properties['reference_free'];
-        }
-        if (array_key_exists('allow_mutations', $properties)) {
-            $this->allow_mutations = $properties['allow_mutations'];
-        }
-        if (array_key_exists('has_mutations', $properties)) {
-            $this->has_mutations = $properties['has_mutations'];
-        }
-        if (array_key_exists('different', $properties)) {
-            $this->different = $properties['different'];
-        }
-        if (array_key_exists('parent_nodes', $properties)) {
-            $this->parent_nodes = $properties['parent_nodes'];
+        // most unions are built without properties: skip the per-property checks for them
+        if ($properties !== []) {
+            if (array_key_exists('from_docblock', $properties)) {
+                $this->from_docblock = $properties['from_docblock'];
+            }
+            if (array_key_exists('from_calculation', $properties)) {
+                $this->from_calculation = $properties['from_calculation'];
+            }
+            if (array_key_exists('from_property', $properties)) {
+                $this->from_property = $properties['from_property'];
+            }
+            if (array_key_exists('from_static_property', $properties)) {
+                $this->from_static_property = $properties['from_static_property'];
+            }
+            if (array_key_exists('from_global_state', $properties)) {
+                $this->from_global_state = $properties['from_global_state'];
+            }
+            if (array_key_exists('initialized', $properties)) {
+                $this->initialized = $properties['initialized'];
+            }
+            if (array_key_exists('initialized_class', $properties)) {
+                $this->initialized_class = $properties['initialized_class'];
+            }
+            if (array_key_exists('checked', $properties)) {
+                $this->checked = $properties['checked'];
+            }
+            if (array_key_exists('failed_reconciliation', $properties)) {
+                $this->failed_reconciliation = $properties['failed_reconciliation'];
+            }
+            if (array_key_exists('ignore_nullable_issues', $properties)) {
+                $this->ignore_nullable_issues = $properties['ignore_nullable_issues'];
+            }
+            if (array_key_exists('ignore_falsable_issues', $properties)) {
+                $this->ignore_falsable_issues = $properties['ignore_falsable_issues'];
+            }
+            if (array_key_exists('ignore_isset', $properties)) {
+                $this->ignore_isset = $properties['ignore_isset'];
+            }
+            if (array_key_exists('possibly_undefined', $properties)) {
+                $this->possibly_undefined = $properties['possibly_undefined'];
+            }
+            if (array_key_exists('possibly_undefined_from_try', $properties)) {
+                $this->possibly_undefined_from_try = $properties['possibly_undefined_from_try'];
+            }
+            if (array_key_exists('explicit_never', $properties)) {
+                $this->explicit_never = $properties['explicit_never'];
+            }
+            if (array_key_exists('had_template', $properties)) {
+                $this->had_template = $properties['had_template'];
+            }
+            if (array_key_exists('from_template_default', $properties)) {
+                $this->from_template_default = $properties['from_template_default'];
+            }
+            if (array_key_exists('by_ref', $properties)) {
+                $this->by_ref = $properties['by_ref'];
+            }
+            if (array_key_exists('reference_free', $properties)) {
+                $this->reference_free = $properties['reference_free'];
+            }
+            if (array_key_exists('allow_mutations', $properties)) {
+                $this->allow_mutations = $properties['allow_mutations'];
+            }
+            if (array_key_exists('has_mutations', $properties)) {
+                $this->has_mutations = $properties['has_mutations'];
+            }
+            if (array_key_exists('different', $properties)) {
+                $this->different = $properties['different'];
+            }
+            if (array_key_exists('parent_nodes', $properties)) {
+                $this->parent_nodes = $properties['parent_nodes'];
+            }
         }
         $this->checked = false;
         $this->memo = null;
