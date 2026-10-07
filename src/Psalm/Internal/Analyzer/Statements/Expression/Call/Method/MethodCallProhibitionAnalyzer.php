@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\FileSource;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\DeprecatedMethod;
@@ -27,7 +29,8 @@ final class MethodCallProhibitionAnalyzer
         Context $context,
         MethodIdentifier $method_id,
         ?string $caller_identifier,
-        CodeLocation $code_location,
+        FileSource $source,
+        CodeLocation|PhpParser\Node $code_location,
         array $suppressed_issues,
     ): void {
         $codebase_methods = $codebase->methods;
@@ -45,7 +48,7 @@ final class MethodCallProhibitionAnalyzer
                 new DeprecatedMethod(
                     'The method ' . $codebase_methods->getCasedMethodId($method_id) .
                         ' has been marked as deprecated',
-                    $code_location,
+                    CodeLocation::of($source, $code_location),
                     (string) $method_id,
                 ),
                 $suppressed_issues,
@@ -61,7 +64,7 @@ final class MethodCallProhibitionAnalyzer
                         'The method ' . $codebase_methods->getCasedMethodId($method_id)
                             . ' is internal to ' . InternalClass::listToPhrase($storage->internal)
                             . ' but called from ' . ($caller_identifier ?: 'root namespace'),
-                        $code_location,
+                        CodeLocation::of($source, $code_location),
                         (string) $method_id,
                     ),
                     $suppressed_issues,

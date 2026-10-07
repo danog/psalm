@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -32,7 +33,7 @@ final class MethodVisibilityAnalyzer
         MethodIdentifier $method_id,
         Context $context,
         StatementsSource $source,
-        CodeLocation $code_location,
+        CodeLocation|PhpParser\Node $code_location,
         array $suppressed_issues,
     ): ?bool {
         $codebase = $source->getCodebase();
@@ -50,7 +51,7 @@ final class MethodVisibilityAnalyzer
                 $fq_classlike_name,
                 $method_name,
                 $context,
-                $code_location,
+                CodeLocation::of($source, $code_location),
             );
 
             if ($method_visible === false) {
@@ -58,7 +59,7 @@ final class MethodVisibilityAnalyzer
                     new InaccessibleMethod(
                         'Cannot access method ' . $codebase_methods->getCasedMethodId($method_id) .
                             ' from context ' . $context->self,
-                        $code_location,
+                        CodeLocation::of($source, $code_location),
                     ),
                     $suppressed_issues,
                 )) {
@@ -153,7 +154,7 @@ final class MethodVisibilityAnalyzer
                         new InaccessibleMethod(
                             'Cannot access private method ' . $codebase_methods->getCasedMethodId($method_id) .
                                 ' from context ' . $context->self,
-                            $code_location,
+                            CodeLocation::of($source, $code_location),
                         ),
                         $suppressed_issues,
                     )) {
@@ -168,7 +169,7 @@ final class MethodVisibilityAnalyzer
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $method_id,
-                            $code_location,
+                            CodeLocation::of($source, $code_location),
                         ),
                         $suppressed_issues,
                     )) {
@@ -192,7 +193,7 @@ final class MethodVisibilityAnalyzer
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $codebase_methods->getCasedMethodId($method_id) .
                                 ' from context ' . $context->self,
-                            $code_location,
+                            CodeLocation::of($source, $code_location),
                         ),
                         $suppressed_issues,
                     )) {

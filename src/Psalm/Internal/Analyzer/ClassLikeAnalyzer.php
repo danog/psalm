@@ -688,7 +688,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         string $property_id,
         Context $context,
         SourceAnalyzer $source,
-        CodeLocation $code_location,
+        CodeLocation|PhpParser\Node $code_location,
         array $suppressed_issues,
         bool $emit_issues = true,
         bool $is_write = false,
@@ -704,7 +704,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 $property_name,
                 true,
                 $context,
-                $code_location,
+                CodeLocation::of($source, $code_location),
             );
 
             if ($property_visible !== null) {
@@ -769,7 +769,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     IssueBuffer::maybeAdd(
                         new InaccessibleProperty(
                             'Cannot ' . $verb . ' ' . $visibility_text . ' property ' . $property_id . $from_context,
-                            $code_location,
+                            CodeLocation::of($source, $code_location),
                         ),
                         $suppressed_issues,
                     );
@@ -782,7 +782,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
                                 'Cannot ' . $verb . ' ' . $visibility_text . ' property ' . $property_id,
-                                $code_location,
+                                CodeLocation::of($source, $code_location),
                             ),
                             $suppressed_issues,
                         );
@@ -801,7 +801,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                             new InaccessibleProperty(
                                 'Cannot ' . $verb . ' ' . $visibility_text . ' property ' . $property_id
                                     . $from_context,
-                                $code_location,
+                                CodeLocation::of($source, $code_location),
                             ),
                             $suppressed_issues,
                         );

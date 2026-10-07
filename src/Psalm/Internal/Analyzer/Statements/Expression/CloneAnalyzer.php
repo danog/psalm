@@ -271,6 +271,7 @@ final class CloneAnalyzer
                             $context,
                             $clone_method_id,
                             $statements_analyzer->getNamespace(),
+                            $statements_analyzer,
                             $location,
                             $statements_analyzer->getSuppressedIssues(),
                         );

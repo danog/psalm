@@ -163,6 +163,16 @@ class CodeLocation
     }
 
     /**
+     * The location of $at: a node's location is built only here, so an API that reports through a location only
+     * on its issue paths can take the node and pay for the location when it reports (pzoom builds a location
+     * only for an issue).
+     */
+    public static function of(FileSource $source, CodeLocation|PhpParser\Node $at): CodeLocation
+    {
+        return $at instanceof CodeLocation ? $at : new CodeLocation($source, $at);
+    }
+
+    /**
      * Suppresses memory usage when unserializing objects.
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait

@@ -858,7 +858,7 @@ final class AtomicStaticCallAnalyzer
             $method_id,
             $context,
             $statements_analyzer->getSource(),
-            new CodeLocation($statements_analyzer, $stmt),
+            $stmt,
             $statements_analyzer->getSuppressedIssues(),
         ) === false) {
             return false;

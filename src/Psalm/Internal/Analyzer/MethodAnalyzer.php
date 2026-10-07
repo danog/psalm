@@ -9,6 +9,7 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\FileSource;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\InvalidEnumMethod;
@@ -210,7 +211,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     public static function checkMethodAvailability(
         Codebase $codebase,
         MethodIdentifier $method_id,
-        CodeLocation $code_location,
+        ?FileSource $source,
+        CodeLocation|PhpParser\Node $code_location,
         array $suppressed_issues,
         bool $with_pseudo = false,
         ?Context $context = null,
@@ -228,7 +230,9 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 new UndefinedMethod(
                     'Method ' . $codebase->methods->getCasedMethodId($method_id) . ' '
                         . $codebase->getUnavailableSymbolMessageSuffix($method_since_id),
-                    $code_location,
+                    $code_location instanceof CodeLocation
+                        ? $code_location
+                        : new CodeLocation($source ?? throw new LogicException('a node location needs its source'), $code_location),
                     (string) $method_id,
                 ),
                 $suppressed_issues,
@@ -266,6 +270,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 self::checkMethodAvailability(
                     $codebase,
                     $method_id,
+                    null,
                     $code_location,
                     $suppressed_issues,
                     $with_pseudo,

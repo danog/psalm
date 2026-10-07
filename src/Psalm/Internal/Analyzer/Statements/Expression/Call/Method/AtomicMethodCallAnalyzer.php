@@ -488,7 +488,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         MethodAnalyzer::checkMethodAvailability(
             $codebase,
             $method_id,
-            new CodeLocation($source, $stmt->name),
+            $source,
+            $stmt->name,
             $statements_analyzer->getSuppressedIssues(),
             false,
             $context,
@@ -519,13 +520,11 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
         if (!$in_call_map) {
             if ($result->check_visibility) {
-                $name_code_location = new CodeLocation($statements_analyzer, $stmt->name);
-
                 MethodVisibilityAnalyzer::analyze(
                     $method_id,
                     $context,
                     $statements_analyzer->getSource(),
-                    $name_code_location,
+                    $stmt->name,
                     $statements_analyzer->getSuppressedIssues(),
                 );
             }

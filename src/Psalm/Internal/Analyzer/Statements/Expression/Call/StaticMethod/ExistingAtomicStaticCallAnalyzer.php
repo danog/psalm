@@ -88,7 +88,8 @@ final class ExistingAtomicStaticCallAnalyzer
             $context,
             $method_id,
             $statements_analyzer->getFullyQualifiedFunctionMethodOrNamespaceName(),
-            new CodeLocation($statements_analyzer->getSource(), $stmt),
+            $statements_analyzer->getSource(),
+            $stmt,
             $statements_analyzer->getSuppressedIssues(),
         );
 

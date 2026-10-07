@@ -408,7 +408,7 @@ final class AtomicPropertyFetchAnalyzer
                 $property_id,
                 $context,
                 $statements_analyzer,
-                new CodeLocation($statements_analyzer->getSource(), $stmt),
+                $stmt,
                 $statements_analyzer->getSuppressedIssues(),
             ) === false) {
                 return;
@@ -420,7 +420,7 @@ final class AtomicPropertyFetchAnalyzer
                     $property_id,
                     $context,
                     $statements_analyzer,
-                    new CodeLocation($statements_analyzer->getSource(), $stmt),
+                    $stmt,
                     $statements_analyzer->getSuppressedIssues(),
                     true,
                     true,
@@ -648,7 +648,7 @@ final class AtomicPropertyFetchAnalyzer
                         $property_id,
                         $context,
                         $statements_analyzer,
-                        new CodeLocation($statements_analyzer->getSource(), $stmt),
+                        $stmt,
                         $statements_analyzer->getSuppressedIssues(),
                         false,
                     ) !== true)
