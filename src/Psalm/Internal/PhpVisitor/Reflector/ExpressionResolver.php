@@ -12,6 +12,7 @@ use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
@@ -421,7 +422,9 @@ final class ExpressionResolver
             $reflection_function = new ReflectionFunction($function->getArgs()[0]->value->value);
 
             if ($reflection_function->isInternal()) {
-                return true;
+                // a native function the runtime has but the analysed PHP version does not, as
+                // guarded by the polyfill of it
+                return InternalCallMapHandler::getIntroducingPhpVersionId($reflection_function->getName()) === null;
             }
 
             return false;

@@ -21,6 +21,7 @@ use Psalm\Internal\Provider\ReturnTypeProvider\ArrayPointerAdjustmentReturnTypeP
 use Psalm\Internal\Provider\ReturnTypeProvider\ArrayPopReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\ArrayRandReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\ArrayReduceReturnTypeProvider;
+use Psalm\Internal\Provider\ReturnTypeProvider\ArrayReplaceRecursiveReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\ArrayReverseReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\ArraySliceReturnTypeProvider;
 use Psalm\Internal\Provider\ReturnTypeProvider\ArraySpliceReturnTypeProvider;
@@ -82,6 +83,7 @@ final class FunctionReturnTypeProvider
         $this->registerClass(new ArrayPopReturnTypeProvider());
         $this->registerClass(new ArrayRandReturnTypeProvider());
         $this->registerClass(new ArrayReduceReturnTypeProvider());
+        $this->registerClass(new ArrayReplaceRecursiveReturnTypeProvider());
         $this->registerClass(new ArraySliceReturnTypeProvider());
         $this->registerClass(new ArraySpliceReturnTypeProvider());
         $this->registerClass(new ArrayReverseReturnTypeProvider());

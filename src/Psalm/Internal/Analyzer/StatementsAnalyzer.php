@@ -30,6 +30,7 @@ use Psalm\Internal\Analyzer\Statements\EchoAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\DestructorAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
@@ -68,7 +69,7 @@ use Psalm\IssueBuffer;
 use Psalm\NodeTypeProvider;
 use Psalm\Plugin\EventHandler\Event\AfterStatementAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeStatementAnalysisEvent;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
@@ -151,6 +152,12 @@ final class StatementsAnalyzer extends SourceAnalyzer
     public TaintFlowGraph|CombinedFlowGraph|VariableUseGraph|null $data_flow_graph = null;
 
     /**
+     * Where the data flow of code suppressing TaintedInput goes when analysing taints alone:
+     * nowhere, but it gets the same parent nodes as when tracking unused variables too.
+     */
+    private ?VariableUseGraph $discarded_flow_graph = null;
+
+    /**
      * Locations of foreach values
      *
      * Used to discern ordinary UnusedVariables from UnusedForeachValues
@@ -204,10 +211,12 @@ final class StatementsAnalyzer extends SourceAnalyzer
             $this->data_flow_graph = $this->taint_flow_graph = $this->codebase->taint_flow_graph;
         }
         if ($this->codebase->find_unused_variables) {
-            $this->data_flow_graph = $this->variable_use_graph = new VariableUseGraph();
+            $this->data_flow_graph = $this->variable_use_graph = new VariableUseGraph($this->taint_flow_graph);
         }
         if ($this->taint_flow_graph && $this->variable_use_graph) {
             $this->data_flow_graph = new CombinedFlowGraph($this->variable_use_graph, $this->taint_flow_graph);
+        } elseif ($this->taint_flow_graph) {
+            $this->discarded_flow_graph = new VariableUseGraph($this->taint_flow_graph);
         }
     }
 
@@ -217,7 +226,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     public function getDataFlowGraphWithSuppressed(): TaintFlowGraph|CombinedFlowGraph|VariableUseGraph|null
     {
         if ($this->taint_flow_graph && in_array('TaintedInput', $this->getSuppressedIssues())) {
-            return $this->variable_use_graph;
+            return $this->variable_use_graph ?? $this->discarded_flow_graph;
         }
         return $this->data_flow_graph;
     }
@@ -647,6 +656,21 @@ final class StatementsAnalyzer extends SourceAnalyzer
             ) === false) {
                 return false;
             }
+
+            if ($stmt->expr instanceof PhpParser\Node\Expr\New_) {
+                $new_type = $statements_analyzer->node_data->getType($stmt->expr);
+
+                if ($new_type !== null) {
+                    // nothing holds the new object: it dies right away
+                    DestructorAnalyzer::chargeDestruction(
+                        $statements_analyzer,
+                        $context,
+                        $new_type,
+                        'the discarded new object',
+                        $stmt->expr,
+                    );
+                }
+            }
         } elseif ($stmt instanceof PhpParser\Node\Stmt\InlineHTML) {
             // do nothing
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Global_) {
@@ -1059,21 +1083,16 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->value);
-            while ($class_storage !== null) {
-                $destructor = $class_storage->methods['__destruct'] ?? null;
-                if ($destructor !== null) {
-                    if ($destructor->has_mutations_annotation
-                        && $destructor->allowed_mutations >= Mutations::LEVEL_EXTERNAL) {
-                        return true;
-                    }
+            $destructor_id = DestructorAnalyzer::getDestructorId($codebase, $atomic_type->value);
 
-                    break;
-                }
+            if ($destructor_id === null) {
+                continue;
+            }
 
-                $class_storage = $class_storage->parent_class === null
-                    ? null
-                    : $codebase->classlikes->getStorageFor($class_storage->parent_class);
+            $destructor = $codebase->methods->getStorage($destructor_id);
+
+            if ($destructor->has_mutations_annotation && $destructor->capabilities === Capabilities::ALL) {
+                return true;
             }
         }
 

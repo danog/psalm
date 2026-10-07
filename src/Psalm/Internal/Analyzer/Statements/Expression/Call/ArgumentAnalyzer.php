@@ -72,7 +72,7 @@ use function count;
 use function explode;
 use function implode;
 use function in_array;
-use function ord;
+use function mb_ord;
 use function preg_split;
 use function reset;
 use function str_contains;
@@ -219,7 +219,7 @@ final class ArgumentAnalyzer
                 $gt_count = 0;
 
                 foreach ($values as $value) {
-                    $ord = ord($value);
+                    $ord = (int) mb_ord($value, 'UTF-8');
 
                     if ($ord > $prev_ord) {
                         $gt_count++;
@@ -1922,11 +1922,15 @@ final class ArgumentAnalyzer
 
             if ($declaring_method_id && (string) $declaring_method_id !== (string) $method_id) {
                 $declaring_storage = $codebase->methods->getStorage($declaring_method_id);
+                // Specialized like $method_node: that node has an outgoing edge, so it is
+                // propagated from as-is rather than entered as a specialized call. An edge
+                // into the unspecialized declaring parameter would take the flow into the body
+                // with no call-site context, and out of it through every call's return.
                 $new_sink = DataFlowNode::getForMethodArgument(
                     $codebase->methods->getCasedMethodId($declaring_method_id),
                     DataFlowNode::getParameterOffset($declaring_storage, $function_param, $argument_offset),
                     $declaring_storage,
-                    null,
+                    $specialization_location,
                 );
 
                 $taint_flow_graph->addNode($new_sink);
@@ -1941,6 +1945,28 @@ final class ArgumentAnalyzer
         }
 
         $graph->addNode($method_node);
+
+        if ($taint_flow_graph && $function_storage && !$in_call_map) {
+            $callable_param_method_id = $cased_method_id;
+            $callable_param_storage = $function_storage;
+
+            // keyed as the body of the method keys its callable parameters (a magic method has none)
+            $declaring_method_id = $method_id ? $codebase->methods->getDeclaringMethodId($method_id) : null;
+            if ($method_id && $declaring_method_id) {
+                $callable_param_method_id = FunctionLikeAnalyzer::getByRefParamsOutMethodId($codebase, $method_id);
+                $callable_param_storage = $codebase->methods->getStorage($declaring_method_id);
+            }
+
+            FunctionCallReturnTypeFetcher::taintCallablePassedToParam(
+                $statements_analyzer,
+                $taint_flow_graph,
+                $callable_param_method_id,
+                DataFlowNode::getParameterOffset($callable_param_storage, $function_param, $argument_offset),
+                $callable_param_storage,
+                $specialization_location,
+                $input_type,
+            );
+        }
 
         $argument_value_node = DataFlowNode::getForAssignment(
             'call to ' . $cased_method_id,

@@ -8,10 +8,12 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Config;
 use Psalm\Context;
+use Psalm\Internal\Analyzer\ClosureAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Issue\ImpureGlobalVariable;
 use Psalm\Issue\ImpureVariable;
@@ -22,7 +24,7 @@ use Psalm\Issue\UndefinedGlobalVariable;
 use Psalm\Issue\UndefinedVariable;
 use Psalm\IssueBuffer;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TBool;
@@ -119,12 +121,16 @@ final class VariableFetchAnalyzer
                 );
             }
 
+            // using `$this` needs a capability over its properties: reading or writing them
             $statements_analyzer->signalMutation(
-                Mutations::LEVEL_INTERNAL_READ,
+                ($context->capabilities & Capabilities::WRITE_THIS_PROPS) !== 0
+                    ? Capabilities::NONE
+                    : Capabilities::READ_PROPS,
                 $context,
                 '$this',
                 ImpureVariable::class,
                 $stmt,
+                Capabilities::READ_PROPS,
             );
 
             return true;
@@ -157,7 +163,7 @@ final class VariableFetchAnalyzer
             $var_name = '$' . $stmt->name;
 
             $statements_analyzer->signalMutation(
-                Mutations::LEVEL_EXTERNAL,
+                Capabilities::READ_GLOBALS,
                 $context,
                 "superglobal $var_name",
                 ImpureGlobalVariable::class,
@@ -194,7 +200,7 @@ final class VariableFetchAnalyzer
 
         if (!is_string($stmt->name)) {
             $statements_analyzer->signalMutation(
-                Mutations::LEVEL_INTERNAL_READ,
+                Capabilities::READ_PROPS,
                 $context,
                 'unknown variable',
                 ImpureVariable::class,
@@ -365,6 +371,22 @@ final class VariableFetchAnalyzer
         } else {
             $stmt_type = $context->vars_in_scope[$var_name];
 
+            if (isset($context->captured_by_ref[$var_name])) {
+                // `use (&$x)`: the enclosing scope may change it between calls, so reading it is
+                // reading state, like a property; a recursive closure reading itself is not
+                $source = $statements_analyzer->getSource();
+
+                if (!$source instanceof ClosureAnalyzer || $source->getRecursiveVarId() !== $var_name) {
+                    $statements_analyzer->signalMutation(
+                        Capabilities::READ_PROPS,
+                        $context,
+                        'variable ' . $var_name . ' captured by reference',
+                        ImpureVariable::class,
+                        $stmt,
+                    );
+                }
+            }
+
             self::taintVariable($statements_analyzer, $context, $var_name, $stmt_type, $stmt);
 
             self::addDataFlowToVariable($statements_analyzer, $stmt, $var_name, $stmt_type, $context);
@@ -432,10 +454,7 @@ final class VariableFetchAnalyzer
         Union &$stmt_type,
         Context $context,
     ): void {
-        $codebase = $statements_analyzer->getCodebase();
-
         if ($statements_analyzer->data_flow_graph
-            && $codebase->find_unused_variables
             && ($context->inside_return
                 || $context->inside_call
                 || $context->inside_general_use
@@ -444,10 +463,22 @@ final class VariableFetchAnalyzer
                 || $context->inside_isset)
         ) {
             if (!$stmt_type->parent_nodes) {
-                $assignment_node = DataFlowNode::getForAssignment(
-                    $var_name,
-                    new CodeLocation($statements_analyzer->getSource(), $stmt),
-                );
+                $assignment_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
+                $assignment_node = DataFlowNode::getForAssignment($var_name, $assignment_location);
+
+                // Analysing taints, the new node hides from the taint graph the parent nodes nested in
+                // the value, which carry its taint: lead them to it.
+                $taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed();
+
+                if ($taint_flow_graph
+                    && $taint_flow_graph->addPathsFromNestedParentNodes(
+                        $assignment_node,
+                        $stmt_type,
+                        $assignment_location,
+                    )
+                ) {
+                    $taint_flow_graph->addNode($assignment_node);
+                }
 
                 $stmt_type = $stmt_type->setParentNodes([
                     $assignment_node->id => $assignment_node,
@@ -515,11 +546,16 @@ final class VariableFetchAnalyzer
         $taints |= $added_taints;
         $taints &= ~$removed_taints;
 
-        if ($taints === 0) {
+        $taint_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
+
+        if ($var_name === '$_FILES' && $taints === 0) {
+            $type = self::taintFiles($graph, $taint_location, $type);
             return;
         }
 
-        $taint_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
+        if ($taints === 0) {
+            return;
+        }
 
         $taint_source = DataFlowNode::getForTaint(
             $var_name,
@@ -531,6 +567,25 @@ final class VariableFetchAnalyzer
         $type = $type->setParentNodes([
             $taint_source->id => $taint_source,
         ]);
+    }
+
+    /**
+     * The client chooses the names of the files it uploads, `$_FILES[...]['name']`, unlike the entries of an
+     * uploaded file the server writes (see also ArrayFetchAnalyzer::taintSuperGlobalFetch()).
+     */
+    private static function taintFiles(TaintFlowGraph $graph, CodeLocation $taint_location, Union $type): Union
+    {
+        $taint_source = DataFlowNode::getForTaint('$_FILES[][\'name\']', $taint_location, TaintKind::ALL_INPUT);
+        $name_node = DataFlowNode::getForAssignment('$_FILES[] name', $taint_location);
+        $files_node = DataFlowNode::getForAssignment('$_FILES', $taint_location);
+
+        $graph->addSource($taint_source);
+        $graph->addNode($name_node);
+        $graph->addNode($files_node);
+        $graph->addPath($taint_source, $name_node, 'arrayvalue-assignment-\'name\'');
+        $graph->addPath($name_node, $files_node, 'arrayvalue-assignment');
+
+        return $type->setParentNodes([$files_node->id => $files_node]);
     }
 
     /**

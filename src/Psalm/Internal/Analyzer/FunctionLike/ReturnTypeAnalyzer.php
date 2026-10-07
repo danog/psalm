@@ -28,6 +28,7 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
+use Psalm\Internal\Type\IterationPurity;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
@@ -568,6 +569,16 @@ final class ReturnTypeAnalyzer
                     true,
                 )) {
                     return false;
+                }
+            }
+
+            // the purity of the generator a generator function-like returns is the declared one:
+            // what its body does is checked on its own
+            if ($function_like_storage?->has_yield) {
+                $declared_purity = IterationPurity::getBoundPurity($declared_return_type);
+
+                if ($declared_purity !== null) {
+                    $inferred_return_type = IterationPurity::bindGenerators($inferred_return_type, $declared_purity);
                 }
             }
 

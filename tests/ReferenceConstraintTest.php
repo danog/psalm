@@ -76,6 +76,21 @@ final class ReferenceConstraintTest extends TestCase
                     'MixedOperand',
                 ],
             ],
+            'paramOutOnVariadicParam' => [
+                'code' => '<?php
+                    /**
+                     * @param-out int ...$refs
+                     */
+                    function setAll(string &...$refs): void {
+                        foreach ($refs as &$ref) {
+                            $ref = 1;
+                        }
+                    }
+
+                    $a = "x";
+                    setAll($a);',
+                'assertions' => ['$a' => 'int'],
+            ],
             'paramOutRefineType' => [
                 'code' => '<?php
                     /**
@@ -108,6 +123,20 @@ final class ReferenceConstraintTest extends TestCase
                     addFoo($a);',
                 'assertions' => [
                     '$a' => 'int',
+                ],
+            ],
+            'paramOutWithPurity' => [
+                'code' => '<?php
+                    /**
+                     * @param-out Closure[pure](): int $f
+                     */
+                    function makeClosure(?Closure &$f) : void {
+                        $f = fn(): int => 1;
+                    }
+
+                    makeClosure($a);',
+                'assertions' => [
+                    '$a' => 'Closure[pure]():int',
                 ],
             ],
             'paramOutReturn' => [

@@ -177,7 +177,7 @@ class CodeLocation
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      * @psalm-suppress InaccessibleProperty Mainly used for caching
      */
     private function calculateRealLocation(): void
@@ -346,6 +346,7 @@ class CodeLocation
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getEndLineNumber(): int
     {
@@ -356,6 +357,7 @@ class CodeLocation
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getSnippet(): string
     {
@@ -366,6 +368,7 @@ class CodeLocation
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getSelectedText(): string
     {
@@ -376,6 +379,7 @@ class CodeLocation
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getColumn(): int
     {
@@ -386,6 +390,7 @@ class CodeLocation
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getEndColumn(): int
     {
@@ -397,6 +402,7 @@ class CodeLocation
     /**
      * @return array{0: int, 1: int}
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getSelectionBounds(): array
     {
@@ -408,6 +414,7 @@ class CodeLocation
     /**
      * @return array{0: int, 1: int}
      * @psalm-mutation-free
+     * @psalm-suppress ImpureMethodCall lazily computes and caches the location
      */
     public function getSnippetBounds(): array
     {

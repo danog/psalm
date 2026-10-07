@@ -28,7 +28,7 @@ use Psalm\Internal\Provider\StatementsProvider;
 use Psalm\IssueBuffer;
 use Psalm\Progress\Phase;
 use Psalm\Progress\Progress;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
 use Psalm\Type\Union;
 use SebastianBergmann\Diff\Differ;
@@ -38,14 +38,12 @@ use UnexpectedValueException;
 use function Amp\Future\await;
 use function array_filter;
 use function array_intersect_key;
-use function array_key_exists;
 use function array_merge;
 use function array_values;
 use function count;
 use function explode;
 use function implode;
 use function ksort;
-use function max;
 use function number_format;
 use function pathinfo;
 use function preg_replace;
@@ -86,7 +84,7 @@ use const PHP_INT_MAX;
  *      unused_suppressions: array<string, array<int, int>>,
  *      used_suppressions: array<string, array<int, bool>>,
  *      function_docblock_manipulators: array<string, array<int, FunctionDocblockManipulator>>,
- *      mutable_classes: array<string, Mutations::LEVEL_*>,
+ *      mutable_classes: array<string, int>,
  *      issue_handlers: array{type: string, index: int, count: int}[],
  * }
  */
@@ -174,7 +172,7 @@ final class Analyzer
     public array $possible_method_param_types = [];
 
     /**
-     * @var array<string, Mutations::LEVEL_*>
+     * @var array<string, int>
      */
     public array $mutable_classes = [];
 
@@ -364,15 +362,8 @@ final class Analyzer
                     Transpiler::get()->importInferredReturnTypes($codebase, $pool_data['transpiler_inferred_return_types']);
                 }
 
-                foreach ($pool_data['mutable_classes'] as $class => $level) {
-                    if (array_key_exists($class, $this->mutable_classes)) {
-                        $this->mutable_classes[$class] = max(
-                            $this->mutable_classes[$class],
-                            $level,
-                        );
-                    } else {
-                        $this->mutable_classes[$class] = $level;
-                    }
+                foreach ($pool_data['mutable_classes'] as $class => $capabilities) {
+                    $this->addMutableClass($class, $capabilities);
                 }
 
                 FunctionDocblockManipulator::addManipulators($pool_data['function_docblock_manipulators']);
@@ -658,7 +649,7 @@ final class Analyzer
      * (re-)analysed, except the references of methods whose cached analysis
      * is still valid and which will therefore be skipped.
      *
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     private function removeCodeUseReferencesForFile(Codebase $codebase, string $file_path): void
     {
@@ -1077,7 +1068,7 @@ final class Analyzer
 
     /**
      * @return array{int, int}
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getTotalTypeCoverage(Codebase $codebase): array
     {
@@ -1101,7 +1092,7 @@ final class Analyzer
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public function getTypeInferenceSummary(Codebase $codebase): string
     {
@@ -1379,20 +1370,12 @@ final class Analyzer
     }
 
     /**
-     * @param Mutations::LEVEL_* $allowed_mutations
      * @psalm-external-mutation-free
      */
-    public function addMutableClass(string $fqcln, int $allowed_mutations): void
+    public function addMutableClass(string $fqcln, int $capabilities): void
     {
         $fqcln = strtolower($fqcln);
-        if (array_key_exists($fqcln, $this->mutable_classes)) {
-            $this->mutable_classes[$fqcln] = max(
-                $this->mutable_classes[$fqcln],
-                $allowed_mutations,
-            );
-        } else {
-            $this->mutable_classes[$fqcln] = $allowed_mutations;
-        }
+        $this->mutable_classes[$fqcln] = ($this->mutable_classes[$fqcln] ?? Capabilities::NONE) | $capabilities;
     }
 
     /**

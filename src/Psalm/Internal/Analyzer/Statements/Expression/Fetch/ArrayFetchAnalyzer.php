@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -86,6 +87,7 @@ use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeVariable;
 use Psalm\Type\MutableUnion;
+use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
@@ -97,8 +99,11 @@ use function count;
 use function implode;
 use function in_array;
 use function is_int;
+use function spl_object_id;
+use function str_starts_with;
 use function strlen;
 use function strtolower;
+use function substr;
 
 /**
  * @internal
@@ -190,6 +195,11 @@ final class ArrayFetchAnalyzer
                 $used_key_type,
                 $context,
             );
+
+            // what is written through a reference to the item doesn't flow through the array
+            if (isset($context->referenced_counts[$keyed_array_var_id])) {
+                $stmt_type = $stmt_type->addParentNodes($context->vars_in_scope[$keyed_array_var_id]->parent_nodes);
+            }
 
             if ($stmt->dim && $statements_analyzer->node_data->getType($stmt->dim)) {
                 $statements_analyzer->node_data->setType($stmt->dim, $used_key_type);
@@ -374,7 +384,91 @@ final class ArrayFetchAnalyzer
     }
 
     /**
+     * The entries of $_SERVER the client sends, besides the request headers (HTTP_*): the URI, and what is taken
+     * from it (the CGI SAPI keeps the values it rewrites with an ORIG_ prefix, Apache those of a redirected request
+     * with a REDIRECT_ one), and argv, which PHP builds from the query string with register_argc_argv.
+     */
+    private const USER_CONTROLLED_SERVER_KEYS = [
+        'REQUEST_URI',
+        'UNENCODED_URL',
+        'DOCUMENT_URI',
+        'QUERY_STRING',
+        'argv',
+        'PATH_INFO',
+        'ORIG_PATH_INFO',
+        'PATH_TRANSLATED',
+        'ORIG_PATH_TRANSLATED',
+        'ORIG_SCRIPT_NAME',
+        'ORIG_SCRIPT_FILENAME',
+        'PHP_SELF',
+        'SCRIPT_URI',
+        'SCRIPT_URL',
+        'REDIRECT_URL',
+        'REQUEST_METHOD',
+        'CONTENT_TYPE',
+        'PHP_AUTH_USER',
+        'PHP_AUTH_PW',
+        'PHP_AUTH_DIGEST',
+    ];
+
+    /**
+     * Most entries of $_SERVER come from the server, but the client sends the request headers and the URI. The
+     * client also chooses the type of the files it uploads, and their path in a directory it uploads, in $_FILES
+     * (their names are tainted from $_FILES itself, see VariableFetchAnalyzer::taintFiles()).
+     */
+    private static function taintSuperGlobalFetch(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $var,
+        Union $offset_type,
+        Union &$stmt_type,
+    ): void {
+        if (!$graph = $statements_analyzer->getTaintFlowGraphWithSuppressed()) {
+            return;
+        }
+
+        $key = $offset_type->isSingleStringLiteral() ? $offset_type->getSingleStringLiteral()->value : null;
+        if ($var instanceof PhpParser\Node\Expr\Variable && $var->name === '_SERVER') {
+            $server_key = $key;
+            while ($server_key !== null
+                && $server_key !== 'REDIRECT_URL'
+                && str_starts_with($server_key, 'REDIRECT_')
+            ) {
+                $server_key = substr($server_key, 9);
+            }
+
+            if ($server_key !== null
+                && !str_starts_with($server_key, 'HTTP_')
+                && !in_array($server_key, self::USER_CONTROLLED_SERVER_KEYS, true)
+            ) {
+                return;
+            }
+
+            $label = $key === null ? '$_SERVER[]' : '$_SERVER[\'' . $key . '\']';
+        } elseif ($var instanceof PhpParser\Node\Expr\ArrayDimFetch
+            && $var->var instanceof PhpParser\Node\Expr\Variable
+            && $var->var->name === '_FILES'
+            && ($key === 'type' || $key === 'full_path')
+        ) {
+            $label = '$_FILES[][\'' . $key . '\']';
+        } else {
+            return;
+        }
+
+        $taint_source = DataFlowNode::getForTaint(
+            $label,
+            new CodeLocation($statements_analyzer->getSource(), $var),
+            TaintKind::ALL_INPUT,
+        );
+        $graph->addSource($taint_source);
+
+        $stmt_type = $stmt_type->addParentNodes([$taint_source->id => $taint_source]);
+    }
+
+    /**
      * Used to create a path between a variable $foo and $foo["a"]
+     *
+     * The array is $var, or what $var_type holds when it isn't what $var evaluates to (the item of an array a
+     * foreach goes over, ...).
      */
     public static function taintArrayFetch(
         StatementsAnalyzer $statements_analyzer,
@@ -383,13 +477,16 @@ final class ArrayFetchAnalyzer
         Union &$stmt_type,
         Union &$offset_type,
         ?Context $context = null,
+        ?Union $var_type = null,
     ): void {
         if ($statements_analyzer->data_flow_graph
-            && ($stmt_var_type = $statements_analyzer->node_data->getType($var))
+            && ($stmt_var_type = $var_type ?? $statements_analyzer->node_data->getType($var))
             && $stmt_var_type->parent_nodes
         ) {
             if (!$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
-                $statements_analyzer->node_data->setType($var, $stmt_var_type->setParentNodes([]));
+                if (!$var_type) {
+                    $statements_analyzer->node_data->setType($var, $stmt_var_type->setParentNodes([]));
+                }
                 return;
             }
 
@@ -472,6 +569,8 @@ final class ArrayFetchAnalyzer
                 $offset_type = $offset_type->setParentNodes([$array_key_node->id => $array_key_node]);
             }
         }
+
+        self::taintSuperGlobalFetch($statements_analyzer, $var, $offset_type, $stmt_type);
     }
 
     /**
@@ -1035,7 +1134,7 @@ final class ArrayFetchAnalyzer
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     public static function replaceOffsetTypeWithInts(Union $offset_type): Union
     {
@@ -1112,7 +1211,7 @@ final class ArrayFetchAnalyzer
             }
         }
 
-        if (($variable_use_graph = $statements_analyzer->variable_use_graph)
+        if (($graph = $statements_analyzer->getDataFlowGraphWithSuppressed())
             && ($stmt_var_type = $statements_analyzer->node_data->getType($stmt->var))
         ) {
             if ($stmt_var_type->parent_nodes) {
@@ -1120,12 +1219,12 @@ final class ArrayFetchAnalyzer
 
                 $new_parent_node = DataFlowNode::getForAssignment('mixed-var-array-access', $var_location);
 
-                $variable_use_graph->addNode($new_parent_node);
+                $graph->addNode($new_parent_node);
 
                 foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                    $variable_use_graph->addPath($parent_node, $new_parent_node, '=');
+                    $graph->addPath($parent_node, $new_parent_node, '=');
 
-                    $variable_use_graph->addPath(
+                    $graph->addPath(
                         $parent_node,
                         DataFlowNode::getForVariableUse(),
                         'variable-use',
@@ -1892,6 +1991,13 @@ final class ArrayFetchAnalyzer
                 $statements_analyzer->addSuppressedIssues(['MixedMethodCall']);
             }
 
+            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+                && ($context->inside_isset || $context->inside_unset)
+            ) {
+                // a null receiver is what isset() and unset() are for
+                $statements_analyzer->addSuppressedIssues(['PossiblyNullReference']);
+            }
+
             if ($in_assignment) {
                 $old_node_data = $statements_analyzer->node_data;
 
@@ -1929,33 +2035,102 @@ final class ArrayFetchAnalyzer
             if ($stmt->dim) {
                 $old_node_data = $statements_analyzer->node_data;
 
-                $statements_analyzer->node_data = clone $statements_analyzer->node_data;
+                // `unset($a[$k])` calls offsetUnset, `isset($a[$k])` and `$a[$k] ?? ...` call
+                // offsetExists (the latter then offsetGet), everything else calls offsetGet
+                if ($context->inside_unset) {
+                    $statements_analyzer->node_data = clone $statements_analyzer->node_data;
 
-                $fake_get_method_call = new VirtualMethodCall(
-                    $stmt->var,
-                    new VirtualIdentifier('offsetGet', $stmt->var->getAttributes()),
-                    [
-                        new VirtualArg(
-                            $stmt->dim,
-                        ),
-                    ],
-                );
+                    $fake_unset_method_call = new VirtualMethodCall(
+                        $stmt->var,
+                        new VirtualIdentifier('offsetUnset', $stmt->var->getAttributes()),
+                        [
+                            new VirtualArg(
+                                $stmt->dim,
+                            ),
+                        ],
+                    );
 
-                MethodCallAnalyzer::analyze(
-                    $statements_analyzer,
-                    $fake_get_method_call,
-                    $context,
-                );
+                    MethodCallAnalyzer::analyze(
+                        $statements_analyzer,
+                        $fake_unset_method_call,
+                        $context,
+                    );
 
-                $call_array_access_type =
-                    $statements_analyzer->node_data->getType($fake_get_method_call) ?? Type::getMixed();
+                    $statements_analyzer->node_data = $old_node_data;
+                }
 
-                $statements_analyzer->node_data = $old_node_data;
+                if ($context->inside_isset) {
+                    $statements_analyzer->node_data = clone $statements_analyzer->node_data;
+
+                    $fake_exists_method_call = new VirtualMethodCall(
+                        $stmt->var,
+                        new VirtualIdentifier('offsetExists', $stmt->var->getAttributes()),
+                        [
+                            new VirtualArg(
+                                $stmt->dim,
+                            ),
+                        ],
+                    );
+
+                    MethodCallAnalyzer::analyze(
+                        $statements_analyzer,
+                        $fake_exists_method_call,
+                        $context,
+                    );
+
+                    $statements_analyzer->node_data = $old_node_data;
+                }
+
+                if ($context->inside_unset) {
+                    $call_array_access_type = Type::getVoid();
+                } elseif ($context->inside_isset && $context->isset_root_id === spl_object_id($stmt)) {
+                    // a plain isset() never calls offsetGet: only its declared type is of interest
+                    $call_array_access_type = Type::getMixed();
+                    $get_method_id = new MethodIdentifier($type->value, 'offsetget');
+
+                    if ($codebase->methods->methodExists($codebase, $get_method_id)) {
+                        $self_class = $type->value;
+                        $call_array_access_type = $codebase->methods->getMethodReturnType(
+                            $codebase,
+                            $get_method_id,
+                            $self_class,
+                        ) ?? Type::getMixed();
+                    }
+                } else {
+                    $statements_analyzer->node_data = clone $statements_analyzer->node_data;
+
+                    $fake_get_method_call = new VirtualMethodCall(
+                        $stmt->var,
+                        new VirtualIdentifier('offsetGet', $stmt->var->getAttributes()),
+                        [
+                            new VirtualArg(
+                                $stmt->dim,
+                            ),
+                        ],
+                    );
+
+                    MethodCallAnalyzer::analyze(
+                        $statements_analyzer,
+                        $fake_get_method_call,
+                        $context,
+                    );
+
+                    $call_array_access_type =
+                        $statements_analyzer->node_data->getType($fake_get_method_call) ?? Type::getMixed();
+
+                    $statements_analyzer->node_data = $old_node_data;
+                }
             } else {
                 $call_array_access_type = Type::getVoid();
             }
 
             $has_array_access = true;
+
+            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+                && ($context->inside_isset || $context->inside_unset)
+            ) {
+                $statements_analyzer->removeSuppressedIssues(['PossiblyNullReference']);
+            }
 
             if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);

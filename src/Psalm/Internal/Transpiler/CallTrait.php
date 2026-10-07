@@ -605,7 +605,7 @@ trait CallTrait
         }
         foreach ($impls as $c) {
             $im = $this->program->findMethod($c, $lc);
-            if ($im === null || $im->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ) {
+            if ($im === null || ($im->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) !== 0) {
                 return false;
             }
         }

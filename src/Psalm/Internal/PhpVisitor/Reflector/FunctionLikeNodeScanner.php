@@ -27,12 +27,14 @@ use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Type\TypeAlias;
+use Psalm\Internal\TypeVisitor\FunctionPurityTemplateReplacer;
 use Psalm\Issue\DuplicateFunction;
 use Psalm\Issue\DuplicateMethod;
 use Psalm\Issue\DuplicateParam;
@@ -41,13 +43,13 @@ use Psalm\Issue\MissingDocblockType;
 use Psalm\Issue\ParseError;
 use Psalm\Issue\PrivateFinalMethod;
 use Psalm\IssueBuffer;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FileStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\FunctionStorage;
 use Psalm\Storage\MethodStorage;
-use Psalm\Storage\Mutations;
 use Psalm\Storage\Possibilities;
 use Psalm\Storage\PropertyStorage;
 use Psalm\Type;
@@ -65,7 +67,6 @@ use function end;
 use function explode;
 use function in_array;
 use function is_string;
-use function min;
 use function spl_object_id;
 use function str_contains;
 use function str_starts_with;
@@ -103,7 +104,6 @@ final class FunctionLikeNodeScanner
 
     /**
      * @param  bool $fake_method in the case of @method annotations we do something a little strange
-     * @psalm-suppress ComplexMethod
      */
     public function start(
         PhpParser\Node\FunctionLike $stmt,
@@ -249,10 +249,7 @@ final class FunctionLikeNodeScanner
                     && $classlike_storage->properties[$property_name]->type
                     && !$classlike_storage->properties[$property_name]->hook_get
                 ) {
-                    $storage->allowed_mutations = min(
-                        Mutations::LEVEL_INTERNAL_READ,
-                        $storage->allowed_mutations,
-                    );
+                    $storage->capabilities = Capabilities::MUTATION_FREE & $storage->capabilities;
                     $storage->mutation_free_assumed = !$stmt->isFinal() && !$classlike_storage->final;
 
                     $classlike_storage->properties[$property_name]->getter_method = strtolower($stmt->name->name);
@@ -468,17 +465,11 @@ final class FunctionLikeNodeScanner
 
             if ($docblock_info) {
                 if ($docblock_info->since_php_major_version && !$this->aliases->namespace) {
-                    $analysis_major_php_version = $this->codebase->getMajorAnalysisPhpVersion();
-                    $analysis_minor_php_version = $this->codebase->getMinorAnalysisPhpVersion();
-                    if ($docblock_info->since_php_major_version > $analysis_major_php_version) {
-                        return false;
-                    }
-
-                    if ($docblock_info->since_php_major_version === $analysis_major_php_version
-                        && $docblock_info->since_php_minor_version > $analysis_minor_php_version
-                    ) {
-                        return false;
-                    }
+                    // Keep the stubbed signature loaded on every version for analysis, but record
+                    // the version that introduced the function so its use is reported as undefined
+                    // when analysing an older PHP version without a polyfill.
+                    $storage->since_php_version_id = $docblock_info->since_php_major_version * 10_000
+                        + $docblock_info->since_php_minor_version * 100;
                 }
 
                 if ($stmt instanceof PhpParser\Node\Expr\Closure
@@ -516,10 +507,13 @@ final class FunctionLikeNodeScanner
             && $function_id
             && $storage instanceof FunctionStorage
         ) {
-            if ($this->codebase->all_functions_global
-                || $this->codebase->register_stub_files
-                || ($this->codebase->register_autoload_files
-                    && !$this->codebase->functions->hasStubbedFunction($function_id))
+            // A polyfill of a native function the analysed version predates must not replace the
+            // native signature (and its purity); the polyfill is still known through this file.
+            if ($this->codebase->register_stub_files
+                || (($this->codebase->all_functions_global
+                        || ($this->codebase->register_autoload_files
+                            && !$this->codebase->functions->hasStubbedFunction($function_id)))
+                    && InternalCallMapHandler::getIntroducingPhpVersionId($function_id) === null)
             ) {
                 $this->codebase->functions->addGlobalFunction($function_id, $storage);
             }
@@ -642,39 +636,40 @@ final class FunctionLikeNodeScanner
                 $property_storage = $classlike_storage->properties[$param_storage->name] = new PropertyStorage();
                 $property_storage->is_static = false;
                 $property_storage->type = $param_storage->type;
+
+                if ($property_storage->type) {
+                    // `@param Closure[P](): int $f`: the property holds closures of any purity P allows
+                    (new FunctionPurityTemplateReplacer())->traverse($property_storage->type);
+                }
+
                 $property_storage->signature_type = $param_storage->signature_type;
                 $property_storage->signature_type_location = $param_storage->signature_type_location;
                 $property_storage->type_location = $param_storage->type_location;
                 $property_storage->location = $param_storage->location;
                 $property_storage->stmt_location = new CodeLocation($this->file_scanner, $param);
                 $property_storage->has_default = (bool)$param->default;
-                $param_type_readonly = (bool)($param->flags & PhpParser\Modifiers::READONLY);
+                $param_type_readonly = (bool)($param->flags & Modifiers::READONLY);
                 $property_storage->readonly = $param_type_readonly ?: $var_comment_readonly;
                 $property_storage->allow_private_mutation = $var_comment_allow_private_mutation;
                 $param_storage->promoted_property = true;
                 $property_storage->is_promoted = true;
 
-                $property_id = $fq_classlike_name . '::$' . $param_storage->name;
-
-                switch ($param->flags & Modifiers::VISIBILITY_MASK) {
-                    case Modifiers::PUBLIC:
-                        $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
-                        $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
-                        break;
-
-                    case Modifiers::PROTECTED:
-                        $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
-                        $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
-                        break;
-
-                    case Modifiers::PRIVATE:
-                        $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
-                        break;
-                }
-
                 $fq_classlike_name = $classlike_storage->name;
 
                 $property_id = $fq_classlike_name . '::$' . $param_storage->name;
+
+                PropertyVisibilityResolver::resolve(
+                    $this->codebase,
+                    $classlike_storage,
+                    $property_storage,
+                    $param->flags,
+                    new CodeLocation($this->file_scanner, $param, null, true),
+                    $property_id,
+                );
+
+                if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
+                    $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
+                }
 
                 $classlike_storage->declaring_property_ids[$param_storage->name] = $fq_classlike_name;
                 $classlike_storage->appearing_property_ids[$param_storage->name] = $property_id;
@@ -705,8 +700,12 @@ final class FunctionLikeNodeScanner
                     || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Pure'
                 ) {
                     $storage->specialize_call = true;
-                    $storage->allowed_mutations = Mutations::LEVEL_NONE;
+                    $storage->capabilities = Capabilities::NONE;
                     $storage->has_mutations_annotation = true;
+
+                    if ($storage instanceof MethodStorage) {
+                        $storage->mutation_free_assumed = false;
+                    }
                 }
 
                 if ($attribute->fq_class_name === 'NoDiscard') {
@@ -727,10 +726,13 @@ final class FunctionLikeNodeScanner
                 if ($attribute->fq_class_name === 'Psalm\\ExternalMutationFree'
                     && $storage instanceof MethodStorage
                 ) {
-                    $storage->allowed_mutations = min(
-                        $storage->allowed_mutations,
-                        Mutations::LEVEL_INTERNAL_READ_WRITE,
-                    );
+                    if ($storage->mutation_free_assumed) {
+                        // like an annotation in the docblock, it replaces what a getter is assumed to do
+                        $storage->capabilities = Capabilities::ALL;
+                        $storage->mutation_free_assumed = false;
+                    }
+
+                    $storage->capabilities = $storage->capabilities & Capabilities::EXTERNAL_MUTATION_FREE;
                     $storage->has_mutations_annotation = true;
                 }
 
@@ -853,16 +855,18 @@ final class FunctionLikeNodeScanner
             return;
         }
 
-        $storage->allowed_mutations = min(
-            Mutations::LEVEL_INTERNAL_READ_WRITE,
-            $storage->allowed_mutations,
-        );
-
-        $storage->mutation_free_assumed = true;
-
         foreach ($assigned_properties as $property_name => $property_type) {
             $classlike_storage->properties[$property_name]->type = $property_type;
         }
+
+        if ($storage->has_mutations_annotation) {
+            // an explicit annotation replaces what the constructor is assumed to do
+            return;
+        }
+
+        $storage->capabilities = Capabilities::EXTERNAL_MUTATION_FREE & $storage->capabilities;
+
+        $storage->mutation_free_assumed = true;
     }
 
     private function getTranslatedFunctionParam(
@@ -1012,10 +1016,15 @@ final class FunctionLikeNodeScanner
                     && ($this->codebase->register_stub_files
                         || !$this->codebase->functions->hasStubbedFunction($function_id))
                 ) {
-                    $this->codebase->functions->addGlobalFunction(
-                        $function_id,
-                        $this->file_storage->functions[$function_id],
-                    );
+                    // see the polyfill rule where the function is first registered
+                    if ($this->codebase->register_stub_files
+                        || InternalCallMapHandler::getIntroducingPhpVersionId($function_id) === null
+                    ) {
+                        $this->codebase->functions->addGlobalFunction(
+                            $function_id,
+                            $this->file_storage->functions[$function_id],
+                        );
+                    }
 
                     $storage = $this->storage = $this->file_storage->functions[$function_id];
 
@@ -1052,7 +1061,10 @@ final class FunctionLikeNodeScanner
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
 
-                if (isset($this->config->getPredefinedFunctions()[$function_id])) {
+                // a core function the analysed PHP version predates can be polyfilled
+                if (isset($this->config->getPredefinedFunctions()[$function_id])
+                    && InternalCallMapHandler::getIntroducingPhpVersionId($function_id) === null
+                ) {
                     /** @psalm-suppress ArgumentTypeCoercion */
                     $reflection_function = new ReflectionFunction($function_id);
 
@@ -1105,7 +1117,11 @@ final class FunctionLikeNodeScanner
                     return false;
                 }
 
-                // skip methods based on @since docblock tag
+                // skip methods based on @since docblock tag: version-specific stubs declare the
+                // same method more than once with per-version signatures, and only the one whose
+                // @since matches the analysed version must be registered (registering the others
+                // would collide). Unlike classes/functions, this is signature selection rather
+                // than an availability gate.
                 $doc_comment = $stmt->getDocComment();
 
                 if ($doc_comment) {
@@ -1245,5 +1261,32 @@ final class FunctionLikeNodeScanner
             $method_id,
             false,
         ];
+    }
+
+    /**
+     * Marks the function-like scanned by start() as a builtin if it is declared by one of Psalm's stubs. A stub of a
+     * builtin replaces its call map entry, but not the taint sinks of its parameters (see
+     * dictionaries/InternalTaintSinkMap.php): adds them to it.
+     *
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs|read-globals
+     */
+    public function addInternalTaintSinks(): void
+    {
+        if ($this->storage === null
+            || $this->storage->cased_name === null
+            || !in_array($this->file_path, $this->codebase->config->internal_stubs, true)
+        ) {
+            return;
+        }
+
+        $this->storage->builtin = true;
+
+        $function_id = $this->classlike_storage !== null
+            ? $this->classlike_storage->name . '::' . $this->storage->cased_name
+            : $this->storage->cased_name;
+
+        foreach ($this->storage->params as $offset => $param) {
+            $param->sinks |= InternalCallMapHandler::getParamTaintSinks($function_id, $offset);
+        }
     }
 }

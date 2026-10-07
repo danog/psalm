@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod\AtomicStatic
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
@@ -23,6 +24,7 @@ use Psalm\Issue\NonStaticSelfCall;
 use Psalm\Issue\ParentNotFound;
 use Psalm\IssueBuffer;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\MethodStorage;
 use Psalm\Type;
 use Psalm\Type\Atomic\TNamedObject;
@@ -48,6 +50,9 @@ final class StaticCallAnalyzer extends CallAnalyzer
         $lhs_type = null;
 
         $codebase = $statements_analyzer->getCodebase();
+
+        // collected by the atomic analyzers; a call nothing describes may do anything
+        $stmt->setAttribute(NewAnalyzer::CALLEE_CAPABILITIES_ATTRIBUTE, null);
         $source = $statements_analyzer->getSource();
 
         $config = $codebase->config;
@@ -167,7 +172,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                             ? $context
                             : null,
                         $statements_analyzer->getSuppressedIssues(),
-                        new ClassLikeNameOptions(false, false, false, true),
+                        new ClassLikeNameOptions(false, false, false, true, context: $context),
                         $context->check_classes,
                     );
                 }
@@ -245,7 +250,11 @@ final class StaticCallAnalyzer extends CallAnalyzer
         }
 
         if (!$config->remember_property_assignments_after_call && !$context->collect_initializations) {
-            $context->removeMutableObjectVars();
+            // a method that cannot write properties or globals leaves every refinement in place
+            $context->removeMutableObjectVars(
+                false,
+                NewAnalyzer::getCalleeCapabilities($stmt) ?? Capabilities::ALL,
+            );
         }
 
         if (!$statements_analyzer->node_data->getType($stmt)) {
@@ -271,6 +280,13 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
         $node_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
 
+        $specialization_location = $method_storage && TaintFlowGraph::isCallSpecialized(
+            $statements_analyzer->getTaintFlowGraphWithSuppressed(),
+            $statements_analyzer->getCodebase(),
+            $method_storage,
+            $node_location,
+        ) ? $node_location : null;
+
         $method_location = $method_storage
             ? ($graph instanceof VariableUseGraph
                 ? ($method_storage->return_type_location ?: $method_storage->location)
@@ -282,16 +298,11 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 'builtin',
                 $cased_method_id,
             );
-        } elseif ($method_storage->specialize_call) {
-            $method_source = DataFlowNode::getForMethodReturn(
-                $cased_method_id,
-                $method_storage,
-                $node_location,
-            );
         } else {
             $method_source = DataFlowNode::getForMethodReturn(
                 $cased_method_id,
                 $method_storage,
+                $specialization_location,
             );
         }
 
@@ -370,7 +381,8 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $cased_method_id,
                 $method_storage,
                 null,
-                $method_storage->taint_source_types,
+                $method_storage->taint_source_types
+                    & ~($method_storage->signature_return_type?->getTaintsToRemove() ?? 0),
             );
 
             $taint_flow_graph->addSource($method_node);
@@ -382,7 +394,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $taint_flow_graph,
                 (string) $method_id,
                 $stmt->getArgs(),
-                $node_location,
+                $specialization_location,
                 $method_source,
                 $method_storage->removed_taints | $removed_taints,
                 $added_taints,

@@ -464,7 +464,7 @@ final class Program
             foreach ($members as $c) {
                 if (!$c->isImmutableSafeMember(true, true)) { // allow memoization + external writes -> per-field Cell
                     $reason = !$c->isConcrete() ? 'not-concrete'
-                        : ($c->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ ? 'allowed_mutations=' . $c->storage->allowed_mutations
+                        : (($c->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) !== 0 ? 'capabilities=' . $c->storage->capabilities
                         : 'helper-ctor-writes');
                     if (count($members) <= $cap) {
                         fwrite(STDERR, "[hier-concrete-skip] " . $root->fqcn . " member " . $c->fqcn . " fails: " . $reason . "\n");
@@ -751,7 +751,7 @@ final class Program
             }
             if ($model->is_project && $model->parent === null && !$model->externally_written
                 && $model->isLeaf()
-                && $model->storage->allowed_mutations <= \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ
+                && ($model->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) === 0
             ) {
                 $auto++;
                 fwrite(STDERR, "[auto-immutable-candidate] " . $model->fqcn . "\n");

@@ -13,16 +13,16 @@ use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeFinder;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
+use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
 use Psalm\Issue\MissingPureAnnotation;
 use Psalm\IssueBuffer;
-use Psalm\Storage\Mutations;
+use Psalm\Storage\Capabilities;
 use Throwable;
 
 use function array_keys;
 use function array_pop;
-use function max;
 
 /**
  * Infers the level of mutations (purity) of every analysed function-like once
@@ -37,9 +37,11 @@ use function max;
  * mutual, or through closures) all converge.
  *
  * @psalm-type MutationInfo = array{
- *     intrinsic: Mutations::LEVEL_*,
- *     allowed: Mutations::LEVEL_*,
+ *     intrinsic: int,
+ *     allowed: int,
  *     callees: array<string, bool>,
+ *     default_intrinsic: int,
+ *     default_callees: array<string, bool>,
  *     location: CodeLocation,
  *     cased_name: string,
  *     suppressed_issues: array<int, string>,
@@ -57,7 +59,7 @@ final class MutationLevelResolver
      * mutation info: node id => level.
      *
      * @param array<string, MutationInfo> $infos
-     * @return array<string, Mutations::LEVEL_*>
+     * @return array<string, int> node id => bitmask of {@see Capabilities} constants
      * @psalm-pure
      */
     public static function resolveLevels(array $infos): array
@@ -67,30 +69,110 @@ final class MutationLevelResolver
         /** @var array<string, array<string, true>> callee => callers */
         $callers = [];
 
+        /** @var array<string, array<string, true>> callee => function-likes calling it in a default value */
+        $default_callers = [];
+
+        /** @var array<string, true> the function-likes whose parameter default values must be checked */
+        $default_checks = [];
+
         foreach ($infos as $node_id => $info) {
             $levels[$node_id] = $info['intrinsic'];
 
             foreach ($info['callees'] as $callee_id => $_) {
                 $callers[$callee_id][$node_id] = true;
             }
+
+            foreach ($info['default_callees'] as $callee_id => $_) {
+                $default_callers[$callee_id][$node_id] = true;
+            }
+
+            if ($info['default_intrinsic'] !== Capabilities::NONE || $info['default_callees'] !== []) {
+                $default_checks[$node_id] = true;
+            }
         }
 
         $queue = array_keys($infos);
 
+        while (true) {
+            self::propagate($infos, $callers, $default_callers, $levels, $queue, $default_checks);
+
+            if (!$default_checks) {
+                return $levels;
+            }
+
+            $checks = $default_checks;
+            $default_checks = [];
+
+            // the parameter default values of an annotated function-like may only do what its
+            // annotation gives them (see FunctionLikeAnalyzer::getParamDefaultCapabilities()):
+            // one whose defaults need more can't be annotated, so it stays impure
+            foreach ($checks as $node_id => $_) {
+                if ($levels[$node_id] === Capabilities::ALL) {
+                    continue;
+                }
+
+                $info = $infos[$node_id];
+                $default_level = $info['default_intrinsic'];
+
+                foreach ($info['default_callees'] as $callee_id => $internal_mutations_ok) {
+                    $callee_level = $levels[$callee_id] ?? Capabilities::ALL;
+
+                    $default_level |= $internal_mutations_ok
+                        ? $callee_level & ~Capabilities::RECEIVER_LOCAL
+                        : $callee_level;
+                }
+
+                if (!Capabilities::allows(
+                    FunctionLikeAnalyzer::getParamDefaultCapabilities(Capabilities::toNamedLevel($levels[$node_id])),
+                    $default_level,
+                )) {
+                    $levels[$node_id] = Capabilities::ALL;
+
+                    foreach ($callers[$node_id] ?? [] as $caller_id => $_) {
+                        $queue[] = $caller_id;
+                    }
+
+                    $default_checks += $default_callers[$node_id] ?? [];
+                }
+            }
+        }
+    }
+
+    /**
+     * Propagates the levels of the callees to their callers until a fixpoint is reached, queueing
+     * a new check of the default values calling a function-like whose level changed.
+     *
+     * @param array<string, MutationInfo> $infos
+     * @param array<string, array<string, true>> $callers
+     * @param array<string, array<string, true>> $default_callers
+     * @param array<string, int> $levels
+     * @param list<string> $queue
+     * @param array<string, true> $default_checks
+     * @param-out list<never> $queue
+     * @psalm-capabilities write-refs
+     */
+    private static function propagate(
+        array $infos,
+        array $callers,
+        array $default_callers,
+        array &$levels,
+        array &$queue,
+        array &$default_checks,
+    ): void {
         while ($queue) {
             $node_id = array_pop($queue);
             $level = $levels[$node_id];
 
             foreach ($infos[$node_id]['callees'] as $callee_id => $internal_mutations_ok) {
                 // a callee that was never analysed (e.g. skipped) could do anything
-                $callee_level = $levels[$callee_id] ?? Mutations::LEVEL_ALL;
+                $callee_level = $levels[$callee_id] ?? Capabilities::ALL;
 
-                if ($internal_mutations_ok && $callee_level <= Mutations::LEVEL_INTERNAL_READ_WRITE) {
-                    // mutations of the callee's own instance don't leak to the caller
-                    $callee_level = Mutations::LEVEL_NONE;
+                if ($internal_mutations_ok) {
+                    // what the callee does to its own instance doesn't leak to the caller
+                    $callee_level &= ~Capabilities::RECEIVER_LOCAL;
                 }
 
-                $level = max($level, $callee_level);
+                $level |= $callee_level;
             }
 
             if ($level !== $levels[$node_id]) {
@@ -100,10 +182,10 @@ final class MutationLevelResolver
                 foreach ($callers[$node_id] ?? [] as $caller_id => $_) {
                     $queue[] = $caller_id;
                 }
+
+                $default_checks += $default_callers[$node_id] ?? [];
             }
         }
-
-        return $levels;
     }
 
     /**
@@ -122,7 +204,7 @@ final class MutationLevelResolver
             return;
         }
 
-        $levels = self::resolveLevels($infos);
+        $levels = $graph->getMutationLevels();
 
         $fix = $codebase->alter_code && isset($project_analyzer->getIssuesToFix()['MissingPureAnnotation']);
 
@@ -140,13 +222,20 @@ final class MutationLevelResolver
 
             $graph->markMutationInfoStale($node_id);
 
-            if (!$info['report'] || $level >= $info['allowed']) {
+            // suggestions are made at the granularity of the named purity levels: only when a
+            // stricter one than the current annotation applies
+            $level = Capabilities::toNamedLevel($level);
+
+            if (!$info['report']
+                || !Capabilities::allows($info['allowed'], $level)
+                || $level === Capabilities::toNamedLevel($info['allowed'])
+            ) {
                 continue;
             }
 
             IssueBuffer::maybeAdd(
                 new MissingPureAnnotation(
-                    $info['cased_name'] . ' must be marked @' . Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[$level]
+                    $info['cased_name'] . ' must be marked @' . Capabilities::toFunctionAnnotation($level)
                     . ' to aid security analysis'
                     . ', run with --alter --issues=MissingPureAnnotation to fix this',
                     $info['location'],
@@ -164,7 +253,7 @@ final class MutationLevelResolver
                         $project_analyzer,
                         $file_path,
                         $stmt,
-                    )->setAllowedMutations($level);
+                    )->setCapabilities($level);
                 }
             }
         }

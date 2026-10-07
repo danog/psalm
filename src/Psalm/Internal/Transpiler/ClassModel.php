@@ -628,7 +628,7 @@ final class ClassModel
 
     /**
      * `Method::$field` for every post-construction `$this->field` write that is not a cache write: one inside a
-     * method that may mutate (Psalm's allowed_mutations above LEVEL_INTERNAL_READ). A write inside a
+     * method that may mutate (Psalm capabilities beyond MUTATION_FREE). A write inside a
      * mutation-free method is a suppressed memo write, which a value type may lose.
      *
      * @return list<string>
@@ -642,7 +642,7 @@ final class ClassModel
             if ($m->node === null || isset($ctor_methods[$m->lc()])) {
                 continue;
             }
-            if ($m->storage->allowed_mutations <= \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ) {
+            if (($m->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) === 0) {
                 continue;
             }
             foreach ($finder->find($m->node->stmts ?? [], static fn(\PhpParser\Node $n): bool =>
@@ -686,7 +686,7 @@ final class ClassModel
             $ctor_methods = $m->constructionMethods();
             foreach ($m->methods as $meth) {
                 if ($meth->node === null || isset($ctor_methods[$meth->lc()])
-                    || $meth->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ
+                    || ($meth->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) !== 0
                 ) {
                     continue;
                 }
@@ -864,7 +864,7 @@ final class ClassModel
 
     /**
      * Whether this class is emitted as `Rc<T>` (immutable, no RefCell) rather than `Rc<RefCell<T>>`. Only for
-     * `@psalm-immutable` (allowed_mutations = LEVEL_NONE) leaf classes on the pilot allowlist; reads are direct
+     * `@psalm-immutable` (capabilities within MUTATION_FREE) leaf classes on the pilot allowlist; reads are direct
      * and any writes go through `Rc::make_mut` on a uniquely-owned value (construction / wither clones).
      */
     /**
@@ -944,7 +944,7 @@ final class ClassModel
     public function isImmutableSafeMember(bool $allow_memo = false, bool $allow_ext = false): bool
     {
         return $this->isConcrete()
-            && $this->storage->allowed_mutations <= \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ
+            && ($this->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) === 0
             && ($allow_ext || !$this->externally_written)
             && ($allow_memo || $this->postConstructionWrittenFields() === [])
             && $this->noHelperConstructionWrites();
@@ -1278,7 +1278,7 @@ final class ClassModel
     {
         // @psalm-immutable == LEVEL_INTERNAL_READ (no internal writes post-construction, safe for Rc<T>);
         // LEVEL_INTERNAL_READ_WRITE (@psalm-external-mutation-free) allows memoization writes and needs RefCell.
-        if ($this->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ) {
+        if (($this->storage->capabilities & ~\Psalm\Storage\Capabilities::MUTATION_FREE) !== 0) {
             return false;
         }
         // Whole-hierarchy conversion (Program::computeHierarchyImmutable) may mark a CONCRETE-NON-LEAF class (a base

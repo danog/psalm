@@ -1,6 +1,6 @@
 # MissingInterfaceImmutableAnnotation
 
-Emitted when an interface is not annotated with `@psalm-pure`, `@psalm-immutable`, `@psalm-external-mutation-free` or `@psalm-mutable`: to fix, mark the interface with one of the two annotations, enforcing immutability (or mutability) for all properties and methods of implementing classes.
+Emitted when an interface is not annotated with `@psalm-pure`, `@psalm-immutable`, `@psalm-capabilities` or `@psalm-mutable`: to fix, mark the interface with one of them, which then applies to all properties and methods of implementing classes.
 
 This issue is emitted to aid [security analysis](https://psalm.dev/docs/security_analysis/), which works best when all explicitly immutable interfaces and classes are marked as immutable.  
 
@@ -18,3 +18,5 @@ final class A implements SomethingPotentiallyImmutable {
     }
 }
 ```
+
+See [class-level contracts](../../annotating_code/purity_model.md#class-level-contracts) in the purity model.

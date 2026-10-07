@@ -1,6 +1,6 @@
 # ImpureByReferenceAssignment
 
-Emitted when assigning a passed-by-reference variable inside a function or method marked as mutation-free.
+Emitted when assigning a passed-by-reference variable inside a function or method without the `write-refs` capability.
 
 ```php
 <?php
@@ -28,3 +28,5 @@ function foo(string &$a): string {
     return $a;
 }
 ```
+
+See [by-reference arguments](../../annotating_code/purity_model.md#by-reference-arguments) in the purity model.

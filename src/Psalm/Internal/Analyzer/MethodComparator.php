@@ -18,6 +18,7 @@ use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypeVisitor\FunctionPurityTemplateReplacer;
 use Psalm\Issue\ConstructorSignatureMismatch;
 use Psalm\Issue\ImmutableDependency;
 use Psalm\Issue\ImplementedParamTypeMismatch;
@@ -33,6 +34,7 @@ use Psalm\Issue\ParamNameMismatch;
 use Psalm\Issue\TraitMethodSignatureMismatch;
 use Psalm\IssueBuffer;
 use Psalm\Storage\AttributeStorage;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\MethodStorage;
@@ -101,6 +103,23 @@ final class MethodComparator
             $prevent_method_signature_mismatch,
             $prevent_abstract_override,
             $codebase->analysis_php_version_id >= 8_00_00,
+            $code_location,
+            $suppressed_issues,
+        );
+
+        // a method a class takes from a trait is bound to what the class binds, not the trait
+        self::checkCapabilities(
+            $codebase,
+            $guide_classlike_storage,
+            $implementer_classlike_storage,
+            $implementer_classlike_storage->is_trait
+                && $codebase->classlike_storage_provider->has($implementer_called_class_name)
+                ? $codebase->classlike_storage_provider->get($implementer_called_class_name)
+                : $implementer_classlike_storage,
+            $guide_method_storage,
+            $implementer_method_storage,
+            $cased_guide_method_id,
+            $prevent_method_signature_mismatch,
             $code_location,
             $suppressed_issues,
         );
@@ -377,23 +396,110 @@ final class MethodComparator
                 $suppressed_issues + $implementer_classlike_storage->suppressed_issues,
             );
         }
+    }
 
-        if ($guide_method_storage->isExternalMutationFree()
-            && !$implementer_method_storage->isExternalMutationFree()
+    /**
+     * An override may need fewer capabilities than the overridden method, never more
+     *
+     * @param  string[]         $suppressed_issues
+     */
+    private static function checkCapabilities(
+        Codebase $codebase,
+        ClassLikeStorage $guide_classlike_storage,
+        ClassLikeStorage $implementer_classlike_storage,
+        ClassLikeStorage $binding_classlike_storage,
+        MethodStorage $guide_method_storage,
+        MethodStorage $implementer_method_storage,
+        string $cased_guide_method_id,
+        bool $prevent_method_signature_mismatch,
+        CodeLocation $code_location,
+        array $suppressed_issues,
+    ): void {
+        // an override may need fewer capabilities than the overridden method, never more. For a
+        // method with `@psalm-purity-from-template`, the capabilities it needs unconditionally
+        // must fit those the overridden method needs unconditionally (a caller passing pure
+        // closures gets a call as pure as the overridden method promises), and the worst case
+        // over the templates must fit the overridden method's worst case.
+        $guide_capabilities = $guide_method_storage->capabilities;
+        $implementer_capabilities = $implementer_method_storage->capabilities;
+
+        $guide_capabilities |= self::getBoundCapabilities(
+            $codebase,
+            $guide_classlike_storage,
+            $guide_method_storage,
+            $binding_classlike_storage,
+        );
+
+        if (Capabilities::allows($guide_capabilities, $implementer_capabilities)) {
+            $guide_capabilities = $guide_method_storage->getWorstCaseCapabilities(
+                $guide_classlike_storage->template_types ?? [],
+            );
+            $implementer_capabilities = $implementer_method_storage->getWorstCaseCapabilities(
+                $implementer_classlike_storage->template_types ?? [],
+            );
+        }
+
+        if (!Capabilities::allows($guide_capabilities, $implementer_capabilities)
             && !$guide_method_storage->mutation_free_assumed
             && $prevent_method_signature_mismatch
         ) {
             IssueBuffer::maybeAdd(
                 new ImmutableDependency(
-                    $cased_guide_method_id . ' is marked at least @psalm-external-mutation-free, but '
+                    $cased_guide_method_id . ' is ' . Capabilities::toString($guide_capabilities) . ', but '
                         . $implementer_classlike_storage->name . '::'
                         . ($guide_method_storage->cased_name ?: '')
-                        . ' is not marked @psalm-external-mutation-free',
+                        . ' additionally requires '
+                        . Capabilities::toString($implementer_capabilities, $guide_capabilities),
                     $code_location,
                 ),
                 $suppressed_issues + $implementer_classlike_storage->suppressed_issues,
             );
         }
+    }
+
+    /**
+     * What the class-level purity templates the overridden method depends on are bound to in the class of the
+     * override: a template the class binds (`@extends Doer[io]`) is part of what the overridden method needs
+     * unconditionally there. One it forwards to a purity template of its own (`@extends Doer[P]`) is still open: it
+     * will be bound by each `new`, maybe to nothing, so only its lower bound can be relied upon, and an override may
+     * use the rest only through `@psalm-purity-from-template P`, like Hack's abstract context constants.
+     *
+     * @psalm-capabilities read-props
+     */
+    private static function getBoundCapabilities(
+        Codebase $codebase,
+        ClassLikeStorage $guide_classlike_storage,
+        MethodStorage $guide_method_storage,
+        ClassLikeStorage $binding_classlike_storage,
+    ): int {
+        $capabilities = Capabilities::NONE;
+
+        foreach ($guide_method_storage->purity_from_templates as $template_name) {
+            if (!isset($guide_classlike_storage->template_types[$template_name])) {
+                continue;
+            }
+
+            $bound_type = $binding_classlike_storage
+                ->template_extended_params[$guide_classlike_storage->name][$template_name] ?? null;
+
+            if ($bound_type === null) {
+                continue;
+            }
+
+            foreach ($bound_type->getAtomicTypes() as $bound_atomic) {
+                if ($bound_atomic instanceof TTemplateParam
+                    && $codebase->classlike_storage_provider->has($bound_atomic->defining_class)
+                ) {
+                    $capabilities |= $codebase->classlike_storage_provider
+                        ->get($bound_atomic->defining_class)
+                        ->template_lower_bounds[$bound_atomic->param_name] ?? Capabilities::NONE;
+                } else {
+                    $capabilities |= Capabilities::fromType(new Union([$bound_atomic]));
+                }
+            }
+        }
+
+        return $capabilities;
     }
 
     /**
@@ -843,34 +949,12 @@ final class MethodComparator
             }
         }
 
-        $builder = $implementer_method_storage_param_type->getBuilder();
-        foreach ($builder->getAtomicTypes() as $k => $t) {
-            if ($t instanceof TTemplateParam
-                && str_starts_with($t->defining_class, 'fn-')
-            ) {
-                $builder->removeType($k);
-
-                foreach ($t->as->getAtomicTypes() as $as_t) {
-                    $builder->addType($as_t);
-                }
-            }
-        }
-        $implementer_method_storage_param_type = $builder->freeze();
-
-        $builder = $guide_method_storage_param_type->getBuilder();
-        foreach ($builder->getAtomicTypes() as $k => $t) {
-            if ($t instanceof TTemplateParam
-                && str_starts_with($t->defining_class, 'fn-')
-            ) {
-                $builder->removeType($k);
-
-                foreach ($t->as->getAtomicTypes() as $as_t) {
-                    $builder->addType($as_t);
-                }
-            }
-        }
-        $guide_method_storage_param_type = $builder->freeze();
-        unset($builder);
+        $implementer_method_storage_param_type = self::replaceFunctionTemplatesWithBounds(
+            $implementer_method_storage_param_type,
+        );
+        $guide_method_storage_param_type = self::replaceFunctionTemplatesWithBounds(
+            $guide_method_storage_param_type,
+        );
 
         if ($implementer_classlike_storage->template_extended_params) {
             self::transformTemplates(
@@ -973,6 +1057,12 @@ final class MethodComparator
         CodeLocation $code_location,
         array $suppressed_issues,
     ): void {
+        // PHP 8.5 allows a final class to satisfy a `static` return type with `self`
+        // or its own class name. Earlier versions reject that substitution.
+        $resolve_static_to_final_class = $codebase->analysis_php_version_id >= 8_05_00
+            && $implementer_classlike_storage->final
+            && !$implementer_classlike_storage->final_from_docblock;
+
         $guide_signature_return_type = TypeExpander::expandUnion(
             $codebase,
             $guide_signature_return_type,
@@ -981,6 +1071,7 @@ final class MethodComparator
                 : $guide_classlike_storage->name,
             ($guide_classlike_storage->is_trait && $guide_method_storage->abstract)
                 || $guide_classlike_storage->final
+                || $resolve_static_to_final_class
                 ? $implementer_classlike_storage->name
                 : $guide_classlike_storage->name,
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
@@ -988,7 +1079,7 @@ final class MethodComparator
                 : $guide_classlike_storage->parent_class,
             true,
             true,
-            $implementer_method_storage->final,
+            $resolve_static_to_final_class,
         );
 
         $implementer_signature_return_type = $implementer_method_storage->signature_return_type
@@ -1194,7 +1285,36 @@ final class MethodComparator
     }
 
     /**
+     * The type with the templates of the method, including its purity templates at any depth
+     * (`Closure[_](): int`, `list<Closure[P](): int>`, `Traversable[_]<int, int>`), replaced by
+     * their bounds: the method accepts whatever they may be bound to.
+     */
+    private static function replaceFunctionTemplatesWithBounds(Union $type): Union
+    {
+        $builder = $type->getBuilder();
+
+        foreach ($builder->getAtomicTypes() as $k => $t) {
+            if ($t instanceof TTemplateParam
+                && str_starts_with($t->defining_class, 'fn-')
+            ) {
+                $builder->removeType($k);
+
+                foreach ($t->as->getAtomicTypes() as $as_t) {
+                    $builder->addType($as_t);
+                }
+            }
+        }
+
+        $type = $builder->freeze();
+
+        (new FunctionPurityTemplateReplacer())->traverse($type);
+
+        return $type;
+    }
+
+    /**
      * @param  array<string, array<string, Union>>  $template_extended_params
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
     private static function transformTemplates(
         array $template_extended_params,

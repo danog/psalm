@@ -1,6 +1,6 @@
 # MissingImmutableAnnotation
 
-Emitted when a potentially immutable interface or class does not have a `@psalm-pure`, `@psalm-immutable` or `@psalm-external-mutation-free` declaration.  
+Emitted when a potentially immutable interface or class does not have a `@psalm-pure`, `@psalm-immutable` or `@psalm-capabilities` declaration.  
 
 To automatically add immutable annotations where needed, run Psalm with `--alter --issues=MissingImmutableAnnotation`.  
 
@@ -13,7 +13,7 @@ This issue is emitted to aid [security analysis](https://psalm.dev/docs/security
 final class CouldBeExternallyMutationFree {
     private int $counter = 0;
 
-    /** @psalm-external-mutation-free */
+    /** @psalm-capabilities read-props|write-this-props */
     public function someInteger() : int {
         return ++$this->counter;
     }
@@ -24,3 +24,5 @@ final class CouldBeImmutable {
 }
 
 ```
+
+See [inferring annotations](../../annotating_code/purity_model.md#inferring-annotations) in the purity model.

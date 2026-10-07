@@ -162,10 +162,10 @@ final class ErrorBaseline
                     $existingIssueType['o'],
                     $newIssues[$file][$issueType]['o'],
                 );
-                $existingIssuesCount[$issueType]['s'] = array_intersect(
+                $existingIssuesCount[$issueType]['s'] = array_values(array_intersect(
                     $existingIssueType['s'],
                     $newIssues[$file][$issueType]['s'],
-                );
+                ));
             }
         }
 
@@ -179,7 +179,7 @@ final class ErrorBaseline
     /**
      * @param array<string, list<IssueData>> $issues
      * @return array<string,array<string,array{o:int, s:array<int, string>}>>
-     * @psalm-mutation-free
+     * @psalm-capabilities write-refs|read-props
      */
     private static function countIssueTypesByFile(array $issues): array
     {

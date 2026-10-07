@@ -9,7 +9,8 @@ Psalm uses the following PHPDoc tags to understand your code:
 - [`@var`](https://docs.phpdoc.org/guide/references/phpdoc/tags/var.html)
   Used for specifying the types of properties and variables
 - [`@return`](https://docs.phpdoc.org/guide/references/phpdoc/tags/return.html)
-  Used for specifying the return types of functions, methods and closures
+  Used for specifying the return types of functions, methods and closures. On a constructor, it
+  gives the type of the object `new` creates (see [Constructors](purity_model.md#constructors))
 - [`@param`](https://docs.phpdoc.org/guide/references/phpdoc/tags/param.html)
   Used for specifying types of parameters passed to functions, methods and closures
 - [`@property`](https://docs.phpdoc.org/guide/references/phpdoc/tags/property.html)
@@ -91,6 +92,9 @@ echo $b->b;
 echo $b->a; // works
 ```
 
+Mixins are followed transitively: if `B` mixes in `A` and `C` mixes in `B`, members of `A` are also available on `C`.
+Chains are only followed through non-generic mixins; a generic hop such as `@mixin Collection<T>` is not traversed.
+
 
 ## Psalm-specific tags
 
@@ -120,6 +124,35 @@ function addFoo(?string &$s) : void {
     $s .= "foo";
 }
 ```
+
+### `@param-closure-this`, `@psalm-param-closure-this`, `@phpstan-param-closure-this`
+
+This binds `$this` to a specific class type inside a `Closure` or arrow-function expression passed directly as an argument. Use it when the receiving function or method runs the callback with `Closure::bind` / `Closure::call` so that `$this` resolves to a different object than the caller's `$this`. The bound type may be a class name (including a generic type such as `Box<int>`), `$this`, `static`, `self`, `parent`, or a class-level template parameter.
+
+```php
+<?php
+class Macroable {
+    /**
+     * @param-closure-this static $macro
+     */
+    public static function macro(string $name, Closure $macro): void {
+        // store $macro and later run $macro->call($instance)
+    }
+}
+
+class Builder extends Macroable {
+    public int $value = 42;
+}
+
+Builder::macro('grab', function (): int {
+    // $this is Builder here, not the outer scope
+    return $this->value;
+});
+```
+
+Inside the callback, class scope follows the bound type: `self::` refers to that class and `parent::` to its parent. Property types retain the bound class's generic arguments rather than using the caller's property types.
+
+The tag is ignored when it cannot name one known class to bind to (a union such as `A|B`, or a class Psalm has not seen), and when the argument is a static closure, since PHP cannot rebind one.
 
 ### `@psalm-var`, `@psalm-param`, `@psalm-return`, `@psalm-property`, `@psalm-property-read`, `@psalm-property-write`, `@psalm-method`
 
@@ -338,73 +371,32 @@ echo $b->s;
 $b->s = "boo"; // disallowed
 ```
 
-### `@psalm-mutation-free`
+### Purity and capabilities
 
-Used to annotate a class method that does not mutate state, either internally or externally of the class's scope.
-This requires that the return value depend only on the instance's properties. For example, `random_int` is considered
-mutating here because it mutates the random number generator's internal state.
+Psalm tracks the side effects a function, method or closure may have as a set of capabilities:
+`read-props`, `write-this-props`, `write-props`, `read-globals`, `write-globals`, `write-refs` and
+`io`, with `pure` for none of them and `impure` for all of them. [The Purity Model](purity_model.md)
+explains what each capability allows, how calls are charged and how purity templates work. The
+annotations are listed below.
 
-```php
-<?php
-class D {
-  private string $s;
+### `@psalm-pure` and `@psalm-impure`
 
-  public function __construct(string $s) {
-    $this->s = $s;
-  }
+`@psalm-pure` on a function or method gives it no capabilities: its result depends only on its
+arguments. On a class, it applies to every method and bans the use of properties. `@psalm-impure`
+on a function or method gives it every capability, the default for unannotated code, written out.
+See [Annotations](purity_model.md#annotations).
 
-  /**
-   * @psalm-mutation-free
-   */
-  public function getShort() : string {
-    return substr($this->s, 0, 5);
-  }
+### `@psalm-capabilities`
 
-  /**
-   * @psalm-mutation-free
-   */
-  public function getShortMutating() : string {
-    $this->s .= "hello"; // this is a bug
-    return substr($this->s, 0, 5);
-  }
-}
-```
-
-### `@psalm-external-mutation-free`
-
-Used to annotate a class method that does not mutate state externally of the class's scope.  
-
-Can also be used on classes to propagate the same annotation to all of its methods.
-
-```php
-<?php
-class E {
-  private string $s;
-
-  public function __construct(string $s) {
-    $this->s = $s;
-  }
-
-  /**
-   * @psalm-external-mutation-free
-   */
-  public function getShortMutating() : string {
-    $this->s .= "hello"; // this is fine
-    return substr($this->s, 0, 5);
-  }
-
-  /**
-   * @psalm-external-mutation-free
-   */
-  public function save() : void {
-    file_put_contents("foo.txt", $this->s); // this is a bug
-  }
-}
-```
+`@psalm-capabilities <set>` on a function, method or closure gives the capabilities it may use,
+separated by `|` or commas, as in `@psalm-capabilities read-props|write-this-props`. The set may be
+a [type alias](purity_model.md#capability-aliases). On a class or interface, it is a
+[contract](purity_model.md#class-level-contracts) for every method of the class and of the classes
+extending or implementing it. See [Capabilities](purity_model.md#capabilities).
 
 ### `@psalm-immutable`
 
-Used to annotate a class where every property is treated by consumers as `@psalm-readonly` and every instance method is treated as `@psalm-mutation-free`.
+Used to annotate a class where every property is treated by consumers as `@psalm-readonly` and every instance method is treated as `@psalm-capabilities read-props` (see [Annotations](purity_model.md#annotations)).
 
 ```php
 <?php
@@ -449,59 +441,28 @@ $anonymous = new /** @psalm-immutable */ class extends Foo
 
 Used to annotate a class where at least one property is mutable: this is the default behavior, but it can be explicitly marked for clarity.
 
-### `@psalm-pure`
+### `@psalm-purity-template`
 
-Used to annotate a [pure function](https://en.wikipedia.org/wiki/Pure_function) - one whose output is just a function of its input.  
+`@psalm-purity-template P` on a class, function or method declares a purity template: a template
+parameter whose values are capability sets rather than types. It is used as the purity of a
+callable (`Closure[P](int): int`) or as the purity argument of a class (`Box[P]<int>`,
+`@extends Box[pure]`). Bounds and a default are written as a chain,
+`@psalm-purity-template lower <= P(default) <= upper`, and `Closure[_](...)` in a `@param` type
+declares an unnamed one. See [Purity templates](purity_model.md#purity-templates).
 
-Can also be used on classes to auotmatically annotate all of its methods as pure and ban the usage of properties.  
+### Iterators and generators
 
-```php
-<?php
-class Arithmetic {
-  /** @psalm-pure */
-  public static function add(int $left, int $right) : int {
-    return $left + $right;
-  }
+`Traversable`, `Iterator`, `IteratorAggregate`, `Generator` and `iterable` have a purity template,
+`TPurity`: what iterating over them may do, as in `Iterator[pure]<int, string>` or
+`iterable[pure]<int, string>` (`impure` by default). See
+[Iterators and generators](purity_model.md#iterators-and-generators).
 
-  /** @psalm-pure - this is wrong */
-  public static function addCumulative(int $left) : int {
-    /** @var int */
-    static $i = 0; // this is a side effect, and thus a bug
-    $i += $left;
-    return $i;
-  }
-}
+### `@psalm-purity-from-template`
 
-echo Arithmetic::add(40, 2);
-echo Arithmetic::add(40, 2); // same value is emitted
-
-echo Arithmetic::addCumulative(3); // outputs 3
-echo Arithmetic::addCumulative(3); // outputs 6
-```
-
-On the other hand, `pure-callable` can be used to denote a callable which needs to be pure.
-
-```php
-/**
- * @param pure-callable(mixed): int $callback
- */
-function foo(callable $callback) {...}
-
-// this fails since random_int is not pure
-foo(
-    /** @param mixed $p */
-    fn($p) => random_int(1, 2)
-);
-```
-
-### `@psalm-impure`
-
-Used to annotate a function that is not pure (nor mutation free, nor externally mutation free): this is the default, but Psalm always asks to explicitly annotate **abstract** methods with one of these four annotations:
-
-- `@psalm-pure`
-- `@psalm-mutation-free`
-- `@psalm-external-mutation-free`
-- `@psalm-impure`
+`@psalm-purity-from-template P` on a function or method: each call needs the function-like's own
+capabilities plus whatever `P`, a purity template or a type template bound to a closure type, is
+bound to at that call. See
+[`@psalm-purity-from-template`](purity_model.md#psalm-purity-from-template).
 
 ### `@psalm-allow-private-mutation`
 

@@ -12,6 +12,7 @@ use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\KeyedArrayComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\TypeVisitor\TypeVariableResolver;
+use Psalm\Storage\Capabilities;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TArray;
@@ -49,6 +50,7 @@ use function count;
 use function in_array;
 use function reset;
 use function str_starts_with;
+use function strcspn;
 use function strpos;
 use function strtolower;
 use function substr;
@@ -211,9 +213,8 @@ final class TemplateStandinTypeReplacer
         bool $was_single,
         bool &$had_template,
     ): array {
-        if ($bracket_pos = strpos($key, '<')) {
-            $key = substr($key, 0, $bracket_pos);
-        }
+        // the name, without the type parameters or purity arguments
+        $key = substr($key, 0, strcspn($key, '<['));
 
         if ($atomic_type instanceof TTemplateParam
             && isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])
@@ -474,9 +475,7 @@ final class TemplateStandinTypeReplacer
         $matching_atomic_types = [];
 
         foreach ($input_type->getAtomicTypes() as $input_key => $atomic_input_type) {
-            if ($bracket_pos = strpos($input_key, '<')) {
-                $input_key = substr($input_key, 0, $bracket_pos);
-            }
+            $input_key = substr($input_key, 0, strcspn($input_key, '<['));
 
             if ($input_key === $key) {
                 $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
@@ -1226,6 +1225,17 @@ final class TemplateStandinTypeReplacer
             return reset($lower_bounds)->type;
         }
 
+        // a purity template must allow everything each position it was inferred from requires, however deep
+        if (self::areAllPurityBounds($lower_bounds)) {
+            $joined = null;
+
+            foreach ($lower_bounds as $template_bound) {
+                $joined = Type::combineUnionTypes($joined, $template_bound->type, $codebase);
+            }
+
+            return $joined;
+        }
+
         usort(
             $lower_bounds,
             static fn(TemplateBound $bound_a, TemplateBound $bound_b): int => $bound_b->appearance_depth <=> $bound_a->appearance_depth,
@@ -1266,9 +1276,26 @@ final class TemplateStandinTypeReplacer
     }
 
     /**
+     * Whether the bounds are all capability sets (or purity templates), i.e. those of a purity template
+     *
+     * @param non-empty-list<TemplateBound> $lower_bounds
+     * @psalm-mutation-free
+     */
+    private static function areAllPurityBounds(array $lower_bounds): bool
+    {
+        foreach ($lower_bounds as $template_bound) {
+            if (!Capabilities::isPurityArgument($template_bound->type)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @param TGenericObject|TNamedObject|TIterable $input_type_part
      * @param TGenericObject|TIterable $container_type_part
-     * @psalm-external-mutation-free
+     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      * @return list<Union>
      */
     public static function getMappedGenericTypeParams(
@@ -1279,6 +1306,21 @@ final class TemplateStandinTypeReplacer
     ): array {
         if ($input_type_part instanceof TGenericObject || $input_type_part instanceof TIterable) {
             $input_type_params = $input_type_part->type_params;
+
+            // a purity template left out (`Iterator<int, int>`) is bound to its default, never to mixed
+            if ($input_type_part instanceof TGenericObject
+                && $codebase->classlike_storage_provider->has($input_type_part->value)
+            ) {
+                $input_class_storage = $codebase->classlike_storage_provider->get($input_type_part->value);
+
+                foreach (array_keys($input_class_storage->template_types ?? []) as $i => $template_name) {
+                    if ($i >= count($input_type_params)
+                        && isset($input_class_storage->template_defaults[$template_name])
+                    ) {
+                        $input_type_params[] = $input_class_storage->template_defaults[$template_name];
+                    }
+                }
+            }
         } elseif ($codebase->classlike_storage_provider->has($input_type_part->value)) {
             $class_storage = $codebase->classlike_storage_provider->get($input_type_part->value);
 
@@ -1287,7 +1329,11 @@ final class TemplateStandinTypeReplacer
             if (strtolower($input_type_part->value) === strtolower($container_type_part->value)) {
                 $input_type_params = $class_storage->getClassTemplateTypes();
             } elseif (!empty($class_storage->template_extended_params[$container_class])) {
-                $input_type_params = array_values($class_storage->template_extended_params[$container_class]);
+                // the params of the container are mapped below from those of the class, which an
+                // object without type params leaves at its templates
+                $input_type_params = $class_storage->template_types !== null && $class_storage->template_types !== []
+                    ? self::getOwnTemplateParams($class_storage->template_types)
+                    : array_values($class_storage->template_extended_params[$container_class]);
             } else {
                 $input_type_params = array_fill(0, count($class_storage->template_types ?? []), Type::getMixed());
             }
@@ -1394,5 +1440,27 @@ final class TemplateStandinTypeReplacer
         }
 
         return $input_type_params;
+    }
+
+    /**
+     * The templates of a class as its type params: what an object of the class without type params
+     * has them bound to.
+     *
+     * @param array<string, non-empty-array<string, Union>> $template_types
+     * @return list<Union>
+     * @psalm-pure
+     */
+    private static function getOwnTemplateParams(array $template_types): array
+    {
+        $params = [];
+
+        foreach ($template_types as $template_name => $type_map) {
+            foreach ($type_map as $defining_class => $bound) {
+                $params[] = new Union([new TTemplateParam($template_name, $bound, $defining_class)]);
+                break;
+            }
+        }
+
+        return $params;
     }
 }

@@ -840,7 +840,7 @@ final class ReturnTypeTest extends TestCase
                     $res = reflexive(fn(int $a, int $b): bool => $a === $b);
                 ',
                 'assertions' => [
-                    '$res' => 'impure-Closure(int):bool',
+                    '$res' => 'Closure[impure](int):bool',
                 ],
                 'ignored_issues' => [],
                 'php_version' => '7.4',
@@ -1359,6 +1359,56 @@ final class ReturnTypeTest extends TestCase
                 'ignored_issues' => [],
                 'php_version' => '8.1',
             ],
+            'nonEmptyStringLowercaseStringIntersection' => [
+                'code' => '<?php
+                    /**
+                     * @return non-empty-string&lowercase-string
+                     */
+                    function lower(): string {
+                        return "abc";
+                    }
+
+                    $a = lower();
+                ',
+                'assertions' => [
+                    '$a===' => 'non-empty-lowercase-string',
+                ],
+            ],
+            'nonEmptyStringLiteralStringIntersection' => [
+                'code' => '<?php
+                    /**
+                     * @return non-empty-string&literal-string
+                     */
+                    function lit(): string {
+                        return "abc";
+                    }
+
+                    $a = lit();
+                ',
+                'assertions' => [
+                    '$a===' => 'non-empty-literal-string',
+                ],
+            ],
+            'laravelStyleStrLowerConditionalReturnType' => [
+                'code' => '<?php
+                    /**
+                     * @param string $value
+                     * @return ($value is "" ? "" : non-empty-string&lowercase-string)
+                     */
+                    function lower(string $value): string {
+                        return strtolower($value);
+                    }
+
+                    $a = lower("FOO");
+                    /** @var "" $empty */
+                    $empty = "";
+                    $b = lower($empty);
+                ',
+                'assertions' => [
+                    '$a===' => 'non-empty-lowercase-string',
+                    '$b===' => "''",
+                ],
+            ],
         ];
     }
 
@@ -1719,7 +1769,7 @@ final class ReturnTypeTest extends TestCase
                         return 1;
                     };
                 }',
-                'error_message' => 'InvalidReturnStatement - src' . DIRECTORY_SEPARATOR . 'somefile.php:9:28 - The inferred type \'pure-Closure(iterable<int, T:fn-map as mixed>):1\' does not match the declared return type \'impure-callable(iterable<int, T:fn-map as mixed>):iterable<int, U:fn-map as mixed>\' for map',
+                'error_message' => 'InvalidReturnStatement - src' . DIRECTORY_SEPARATOR . 'somefile.php:9:28 - The inferred type \'Closure[pure](iterable<int, T:fn-map as mixed>):1\' does not match the declared return type \'callable[impure](iterable<int, T:fn-map as mixed>):iterable<int, U:fn-map as mixed>\' for map',
             ],
             'cannotInferReturnClosureWithDifferentTypes' => [
                 'code' => '<?php
@@ -1731,7 +1781,7 @@ final class ReturnTypeTest extends TestCase
                 function map(): callable {
                     return function(B $v): void {};
                 }',
-                'error_message' => 'InvalidReturnStatement - src' . DIRECTORY_SEPARATOR . 'somefile.php:8:28 - The inferred type \'pure-Closure(B):void\' does not match the declared return type \'impure-callable(A):void\' for map',
+                'error_message' => 'InvalidReturnStatement - src' . DIRECTORY_SEPARATOR . 'somefile.php:8:28 - The inferred type \'Closure[pure](B):void\' does not match the declared return type \'callable[impure](A):void\' for map',
             ],
             'compareTKeyedArrayToAlwaysFilledArray' => [
                 'code' => '<?php
