@@ -1607,6 +1607,15 @@ final class TaintTest extends TestCase
                     $cities[] = $city;
                     echo implode(",", $cities);',
             ],
+            'dontTaintTheSubjectOfAMatchWithoutDefaultPastIt' => [
+                'code' => '<?php
+                    $type = (string) $_GET["type"];
+                    $id = match ($type) {
+                        "organization" => 1,
+                        "prof" => 2,
+                    };
+                    echo $type;',
+            ],
             'dontTaintLiteralStringType' => [
                 'code' => '<?php
                     /** @var "asc"|"desc" $direction */
@@ -7396,6 +7405,16 @@ final class TaintTest extends TestCase
                         }
                     }',
                 'error_message' => 'TaintedSql',
+            ],
+            'taintTheSubjectOfAMatchWithADefaultArmPastIt' => [
+                'code' => '<?php
+                    $type = (string) $_GET["type"];
+                    $id = match ($type) {
+                        "organization" => 1,
+                        default => 2,
+                    };
+                    echo $type;',
+                'error_message' => 'TaintedHtml',
             ],
             'taintedHeaderInMail' => [
                 'code' => '<?php
