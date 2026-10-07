@@ -88,6 +88,7 @@ final class Populator
 
     public function populateCodebase(): void
     {
+        $this->classlikes->invalidateExpansionMemo();
         $this->progress->debug('ClassLikeStorage is populating' . "\n");
 
         foreach ($this->classlike_storage_provider->getNew() as $class_storage) {

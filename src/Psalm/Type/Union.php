@@ -13,6 +13,7 @@ use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\TypeVisitor\ExpansionTraitsCollector;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use Psalm\Type\Atomic\TClassString;
@@ -173,6 +174,27 @@ final class Union implements TypeNode
 
     /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
     private ?IdMemo $memo = null;
+
+    /**
+     * ExpansionTraitsCollector traits of this union (-1: not computed yet); memoized with the expansions below
+     * (types are immutable), dropped on clone since a wither may change the atomics.
+     */
+    private int $expansion_traits = -1;
+
+    /**
+     * Memoized expansions (TypeExpander::expandUnion) by context key, valid for $expansions_epoch
+     * (ClassLikes::$expansion_epoch). An expansion that returns this union itself is in $expansions_unchanged
+     * instead (no self-reference: the compiled program would leak the cycle). Dropped on clone: an expansion
+     * carries the flags of the union it expands.
+     *
+     * @var array<string, Union>
+     */
+    private array $expansions = [];
+
+    /** @var array<string, true> */
+    private array $expansions_unchanged = [];
+
+    private int $expansions_epoch = 0;
 
 
     /**
@@ -573,5 +595,70 @@ final class Union implements TypeNode
         $node = $self;
 
         return $result;
+    }
+
+    /** @psalm-mutation-free */
+    private function __clone()
+    {
+        $this->expansion_traits = -1;
+        $this->expansions = [];
+        $this->expansions_unchanged = [];
+        $this->expansions_epoch = 0;
+    }
+
+    /**
+     * ExpansionTraitsCollector traits of this union, memoized.
+     *
+     * @internal
+     * @psalm-mutation-free
+     */
+    public function getExpansionTraits(): int
+    {
+        if ($this->expansion_traits === -1) {
+            $collector = new ExpansionTraitsCollector();
+            $collector->traverseArray($this->types);
+            /** @psalm-suppress ImpurePropertyAssignment memo of an immutable value */
+            $this->expansion_traits = $collector->getTraits();
+        }
+        return $this->expansion_traits;
+    }
+
+    /**
+     * The memoized expansion for a context key in an expansion epoch, null if none.
+     *
+     * @internal
+     * @psalm-mutation-free
+     */
+    public function getMemoizedExpansion(int $epoch, string $key): ?Union
+    {
+        if ($this->expansions_epoch !== $epoch) {
+            return null;
+        }
+        if (isset($this->expansions_unchanged[$key])) {
+            return $this;
+        }
+        return $this->expansions[$key] ?? null;
+    }
+
+    /**
+     * Memoize the expansion for a context key in an expansion epoch.
+     *
+     * @internal
+     * @psalm-mutation-free
+     */
+    public function memoizeExpansion(int $epoch, string $key, Union $expansion): void
+    {
+        /** @psalm-suppress ImpurePropertyAssignment memo of an immutable value */
+        if ($this->expansions_epoch !== $epoch) {
+            $this->expansions = [];
+            $this->expansions_unchanged = [];
+            $this->expansions_epoch = $epoch;
+        }
+        /** @psalm-suppress ImpurePropertyAssignment memo of an immutable value */
+        if ($expansion === $this) {
+            $this->expansions_unchanged[$key] = true;
+        } else {
+            $this->expansions[$key] = $expansion;
+        }
     }
 }

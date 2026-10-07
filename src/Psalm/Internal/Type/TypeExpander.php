@@ -8,6 +8,7 @@ use Psalm\Codebase;
 use Psalm\Exception\CircularReferenceException;
 use Psalm\Exception\UnresolvableConstantException;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
+use Psalm\Internal\TypeVisitor\ExpansionTraitsCollector;
 use Psalm\Storage\Assertion\IsType;
 use Psalm\Storage\Capabilities;
 use Psalm\Type;
@@ -69,6 +70,83 @@ final class TypeExpander
         bool $expand_generic = false,
         bool $expand_templates = false,
         bool $throw_on_unresolvable_constant = false,
+    ): Union {
+        // during analysis an expansion is memoized on the union it expands (types are immutable, the storages it
+        // reads no longer change): Psalm expanded the same declared types at every use (70% of the expansions of
+        // an analysis repeat one already made), pzoom resolves them in the storages once
+        $epoch = $codebase->classlikes->expansion_epoch;
+        $key = null;
+        if ($epoch !== 0) {
+            $traits = $return_type->getExpansionTraits();
+            if (($traits & ExpansionTraitsCollector::UNMEMOIZABLE) === 0) {
+                $key = ($evaluate_class_constants ? '1' : '0') . ($evaluate_conditional_types ? '1' : '0')
+                    . ($expand_generic ? '1' : '0') . ($expand_templates ? '1' : '0')
+                    . ($throw_on_unresolvable_constant ? '1' : '0');
+                if (($traits & (ExpansionTraitsCollector::SELF | ExpansionTraitsCollector::STATIC)) !== 0) {
+                    if ($static_class_type !== null && !is_string($static_class_type)) {
+                        // an object as the static class: not memoized (no cheap key for it)
+                        $key = null;
+                    } else {
+                        $key .= "\0" . ($self_class ?? '') . "\0" . ($static_class_type ?? '') . ($final ? "\0f" : "\0");
+                    }
+                }
+                if ($key !== null && ($traits & ExpansionTraitsCollector::PARENT) !== 0) {
+                    $key .= "\0p" . ($parent_class ?? '');
+                }
+            }
+        }
+
+        if ($key === null) {
+            return self::expandUnionUncached(
+                $codebase,
+                $return_type,
+                $self_class,
+                $static_class_type,
+                $parent_class,
+                $evaluate_class_constants,
+                $evaluate_conditional_types,
+                $final,
+                $expand_generic,
+                $expand_templates,
+                $throw_on_unresolvable_constant,
+            );
+        }
+
+        $memoized = $return_type->getMemoizedExpansion($epoch, $key);
+        if ($memoized !== null) {
+            return $memoized;
+        }
+
+        $expansion = self::expandUnionUncached(
+            $codebase,
+            $return_type,
+            $self_class,
+            $static_class_type,
+            $parent_class,
+            $evaluate_class_constants,
+            $evaluate_conditional_types,
+            $final,
+            $expand_generic,
+            $expand_templates,
+            $throw_on_unresolvable_constant,
+        );
+        $return_type->memoizeExpansion($epoch, $key, $expansion);
+
+        return $expansion;
+    }
+
+    private static function expandUnionUncached(
+        Codebase $codebase,
+        Union $return_type,
+        ?string $self_class,
+        string|TNamedObject|TTemplateParam|null $static_class_type,
+        ?string $parent_class,
+        bool $evaluate_class_constants,
+        bool $evaluate_conditional_types,
+        bool $final,
+        bool $expand_generic,
+        bool $expand_templates,
+        bool $throw_on_unresolvable_constant,
     ): Union {
         $new_return_type_parts = [];
         // every expansion step returns the atomic it was given when there is nothing to resolve, so a union

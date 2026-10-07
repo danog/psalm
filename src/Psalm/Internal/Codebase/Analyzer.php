@@ -241,7 +241,13 @@ final class Analyzer
             $this->file_provider->fileExists(...),
         );
 
-        $this->doAnalysis($project_analyzer, $pool_size);
+        // the storages are populated: type expansions are memoized while the files are analyzed
+        $codebase->classlikes->beginExpansionMemo();
+        try {
+            $this->doAnalysis($project_analyzer, $pool_size);
+        } finally {
+            $codebase->classlikes->endExpansionMemo();
+        }
 
         $scanned_files = $codebase->scanner->getScannedFiles();
 

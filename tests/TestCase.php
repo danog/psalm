@@ -211,7 +211,13 @@ class TestCase extends BaseTestCase
             $file_path,
             $codebase->config->shortenFileName($file_path),
         );
-        $file_analyzer->analyze($context);
+        // as Analyzer::analyzeFiles() does: type expansions are memoized during analysis
+        $codebase->classlikes->beginExpansionMemo();
+        try {
+            $file_analyzer->analyze($context);
+        } finally {
+            $codebase->classlikes->endExpansionMemo();
+        }
 
         if ($codebase->taint_flow_graph) {
             $codebase->taint_flow_graph->connectSinksAndSources($codebase->progress);

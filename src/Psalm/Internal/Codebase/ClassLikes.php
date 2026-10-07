@@ -90,6 +90,37 @@ use const T_WHITESPACE;
 final class ClassLikes
 {
     /**
+     * Epoch of the memoized type expansions (TypeExpander::expandUnion): 0 while they are not memoized, else a
+     * number unique to this codebase state. Expansions are memoized during analysis only, when the storages
+     * they read (class-likes and aliases, their template types and hierarchy) no longer change; anything that
+     * changes them moves to a new epoch, which discards every memoized expansion.
+     */
+    public int $expansion_epoch = 0;
+
+    /** the last epoch handed out, by any codebase: epochs are never reused */
+    private static int $last_expansion_epoch = 0;
+
+    /** Memoize type expansions from now on (analysis starts: the storages are populated). */
+    public function beginExpansionMemo(): void
+    {
+        $this->expansion_epoch = ++self::$last_expansion_epoch;
+    }
+
+    /** Stop memoizing type expansions. */
+    public function endExpansionMemo(): void
+    {
+        $this->expansion_epoch = 0;
+    }
+
+    /** The storages expansions read are about to change: discard the memoized expansions. */
+    public function invalidateExpansionMemo(): void
+    {
+        if ($this->expansion_epoch !== 0) {
+            $this->expansion_epoch = ++self::$last_expansion_epoch;
+        }
+    }
+
+    /**
      * @var array<lowercase-string, bool>
      */
     private array $existing_classlikes_lc = [];
@@ -207,6 +238,7 @@ final class ClassLikes
      */
     public function addFullyQualifiedClassName(string $fq_class_name, ?string $file_path = null): void
     {
+        $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_classes_lc[$fq_class_name_lc] = true;
@@ -226,6 +258,7 @@ final class ClassLikes
      */
     public function addFullyQualifiedInterfaceName(string $fq_class_name, ?string $file_path = null): void
     {
+        $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_interfaces_lc[$fq_class_name_lc] = true;
@@ -245,6 +278,7 @@ final class ClassLikes
      */
     public function addFullyQualifiedTraitName(string $fq_class_name, ?string $file_path = null): void
     {
+        $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_traits_lc[$fq_class_name_lc] = true;
@@ -264,6 +298,7 @@ final class ClassLikes
      */
     public function addFullyQualifiedEnumName(string $fq_class_name, ?string $file_path = null): void
     {
+        $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_enums_lc[$fq_class_name_lc] = true;
@@ -283,6 +318,7 @@ final class ClassLikes
      */
     public function addFullyQualifiedClassLikeName(string $fq_class_name_lc, ?string $file_path = null): void
     {
+        $this->invalidateExpansionMemo();
         if ($file_path) {
             $this->scanner->setClassLikeFilePath($fq_class_name_lc, $file_path);
         }
@@ -815,6 +851,7 @@ final class ClassLikes
      */
     public function addClassAlias(string $fq_class_name, string $alias_name): void
     {
+        $this->invalidateExpansionMemo();
         $this->classlike_aliases_map[strtolower($alias_name)] = $fq_class_name;
         $this->existing_classlike_aliases[$alias_name] = true;
     }
