@@ -122,6 +122,7 @@ final class ObjectComparator
                     $intersection_input_type,
                     $intersection_container_type,
                     $intersection_container_type_lower,
+                    $container_type_is_interface,
                     $container_was_static,
                     $allow_interface_equality,
                     $atomic_comparison_result,
@@ -181,6 +182,7 @@ final class ObjectComparator
         Atomic $intersection_input_type,
         Atomic $intersection_container_type,
         ?string $intersection_container_type_lower,
+        bool $container_type_is_interface,
         bool $container_was_static,
         bool $allow_interface_equality,
         ?TypeComparisonResult $atomic_comparison_result,
@@ -328,8 +330,8 @@ final class ObjectComparator
             return true;
         }
 
+        // the container's interface-ness comes from the caller, which looked it up already
         $input_type_is_interface = $codebase->interfaceExists($intersection_input_type_lower);
-        $container_type_is_interface = $codebase->interfaceExists($intersection_container_type_lower);
 
         if ($allow_interface_equality
             && $container_type_is_interface
@@ -340,7 +342,7 @@ final class ObjectComparator
 
         if (($codebase->classExists($intersection_input_type_lower)
                 || $codebase->classlikes->enumExists($intersection_input_type_lower))
-            && $codebase->classOrInterfaceExists($intersection_container_type_lower)
+            && ($container_type_is_interface || $codebase->classExists($intersection_container_type_lower))
             && $codebase->classExtendsOrImplements(
                 $intersection_input_type_lower,
                 $intersection_container_type_lower,

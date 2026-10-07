@@ -54,9 +54,6 @@ use const PHP_INT_MAX;
  */
 final class UnionTypeComparator
 {
-    /**
-     * Does the input param type match the given param type
-     */
     public static function isContainedBy(
         Codebase $codebase,
         Union $input_type,
@@ -103,6 +100,8 @@ final class UnionTypeComparator
         $container_has_template = $container_type->hasTemplateOrStatic();
 
         $input_atomic_types = array_reverse(self::getTypeParts($codebase, $input_type));
+        // the container's parts once, not once per input part
+        $container_type_parts = self::getTypeParts($codebase, $container_type);
 
         while ($input_type_part = array_pop($input_atomic_types)) {
             if ($input_type_part instanceof TNull && $ignore_null) {
@@ -190,7 +189,19 @@ final class UnionTypeComparator
                 }
             }
 
-            foreach (self::getTypeParts($codebase, $container_type) as $container_type_part) {
+            foreach ($container_type_parts as $container_type_part) {
+                // once a container part matched, the remaining parts only matter for what they record in the
+                // comparison result (coercion from scalars, replacement types, type-variable bounds, whether the
+                // match was a __toString cast): a plain object or null compared with a plain object or null
+                // records none of them, and the __toString state can only still change while all matches were casts
+                if ($type_match_found
+                    && !$all_to_string_cast
+                    && self::isPlainObjectOrNull($input_type_part)
+                    && self::isPlainObjectOrNull($container_type_part)
+                ) {
+                    continue;
+                }
+
                 if ($ignore_null
                     && $container_type_part instanceof TNull
                     && !$input_type_part instanceof TNull
@@ -396,6 +407,11 @@ final class UnionTypeComparator
                     $all_type_coerced_from_mixed = false;
                     $all_type_coerced_from_as_mixed = false;
                     $all_type_coerced = false;
+
+                    // without a comparison result only the match itself is observable
+                    if ($union_comparison_result === null) {
+                        break;
+                    }
                 }
             }
 
@@ -818,5 +834,23 @@ final class UnionTypeComparator
             return $a->dependent_list_key === $b->dependent_list_key;
         }
         return true;
+    }
+
+    /**
+     * An atomic whose comparisons with another such atomic record nothing in a TypeComparisonResult but
+     * type_coerced (which no longer matters once a container part matched): null, or a plain object.
+     *
+     * @psalm-pure
+     */
+    private static function isPlainObjectOrNull(Atomic $atomic): bool
+    {
+        return $atomic instanceof TNull
+            || ($atomic instanceof TNamedObject
+                && !$atomic instanceof TGenericObject
+                && !$atomic instanceof TClosure
+                && !$atomic instanceof TAnonymousClassInstance
+                && !$atomic instanceof TEnumCase
+                && !$atomic->is_static
+                && $atomic->extra_types === []);
     }
 }

@@ -52,9 +52,6 @@ use function strtolower;
  */
 final class AtomicTypeComparator
 {
-    /**
-     * Does the input param atomic type match the given param atomic type
-     */
     public static function isContainedBy(
         Codebase $codebase,
         Atomic $input_type_part,
@@ -785,7 +782,10 @@ final class AtomicTypeComparator
             return false;
         }
 
-        if ($container_type_part instanceof TNamedObject
+        // a container that extends the input is a coercion: only the comparison result records it (the
+        // answer is false either way, and their keys differ), so the lookups are made only when it is wanted
+        if ($atomic_comparison_result !== null
+            && $container_type_part instanceof TNamedObject
             && $input_type_part instanceof TNamedObject
             && $codebase->classOrInterfaceOrEnumExists($input_type_part->value)
             && (
