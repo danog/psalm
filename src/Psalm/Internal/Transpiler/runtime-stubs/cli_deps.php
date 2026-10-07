@@ -11,6 +11,11 @@ final class CpuCoreCounter
         return 1;
     }
 
+    public function getCountWithFallback(int $fallback): int
+    {
+        return 1;
+    }
+
     public function getAvailableForParallelisation(): int
     {
         return 1;
