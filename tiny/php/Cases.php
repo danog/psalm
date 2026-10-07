@@ -1847,9 +1847,82 @@ function case_use_graph(): string
     return implode(',', $g->usedNodes());
 }
 
+/**
+ * Psalm types an inline `$templates[$name]['psalm'] = ...` next to `$templates[$name][$source] = ...` as
+ * `array{psalm: ..., none?: ...}` (psalm required for every entry), so all writes go through a declared type.
+ *
+ * @param array<string, array<string, array{string, ?string, ?string, bool}>> $templates
+ * @param array{string, ?string, ?string, bool} $entry
+ */
+function template_add(array &$templates, string $name, string $source, array $entry): void
+{
+    $templates[$name][$source] = $entry;
+}
+
+/**
+ * Mirrors FunctionLikeDocblockParser's template collection after master's purity templates: an optional block
+ * writes `[name, 'of', bound, false]` entries, then each `@template` line writes `[name, modifier|null,
+ * type|null, false]` into the same nested map, and the preferred source entry is picked per template.
+ *
+ * @param list<string> $purity
+ * @param array<int, string> $lines
+ * @param array<int, bool> $psalm_offsets
+ */
+function template_entries(array $purity, array $lines, array $psalm_offsets): string
+{
+    $templates = [];
+
+    if ($purity !== []) {
+        foreach ($purity as $name) {
+            template_add($templates, $name, 'psalm', [$name, 'of', 'impure', false]);
+        }
+    }
+
+    foreach ($lines as $offset => $line) {
+        $parts = preg_split('/[\s]+/', $line);
+        if ($parts === false) {
+            return 'split-failed';
+        }
+        $template_name = array_shift($parts);
+        if (!$template_name) {
+            return 'empty';
+        }
+        $source = isset($psalm_offsets[$offset]) ? 'psalm' : 'none';
+        if (count($parts) > 1 && in_array(strtolower($parts[0]), ['as', 'super', 'of'], true)) {
+            $modifier = strtolower(array_shift($parts));
+            template_add($templates, $template_name, $source, [$template_name, $modifier, implode(' ', $parts), false]);
+        } else {
+            template_add($templates, $template_name, $source, [$template_name, null, null, false]);
+        }
+    }
+
+    $out = [];
+    foreach ($templates as $entries) {
+        foreach (['psalm', 'phpstan', 'none'] as $source) {
+            if (isset($entries[$source])) {
+                $out[] = $entries[$source];
+                break;
+            }
+        }
+    }
+
+    $s = '';
+    foreach ($out as $t) {
+        $s .= $t[0] . ':' . ($t[1] ?? '-') . ':' . ($t[2] ?? '-') . ';';
+    }
+    return $s;
+}
+
+function case_template_entries(): string
+{
+    return template_entries([], [0 => 'TIn as object'], [])
+        . '|' . template_entries(['P'], [0 => 'T', 1 => 'U of array<int>'], [1 => true]);
+}
+
 function run_all(): string
 {
     return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+        . check('template_entries', case_template_entries(), 'TIn:as:object;|P:of:impure;T:-:-;U:of:array<int>;')
         . check('cond_return', case_cond_return(), 'fallback:n7:n7')
         . check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
         . check('queue_pop', case_queue_pop(), 'root,a,b,c,d')
