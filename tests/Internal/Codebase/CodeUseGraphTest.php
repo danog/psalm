@@ -13,12 +13,12 @@ final class CodeUseGraphTest extends TestCase
     /**
      * Nothing is treated as external code in these unit tests.
      *
-     * @return Closure(string): bool
+     * @return Closure(int): bool
      * @psalm-pure
      */
     private static function notExternal(): Closure
     {
-        return static fn(string $_node_id): bool => false;
+        return static fn(int $_node_id): bool => false;
     }
 
     public function testResolvesCyclesRecursively(): void
@@ -105,7 +105,7 @@ final class CodeUseGraphTest extends TestCase
         $graph->addEdge($external, $method);
 
         // the caller belongs to code outside the project, so what it calls is used
-        $graph->resolve(static fn(string $node_id): bool => $node_id === $external);
+        $graph->resolve(static fn(int $node_id): bool => $node_id === $external);
 
         self::assertTrue($graph->isUsed($method));
     }

@@ -47,7 +47,7 @@ final class ShutdownAnalyzerTask implements Task
             'analyzed_methods'                           => $analyzer->getAnalyzedMethods(),
             'file_maps'                                  => $analyzer->getFileMaps(),
             'possible_method_param_types'                => $analyzer->getPossibleMethodParamTypes(),
-            'code_use_data'                              => $codebase->code_use_graph,
+            'code_use_data'                              => $codebase->code_use_graph->toPortable(),
             'taint_data'                                 => $codebase->taint_flow_graph,
             'unused_suppressions'                        => $codebase->track_unused_suppressions ? IssueBuffer::getUnusedSuppressions() : [],
             'used_suppressions'                          => $codebase->track_unused_suppressions ? IssueBuffer::getUsedSuppressions() : [],

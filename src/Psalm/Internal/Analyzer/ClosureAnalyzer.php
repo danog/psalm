@@ -70,7 +70,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
     #[Override]
     public function getMutationNodeId(): string
     {
-        return CodeUseGraph::functionLikeNode($this->closure_id);
+        return CodeUseGraph::functionLikeNodeName($this->closure_id);
     }
 
     /**

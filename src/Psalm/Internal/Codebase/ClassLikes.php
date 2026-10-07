@@ -175,10 +175,10 @@ final class ClassLikes
      */
     private array $existing_classlike_aliases = [];
 
-    /** @var array<lowercase-string, string> code-use graph class nodes by lowercase name */
+    /** @var array<lowercase-string, int> code-use graph class nodes by lowercase name */
     private array $class_nodes = [];
 
-    /** @var array<string, string> code-use graph class nodes by spelling */
+    /** @var array<string, int> code-use graph class nodes by spelling */
     private array $class_nodes_by_spelling = [];
 
     /** @var array<string, bool> whether a spelling is one of ClassLikeAnalyzer::SPECIAL_TYPES */
@@ -529,7 +529,7 @@ final class ClassLikes
     }
 
     /** The code-use graph node of a class-like, by spelling (built once, not per reference) */
-    private function classNodeOf(string $name): string
+    private function classNodeOf(string $name): int
     {
         return $this->class_nodes_by_spelling[$name] ??= CodeUseGraph::classNode(strtolower($name));
     }
@@ -1035,7 +1035,7 @@ final class ClassLikes
             }
         }
 
-        $code_use_graph->resolve(function (string $node_id): bool {
+        $code_use_graph->resolve(function (int $node_id): bool {
             $owner_class = CodeUseGraph::getOwnerClass($node_id);
 
             if ($owner_class === null) {

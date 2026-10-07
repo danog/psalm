@@ -78,7 +78,7 @@ use const PHP_INT_MAX;
  *      analyzed_methods: array<string, array<string, int>>,
  *      file_maps: array<string, FileMapType>,
  *      possible_method_param_types: array<string, array<int, Union>>,
- *      code_use_data: CodeUseGraph,
+ *      code_use_data: PortableCodeUseGraph,
  *      taint_data: ?TaintFlowGraph,
  *      unused_suppressions: array<string, array<int, int>>,
  *      used_suppressions: array<string, array<int, bool>>,
@@ -352,7 +352,7 @@ final class Analyzer
                     $codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
                 }
 
-                $codebase->code_use_graph->addGraph($pool_data['code_use_data']);
+                $codebase->code_use_graph->addPortable($pool_data['code_use_data']);
 
                 $codebase->file_reference_provider->addMethodDependencies(
                     $pool_data['method_dependencies'],
