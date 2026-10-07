@@ -9,14 +9,31 @@ use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Type;
 use Psalm\Type\Atomic;
+use Psalm\Type\Atomic\TAnonymousClassInstance;
 use Psalm\Type\Atomic\TArrayKey;
+use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
 use Psalm\Type\Atomic\TClassConstant;
+use Psalm\Type\Atomic\TClassString;
+use Psalm\Type\Atomic\TClosure;
+use Psalm\Type\Atomic\TDependentGetClass;
+use Psalm\Type\Atomic\TDependentGetDebugType;
+use Psalm\Type\Atomic\TDependentGetType;
+use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TFalse;
+use Psalm\Type\Atomic\TFloat;
+use Psalm\Type\Atomic\TGenericObject;
+use Psalm\Type\Atomic\TInt;
+use Psalm\Type\Atomic\TIntMask;
+use Psalm\Type\Atomic\TIntMaskOf;
 use Psalm\Type\Atomic\TIntRange;
+use Psalm\Type\Atomic\TKeyOf;
 use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumeric;
+use Psalm\Type\Atomic\TResource;
+use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type\Atomic\TTypeVariable;
@@ -66,6 +83,14 @@ final class UnionTypeComparator
             && !$container_type->possibly_undefined
         ) {
             return false;
+        }
+
+        // a type is contained by an identical one; with a comparison result to fill in, only for the types
+        // whose comparison with themselves records nothing in it (see isSelfContainmentInert)
+        if (($input_type === $container_type || $input_type->getId() === $container_type->getId())
+            && ($union_comparison_result === null || self::isSelfContainmentInert($input_type))
+        ) {
+            return true;
         }
 
 
@@ -722,5 +747,47 @@ final class UnionTypeComparator
         }
 
         return $atomic_types;
+    }
+
+    /**
+     * Whether comparing a type with an identical one records nothing in a TypeComparisonResult: a single
+     * atomic that is a plain scalar or a plain object. A union of several scalars sets type_coerced_from_scalar
+     * against itself, a generic object a replacement type, type variables and templates record bounds.
+     *
+     * @psalm-pure
+     */
+    private static function isSelfContainmentInert(Union $type): bool
+    {
+        if (!$type->isSingle()) {
+            return false;
+        }
+
+        $atomic = $type->getSingleAtomic();
+
+        if ($atomic instanceof TNamedObject) {
+            return !$atomic instanceof TGenericObject
+                && !$atomic instanceof TClosure
+                && !$atomic instanceof TAnonymousClassInstance
+                && !$atomic instanceof TEnumCase
+                && !$atomic->is_static
+                && $atomic->extra_types === [];
+        }
+
+        if ($atomic instanceof TString) {
+            return !$atomic instanceof TClassString
+                && !$atomic instanceof TDependentGetClass
+                && !$atomic instanceof TDependentGetType
+                && !$atomic instanceof TDependentGetDebugType;
+        }
+
+        if ($atomic instanceof TInt) {
+            return !$atomic instanceof TIntMask && !$atomic instanceof TIntMaskOf;
+        }
+
+        return $atomic instanceof TBool
+            || $atomic instanceof TFloat
+            || $atomic instanceof TNull
+            || $atomic instanceof TResource
+            || ($atomic instanceof TArrayKey && !$atomic instanceof TKeyOf);
     }
 }
