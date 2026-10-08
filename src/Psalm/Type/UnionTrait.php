@@ -415,45 +415,17 @@ trait UnionTrait
     }
 
     /**
-     * Whether an atomic is null / false / true / void / never: a variant check, as pzoom matches on `TAtomic`.
-     * The key (what Psalm's keyed union looked up) belongs to that class -- or to a TNamedObject spelling it,
-     * which Atomic::create() makes of such a native type in a signature before the PHP version that has it
-     * (a TNamedObject's key is its name, with any intersection appended: the name is compared first).
+     * Whether a named object is a native type (null, false, true, void, never, mixed, ...) by its key, which is
+     * what Psalm's keyed union looked up: Atomic::create() makes such a TNamedObject of a native type in a
+     * signature before the PHP version that has it. Elsewhere the predicates check the atomic's class, as pzoom
+     * matches on `TAtomic` (a named object's key is its name, with any intersection appended: the name is
+     * compared first).
      *
      * @psalm-pure
      */
-    private static function isAtomicNull(Atomic $type): bool
+    private static function isNamedAs(TNamedObject $type, string $key): bool
     {
-        return $type instanceof TNull
-            || ($type instanceof TNamedObject && $type->value === 'null' && $type->getKey() === 'null');
-    }
-
-    /** @psalm-pure */
-    private static function isAtomicFalse(Atomic $type): bool
-    {
-        return $type instanceof TFalse
-            || ($type instanceof TNamedObject && $type->value === 'false' && $type->getKey() === 'false');
-    }
-
-    /** @psalm-pure */
-    private static function isAtomicTrue(Atomic $type): bool
-    {
-        return $type instanceof TTrue
-            || ($type instanceof TNamedObject && $type->value === 'true' && $type->getKey() === 'true');
-    }
-
-    /** @psalm-pure */
-    private static function isAtomicVoid(Atomic $type): bool
-    {
-        return $type instanceof TVoid
-            || ($type instanceof TNamedObject && $type->value === 'void' && $type->getKey() === 'void');
-    }
-
-    /** @psalm-pure */
-    private static function isAtomicNever(Atomic $type): bool
-    {
-        return $type instanceof TNever
-            || ($type instanceof TNamedObject && $type->value === 'never' && $type->getKey() === 'never');
+        return $type->value === $key && $type->getKey() === $key;
     }
 
     /** @psalm-pure */
@@ -466,7 +438,7 @@ trait UnionTrait
     private function hasFalse(): bool
     {
         foreach ($this->types as $type) {
-            if (self::isAtomicFalse($type)) {
+            if ($type instanceof TFalse || ($type instanceof TNamedObject && self::isNamedAs($type, 'false'))) {
                 return true;
             }
         }
@@ -477,7 +449,7 @@ trait UnionTrait
     private function hasTrue(): bool
     {
         foreach ($this->types as $type) {
-            if (self::isAtomicTrue($type)) {
+            if ($type instanceof TTrue || ($type instanceof TNamedObject && self::isNamedAs($type, 'true'))) {
                 return true;
             }
         }
@@ -1059,7 +1031,7 @@ trait UnionTrait
     public function hasNull(): bool
     {
         foreach ($this->types as $type) {
-            if (self::isAtomicNull($type)) {
+            if ($type instanceof TNull || ($type instanceof TNamedObject && self::isNamedAs($type, 'null'))) {
                 return true;
             }
         }
@@ -1242,9 +1214,7 @@ trait UnionTrait
     public function hasMixed(): bool
     {
         foreach ($this->types as $type) {
-            if ($type instanceof TMixed
-                || ($type instanceof TNamedObject && $type->value === 'mixed' && $type->getKey() === 'mixed')
-            ) {
+            if ($type instanceof TMixed || ($type instanceof TNamedObject && self::isNamedAs($type, 'mixed'))) {
                 return true;
             }
         }
@@ -1257,9 +1227,7 @@ trait UnionTrait
     public function isMixed(bool $check_templates = false): bool
     {
         foreach ($this->types as $t) {
-            if ($t instanceof TMixed
-                || ($t instanceof TNamedObject && $t->value === 'mixed' && $t->getKey() === 'mixed')
-            ) {
+            if ($t instanceof TMixed || ($t instanceof TNamedObject && self::isNamedAs($t, 'mixed'))) {
                 continue;
             }
             if ($check_templates
@@ -1306,7 +1274,11 @@ trait UnionTrait
      */
     public function isNull(): bool
     {
-        return count($this->types) === 1 && self::isAtomicNull($this->types[0]);
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TNull || ($type instanceof TNamedObject && self::isNamedAs($type, 'null'));
     }
 
     /**
@@ -1314,7 +1286,11 @@ trait UnionTrait
      */
     public function isFalse(): bool
     {
-        return count($this->types) === 1 && self::isAtomicFalse($this->types[0]);
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TFalse || ($type instanceof TNamedObject && self::isNamedAs($type, 'false'));
     }
 
     /**
@@ -1336,7 +1312,11 @@ trait UnionTrait
      */
     public function isTrue(): bool
     {
-        return count($this->types) === 1 && self::isAtomicTrue($this->types[0]);
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TTrue || ($type instanceof TNamedObject && self::isNamedAs($type, 'true'));
     }
 
     /**
@@ -1362,7 +1342,11 @@ trait UnionTrait
      */
     public function isVoid(): bool
     {
-        return count($this->types) === 1 && self::isAtomicVoid($this->types[0]);
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TVoid || ($type instanceof TNamedObject && self::isNamedAs($type, 'void'));
     }
 
     /**
@@ -1370,7 +1354,11 @@ trait UnionTrait
      */
     public function isNever(): bool
     {
-        return count($this->types) === 1 && self::isAtomicNever($this->types[0]);
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TNever || ($type instanceof TNamedObject && self::isNamedAs($type, 'never'));
     }
 
     /**
