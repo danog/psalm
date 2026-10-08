@@ -220,8 +220,14 @@ trait UnionTrait
      */
     private static function listOfTypes(array $types): array
     {
-        if (count($types) === 1) {
-            return $types; // kept as it is: no copy
+        $count = count($types);
+        if ($count === 1) {
+            // kept as it is (no copy) when it is a list, as the other methods index it
+            return isset($types[0]) ? $types : array_values($types);
+        }
+        if ($count === 2 && isset($types[0], $types[1])) {
+            // the common case: two keys compared, no map
+            return $types[0]->getKey() === $types[1]->getKey() ? [$types[1]] : $types;
         }
         $by_key = [];
         foreach ($types as $type) {
