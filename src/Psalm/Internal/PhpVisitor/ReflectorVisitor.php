@@ -48,6 +48,7 @@ use function preg_match;
 use function reset;
 use function spl_object_id;
 use function strpos;
+use function str_contains;
 use function strtolower;
 
 /**
@@ -390,7 +391,13 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             );
         }
 
-        if ($doc_comment = $node->getDocComment()) {
+        // inline @var annotations (the classes they name are scanned): only a docblock with a var tag
+        // (@var, @psalm-var, @phpstan-var; tag names are case-sensitive) can have one, and only one
+        // with @psalm-taint-escape registers anything (a taint) without one, so others are not parsed
+        if (($doc_comment = $node->getDocComment())
+            && (str_contains($doc_comment->getText(), 'var')
+                || str_contains($doc_comment->getText(), 'taint-escape'))
+        ) {
             $var_comments = [];
 
             $template_types = [];
