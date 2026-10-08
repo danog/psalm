@@ -7,6 +7,7 @@ namespace Psalm\Internal\Type;
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
+use Psalm\Internal\TypeVisitor\ExpansionTraitsCollector;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TClassString;
@@ -19,6 +20,7 @@ use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Atomic\TNever;
 use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Atomic\TPropertiesOf;
@@ -37,6 +39,7 @@ use function array_merge;
 use function array_shift;
 use function array_values;
 use function assert;
+use function count;
 use function str_starts_with;
 
 /**
@@ -54,6 +57,21 @@ final class TemplateInferredTypeReplacer
         TemplateResult $template_result,
         ?Codebase $codebase,
     ): Union {
+        // pzoom's `replace_in` gate, where it is exact here: a single atomic that holds no template is returned as
+        // it is by the replacement and the combination below, which then rebuild the union with the flags it has
+        $atomic_types = $union->getAtomicTypes();
+        if (count($atomic_types) === 1) {
+            $atomic_type = $atomic_types[0];
+            if (ExpansionTraitsCollector::isInertLeaf($atomic_type)
+                && $union->isTemplateFree()
+                && $union->from_docblock === $atomic_type->from_docblock
+                && !$union->checked
+                && ($union->explicit_never || !$atomic_type instanceof TNever)
+            ) {
+                return $union;
+            }
+        }
+
         $new_types = [];
 
         $is_mixed = false;

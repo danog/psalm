@@ -79,6 +79,11 @@ final class TemplateStandinTypeReplacer
         ?string $bound_equality_classlike = null,
         int $depth = 1,
     ): void {
+        // pzoom's `replace_in` gate: a type without templates records no bound (and the replaced type is unused)
+        if ($union_type->isTemplateFree()) {
+            return;
+        }
+
         self::replace(
             $union_type,
             $template_result,
@@ -116,6 +121,11 @@ final class TemplateStandinTypeReplacer
         ?string $bound_equality_classlike = null,
         int $depth = 1,
     ): Union {
+        // without replacing, the type is returned as it is: one without templates has no bound to record either
+        if (!$replace && $union_type->isTemplateFree()) {
+            return $union_type;
+        }
+
         $atomic_types = [];
 
         $original_atomic_types = $union_type->getAtomicTypesByKey();

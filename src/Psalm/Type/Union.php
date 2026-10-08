@@ -638,6 +638,18 @@ final class Union implements TypeNode
     }
 
     /**
+     * Whether no template-dependent type occurs anywhere in this union (ExpansionTraitsCollector::TEMPLATED):
+     * template replacement has nothing to replace and no bound to record (pzoom's `replace_in` gate).
+     *
+     * @internal
+     * @psalm-mutation-free
+     */
+    public function isTemplateFree(): bool
+    {
+        return ($this->getExpansionTraits() & ExpansionTraitsCollector::TEMPLATED) === 0;
+    }
+
+    /**
      * Inert atomics (ExpansionTraitsCollector::isInertLeaf()) the expansion would not recombine: one that is not
      * null, mixed or never, or such an atomic followed by null (TypeExpander::isCombineNormal(), in the order
      * the combiner lists them).
