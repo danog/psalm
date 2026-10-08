@@ -812,6 +812,13 @@ final class NewAnalyzer extends CallAnalyzer
             ? InheritedMethodTaints::getBodySuffix($statements_analyzer, $fq_class_name, $declaring_method_id)
             : null;
 
+        // the node the body of the constructor returns into, wherever it is declared (an inherited constructor
+        // analyzed for the class of the object has nodes of its own: see InheritedMethodTaints; a constructor of a
+        // trait is analyzed for the class using it: see FunctionLikeAnalyzer::getBodyMethodId())
+        $cased_constructor_id = $declaring_method_id
+            ? FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $method_id)
+            : $fq_class_name . '::__construct';
+
         if (!$method_storage) {
             $method_source = DataFlowNode::getForCallableReturn(
                 'builtin',
@@ -819,12 +826,6 @@ final class NewAnalyzer extends CallAnalyzer
                 $storage->isExternalMutationFree() ? $code_location : null,
             );
         } else {
-            // the node the body of the constructor returns into, wherever it is declared (an inherited constructor
-            // analyzed for the class of the object has nodes of its own: see InheritedMethodTaints)
-            $cased_constructor_id = $declaring_method_id
-                ? $codebase->methods->getCasedMethodId($declaring_method_id)
-                : $fq_class_name . '::__construct';
-
             $method_source = InheritedMethodTaints::withMethodSuffix(
                 $declaring_method_id ?? $method_id,
                 $body_suffix,
@@ -853,7 +854,7 @@ final class NewAnalyzer extends CallAnalyzer
                 $declaring_method_id ?? $method_id,
                 $body_suffix,
                 static fn(): DataFlowNode => DataFlowNode::getForAssignment(
-                    '$this out of ' . $codebase->methods->getCasedMethodId($declaring_method_id ?? $method_id),
+                    '$this out of ' . $cased_constructor_id,
                     $constructor_location,
                     $method_source->specialization_key,
                 ),

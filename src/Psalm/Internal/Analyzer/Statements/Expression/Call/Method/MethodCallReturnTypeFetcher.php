@@ -12,6 +12,7 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\InheritedMethodTaints;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
@@ -372,7 +373,12 @@ final class MethodCallReturnTypeFetcher
         $node_location = new CodeLocation($statements_analyzer, $name_expr);
 
 
-        $is_declaring = (string) $declaring_method_id === (string) $method_id;
+        // the nodes of the body of the method are keyed by the class it is analyzed as one of, which for a method
+        // of a trait is the class using it
+        $body_method_id = FunctionLikeAnalyzer::getBodyMethodId($codebase, $method_id);
+        $cased_body_method_id = FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $method_id);
+
+        $is_declaring = (string) $body_method_id === (string) $method_id;
 
         $var_id = ExpressionIdentifier::getExtendedVarId(
             $var_expr,
@@ -426,7 +432,7 @@ final class MethodCallReturnTypeFetcher
                         $declaring_method_id,
                         $body_suffix,
                         static fn(): DataFlowNode => DataFlowNode::getForAssignment(
-                            '$this in ' . (string) $declaring_method_id,
+                            '$this in ' . (string) $body_method_id,
                             $method_location,
                             $call_specialization_key,
                         ),
@@ -461,8 +467,6 @@ final class MethodCallReturnTypeFetcher
 
                 $taint_flow_graph->addNode($method_call_node);
 
-                $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
-
                 // what the method leaves in the object, which isn't what it returns
                 if ($var_node !== null && $method_location) {
                     $taint_flow_graph->addNode($var_node);
@@ -471,7 +475,7 @@ final class MethodCallReturnTypeFetcher
                         $declaring_method_id,
                         $body_suffix,
                         static fn(): DataFlowNode => DataFlowNode::getForAssignment(
-                            '$this out of ' . $cased_declaring_method_id,
+                            '$this out of ' . $cased_body_method_id,
                             $method_location,
                             $method_call_node->specialization_key,
                         ),
@@ -493,7 +497,7 @@ final class MethodCallReturnTypeFetcher
                                 $declaring_method_id,
                                 $body_suffix,
                                 static fn(): DataFlowNode => DataFlowNode::getForAssignment(
-                                    '$this in ' . (string) $declaring_method_id,
+                                    '$this in ' . (string) $body_method_id,
                                     $method_location,
                                     $call_specialization_key,
                                 ),
@@ -509,7 +513,7 @@ final class MethodCallReturnTypeFetcher
                         $declaring_method_id,
                         $body_suffix,
                         static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
-                            $cased_declaring_method_id,
+                            $cased_body_method_id,
                             $method_storage,
                             null,
                             0,
@@ -544,8 +548,6 @@ final class MethodCallReturnTypeFetcher
                 );
 
                 if (!$is_declaring) {
-                    $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
-
                     $declaring_method_call_node = InheritedMethodTaints::withMethodSuffix(
                         $declaring_method_id,
                         InheritedMethodTaints::getBodySuffix(
@@ -554,7 +556,7 @@ final class MethodCallReturnTypeFetcher
                             $declaring_method_id,
                         ),
                         static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
-                            $cased_declaring_method_id,
+                            $cased_body_method_id,
                             $method_storage,
                             $node_location,
                         ),
@@ -587,8 +589,6 @@ final class MethodCallReturnTypeFetcher
             $declaring_method_call_node = $method_call_node;
 
             if (!$is_declaring) {
-                $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
-
                 $declaring_method_call_node = InheritedMethodTaints::withMethodSuffix(
                     $declaring_method_id,
                     InheritedMethodTaints::getBodySuffix(
@@ -597,7 +597,7 @@ final class MethodCallReturnTypeFetcher
                         $declaring_method_id,
                     ),
                     static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
-                        $cased_declaring_method_id,
+                        $cased_body_method_id,
                         $method_storage,
                         null,
                     ),

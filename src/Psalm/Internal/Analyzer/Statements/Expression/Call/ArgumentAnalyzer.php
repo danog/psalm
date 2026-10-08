@@ -2001,7 +2001,16 @@ final class ArgumentAnalyzer
         if ($method_id && $taint_flow_graph && $called_body_suffix === null) {
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
-            if ($declaring_method_id && (string) $declaring_method_id !== (string) $method_id) {
+            // the parameters of the body of the method, keyed by the class it is analyzed as one of (see
+            // FunctionLikeAnalyzer::getBodyMethodId())
+            $cased_body_method_id = $declaring_method_id
+                ? FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $method_id)
+                : null;
+
+            if ($declaring_method_id
+                && $cased_body_method_id !== null
+                && strtolower($cased_body_method_id) !== strtolower($cased_method_id)
+            ) {
                 $declaring_storage = $codebase->methods->getStorage($declaring_method_id);
                 // the body of the method analyzed for the class of the object, if it is (see InheritedMethodTaints)
                 $body_suffix = InheritedMethodTaints::getBodySuffix(
@@ -2009,7 +2018,7 @@ final class ArgumentAnalyzer
                     $method_id->fq_class_name,
                     $declaring_method_id,
                 );
-                $declaring_cased_id_lc = strtolower($codebase->methods->getCasedMethodId($declaring_method_id));
+                $declaring_cased_id_lc = strtolower($cased_body_method_id);
                 $declaring_return_id = $declaring_cased_id_lc
                     . ($body_suffix ?? DataFlowNode::$method_suffixes[$declaring_cased_id_lc] ?? '');
                 // Specialized like $method_node: that node has an outgoing edge, so it is
@@ -2020,7 +2029,7 @@ final class ArgumentAnalyzer
                     $declaring_method_id,
                     $body_suffix,
                     static fn(): DataFlowNode => DataFlowNode::getForMethodArgument(
-                        $codebase->methods->getCasedMethodId($declaring_method_id),
+                        $cased_body_method_id,
                         DataFlowNode::getParameterOffset($declaring_storage, $function_param, $argument_offset),
                         $declaring_storage,
                         $specialization_location,
@@ -2055,7 +2064,7 @@ final class ArgumentAnalyzer
             // keyed as the body of the method keys its callable parameters (a magic method has none)
             $declaring_method_id = $method_id ? $codebase->methods->getDeclaringMethodId($method_id) : null;
             if ($method_id && $declaring_method_id) {
-                $callable_param_method_id = FunctionLikeAnalyzer::getByRefParamsOutMethodId($codebase, $method_id);
+                $callable_param_method_id = FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $method_id);
                 $callable_param_storage = $codebase->methods->getStorage($declaring_method_id);
             }
 
