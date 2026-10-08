@@ -22,6 +22,7 @@ use function array_slice;
 use function count;
 use function explode;
 use function implode;
+use function is_string;
 use function ksort;
 use function max;
 use function min;
@@ -87,6 +88,15 @@ final class TaintFlowResolution
      * of a call made there goes on per fetched key (see passesFetch()).
      */
     private const DEFERRED_CLASS = '?';
+
+    /**
+     * The class (see getAssignmentClass()) of an open assignment of the calls entering a filter split by class, for
+     * all of the calls whose class there is that of a key known exactly (see isExactKey()): a fetch observing it
+     * goes on in the filter of the class of the key it fetches (see getExactKeyClass()). A filter for each key would
+     * make one for every key the arrays reaching the entry hold there, and every key of another open assignment in
+     * each of them, though the walks observing them fetch few.
+     */
+    private const EXACT_KEY_CLASS = '?:';
 
     /**
      * The class (see getClass()) of an open assignment under an unknown key: only a conversion (see
@@ -2254,10 +2264,15 @@ final class TaintFlowResolution
             $depth = $this->getObservedCallDepth($open_assignments, $observed_family);
             $fact = $this->entry_facts[$context][self::getPosition($observed_family, $depth)] ?? null;
 
-            if ($fact !== null && $fact[0] !== null && $fact[0] !== self::DEFERRED_CLASS) {
+            if ($fact !== null && $fact[0] !== null && !self::isDeferredClass($fact[0])) {
                 if (!self::classPassesFetch($fact[0], $observed_key)) {
                     return;
                 }
+            } elseif ($fact !== null
+                && $fact[0] === self::EXACT_KEY_CLASS
+                && self::getExactKeyClass($fact[1], $observed_key) === false
+            ) {
+                return;
             } elseif ($fact === null || !self::passesKnownKeys($fact[1], $observed_key)) {
                 $context = $this->getFilter($context, $observed_family, $depth, $observed_key);
             }
@@ -2708,7 +2723,12 @@ final class TaintFlowResolution
         // a conversion observes stays open (see getPathTypeEffects()), the flows of a filter go on in the filters
         // of the filters it is one of (see addEntry()), and the calls made there are copied into the filters of
         // their context for each key fetched in their walks (see passesFetch()).
-        if ($fetched_key === self::CONVERSION_KEY || (isset($passed_keys['']) && count($passed_keys) > 1)) {
+        $exact_key_class = $fact[0] === self::EXACT_KEY_CLASS ? self::getExactKeyClass($fact[1], $fetched_key) : null;
+
+        if (is_string($exact_key_class)) {
+            // the calls of the class of that key, the only one passing it
+            $facts[$position] = [$exact_key_class, []];
+        } elseif ($fetched_key === self::CONVERSION_KEY || (isset($passed_keys['']) && count($passed_keys) > 1)) {
             // only the class of none doesn't ignore them all (see classPassesFetch())
             $facts[$position] = ['', []];
         } elseif (count($passed_keys) > 1 && self::areSingleKeys($passed_keys)) {
@@ -2783,7 +2803,7 @@ final class TaintFlowResolution
 
         $fact = $this->entry_facts[$context][self::getPosition($family, $call_depth)] ?? null;
 
-        if ($fact !== null && $fact[0] !== null && $fact[0] !== self::DEFERRED_CLASS) {
+        if ($fact !== null && $fact[0] !== null && !self::isDeferredClass($fact[0])) {
             return self::classPassesFetch($fact[0], $fetched_key);
         }
 
@@ -2791,12 +2811,20 @@ final class TaintFlowResolution
             return true;
         }
 
+        $is_exact_key_class = $fact !== null && $fact[0] === self::EXACT_KEY_CLASS;
+
+        if ($is_exact_key_class && self::getExactKeyClass($fact[1], $fetched_key) === false) {
+            return false;
+        }
+
         if (!$defer) {
             return null;
         }
 
-        if (!$this->tracksClasses($context) || ($fact !== null && $fact[0] === self::DEFERRED_CLASS)) {
-            if (!$is_convergence) {
+        if (!$this->tracksClasses($context) || ($fact !== null && self::isDeferredClass($fact[0]))) {
+            // (the calls of a convergence with the class of a key known exactly know it: asking them per key goes
+            // no further than them)
+            if (!$is_convergence || $is_exact_key_class) {
                 // A fetch in the walk of a call made there only asks whether it ignores that open assignment: the
                 // flows go on in the filter of their context for the calls whose open assignment it doesn't ignore
                 // (see getFilter()), one per fetched key and not per class. Else a call made past two observed
@@ -2970,6 +2998,78 @@ final class TaintFlowResolution
     }
 
     /**
+     * Whether the calls with class $class (see getAssignmentClass()) are told apart per fetched key, by the calls
+     * entering their context (DEFERRED_CLASS) or by their key (EXACT_KEY_CLASS)
+     *
+     * @psalm-pure
+     */
+    private static function isDeferredClass(?string $class): bool
+    {
+        return $class === self::DEFERRED_CLASS || $class === self::EXACT_KEY_CLASS;
+    }
+
+    /**
+     * Whether $key is a single key known exactly (see DataFlowGraph::keysMayBeEqual()): the class of an open
+     * assignment under it passes a fetch of the same key, and no other single key known exactly
+     *
+     * @psalm-pure
+     */
+    private static function isExactKey(string $key): bool
+    {
+        return $key !== ''
+            && $key !== self::CONVERSION_KEY
+            && !str_starts_with($key, '!')
+            && !str_contains($key, "'|'")
+            && !(strlen($key) > 3 && str_starts_with($key, "'") && str_ends_with($key, "'*"));
+    }
+
+    /**
+     * Which class of a key known exactly (see EXACT_KEY_CLASS) passes fetches of each key of $passed_keys and of
+     * $fetched_key: false if none, that class if one, null if it may be any of several (the fetched keys are unions,
+     * or known by their start only).
+     *
+     * @param array<string, true> $passed_keys
+     * @psalm-pure
+     */
+    private static function getExactKeyClass(array $passed_keys, string $fetched_key): string|false|null
+    {
+        if ($fetched_key === '' || $fetched_key === self::CONVERSION_KEY) {
+            // a fetch of the keys, or a conversion, takes nothing assigned under a key (see classPassesFetch())
+            return false;
+        }
+
+        if (self::isExactKey($fetched_key)) {
+            $classes = [':' . $fetched_key];
+        } elseif (str_starts_with($fetched_key, "'") && str_contains($fetched_key, "'|'")) {
+            $classes = [];
+
+            foreach (explode("'|'", substr($fetched_key, 1, -1)) as $key) {
+                $classes[] = ":'" . $key . "'";
+            }
+        } else {
+            return null;
+        }
+
+        $passing = [];
+
+        foreach ($classes as $class) {
+            foreach ($passed_keys as $passed_key => $_) {
+                if (!self::classPassesFetch($class, $passed_key)) {
+                    continue 2;
+                }
+            }
+
+            $passing[] = $class;
+        }
+
+        if ($passing === []) {
+            return false;
+        }
+
+        return count($passing) === 1 ? $passing[0] : null;
+    }
+
+    /**
      * @psalm-pure
      */
     private static function classPassesFetch(string $class, string $fetched_key): bool
@@ -3059,7 +3159,9 @@ final class TaintFlowResolution
             return;
         }
 
-        if ($class === self::DEFERRED_CLASS && $this->entry_kinds[$entry] !== self::ENTRY_CALL) {
+        if (str_starts_with($class, ':') && self::isExactKey(substr($class, 1))) {
+            $class = self::EXACT_KEY_CLASS;
+        } elseif ($class === self::DEFERRED_CLASS && $this->entry_kinds[$entry] !== self::ENTRY_CALL) {
             // no fetch in the walk of a convergence asks per key (see passesFetch())
             $class = '';
         }
@@ -3211,12 +3313,12 @@ final class TaintFlowResolution
 
         [$class, $passed_keys] = $this->entry_facts[$this->state_contexts[$copy]][$position] ?? [null, []];
 
-        if ($fetched_key === null || ($class !== null && $class !== self::DEFERRED_CLASS)) {
+        if ($fetched_key === null || ($class !== null && !self::isDeferredClass($class))) {
             return $class !== null;
         }
 
         return self::passesKnownKeys($passed_keys, $fetched_key)
-            || ($class === self::DEFERRED_CLASS && $passed_keys === []);
+            || (self::isDeferredClass($class) && $passed_keys === []);
     }
 
     /**
