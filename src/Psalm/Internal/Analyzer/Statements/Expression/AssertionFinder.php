@@ -368,6 +368,124 @@ final class AssertionFinder
     }
 
     /**
+     * The issues scrapeAssertions() would report for an expression outside a conditional (whose assertions
+     * nothing consumes there): assertions are only built where a condition consumer needs them, so the
+     * expressions whose scraping has no side effect (assignments, empty(), isset(), arithmetic and other
+     * non-comparison binary operations) are skipped, and a function call only runs its issue-producing
+     * checks (the is_*() redundancy check and the function's own @psalm-assert-if-* assertions).
+     */
+    public static function checkAssertionIssues(
+        PhpParser\Node\Expr $conditional,
+        ?string $this_class_name,
+        StatementsAnalyzer $source,
+        Codebase $codebase,
+        bool $inside_negation,
+    ): void {
+        if ($conditional instanceof PhpParser\Node\Expr\Assign
+            || $conditional instanceof PhpParser\Node\Expr\Empty_
+            || $conditional instanceof PhpParser\Node\Expr\Isset_
+        ) {
+            return;
+        }
+
+        if ($conditional instanceof PhpParser\Node\Expr\BinaryOp) {
+            if ($conditional instanceof PhpParser\Node\Expr\BinaryOp\Identical
+                || $conditional instanceof PhpParser\Node\Expr\BinaryOp\Equal
+                || $conditional instanceof PhpParser\Node\Expr\BinaryOp\NotIdentical
+                || $conditional instanceof PhpParser\Node\Expr\BinaryOp\NotEqual
+            ) {
+                self::scrapeAssertions(
+                    $conditional,
+                    $this_class_name,
+                    $source,
+                    $codebase,
+                    $inside_negation,
+                    true,
+                    false,
+                );
+            }
+
+            return;
+        }
+
+        if ($conditional instanceof PhpParser\Node\Expr\FuncCall) {
+            if (!$conditional->isFirstClassCallable()) {
+                self::checkFunctionCallIssues($conditional, $this_class_name, $source, $codebase, $inside_negation);
+            }
+
+            return;
+        }
+
+        self::scrapeAssertions(
+            $conditional,
+            $this_class_name,
+            $source,
+            $codebase,
+            $inside_negation,
+            true,
+            false,
+        );
+    }
+
+    /**
+     * The issue-producing part of processFunctionCall(), taking the same branches.
+     */
+    private static function checkFunctionCallIssues(
+        PhpParser\Node\Expr\FuncCall $expr,
+        ?string $this_class_name,
+        StatementsAnalyzer $source,
+        Codebase $codebase,
+        bool $negate,
+    ): void {
+        $args = $expr->getArgs();
+        $first_var_name = null;
+        $first_var_type = null;
+
+        if (isset($args[0]->value)) {
+            $first_var_name = ExpressionIdentifier::getExtendedVarId($args[0]->value, $this_class_name, $source);
+            $first_var_type = $source->node_data->getType($args[0]->value);
+        }
+
+        if (self::handleIsTypeCheck(
+            $codebase,
+            $source,
+            $expr,
+            $first_var_name,
+            $first_var_type,
+            $expr,
+            $negate,
+        )) {
+            return;
+        }
+
+        if ($source->node_data->getIfTrueAssertions($expr) === null
+            && $source->node_data->getIfFalseAssertions($expr) === null
+        ) {
+            return;
+        }
+
+        if (self::hasIsACheck($expr, $source)
+            || self::hasCallableCheck($expr)
+            || self::hasClassExistsCheck($expr)
+            || self::hasTraitExistsCheck($expr)
+            || self::hasEnumExistsCheck($expr)
+            || self::hasInterfaceExistsCheck($expr)
+            || self::hasFunctionExistsCheck($expr)
+            || ($expr->name instanceof PhpParser\Node\Name
+                && strtolower($expr->name->getFirst()) === 'method_exists'
+                && isset($args[1])
+                && $args[1]->value instanceof PhpParser\Node\Scalar\String_)
+            || self::hasInArrayCheck($expr)
+            || self::hasArrayKeyExistsCheck($expr)
+            || self::hasNonEmptyCountCheck($expr)
+        ) {
+            return;
+        }
+
+        self::processCustomAssertion($expr, $this_class_name, $source);
+    }
+
+    /**
      * @param PhpParser\Node\Expr\BinaryOp\Identical|PhpParser\Node\Expr\BinaryOp\Equal $conditional
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
      */

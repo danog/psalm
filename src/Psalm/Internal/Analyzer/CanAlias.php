@@ -25,11 +25,6 @@ trait CanAlias
     private array $aliased_classes = [];
 
     /**
-     * @var array<lowercase-string, CodeLocation>
-     */
-    private array $aliased_class_locations = [];
-
-    /**
      * @var array<lowercase-string, string>
      */
     private array $aliased_classes_flipped = [];
@@ -100,7 +95,6 @@ trait CanAlias
                     }
 
                     $this->aliased_classes[$use_alias_lc] = $use_path;
-                    $this->aliased_class_locations[$use_alias_lc] = new CodeLocation($this, $stmt);
                     $this->aliased_classes_flipped[$use_path_lc] = $use_alias;
                     break;
             }

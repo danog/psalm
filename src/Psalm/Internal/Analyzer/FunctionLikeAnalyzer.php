@@ -655,6 +655,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $function_stmts,
                     $yield_types,
                     true,
+                    $storage->has_yield,
                 );
 
                 $inferred_return = $inferred_return_types
@@ -812,6 +813,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $function_stmts,
                 $closure_yield_types,
                 true,
+                $storage->has_yield,
             );
 
             $closure_return_type = $closure_return_types

@@ -395,12 +395,11 @@ final class ArrayAnalyzer
 
             if ($item_value_type = $statements_analyzer->node_data->getType($item->value)) {
                 if ($item_value_type->parent_nodes) {
-                    $var_location = new CodeLocation($statements_analyzer->getSource(), $item);
-
-                    $new_parent_node = DataFlowNode::getForAssignment(
+                    $new_parent_node = DataFlowNode::getForAssignmentAt(
                         'array'
                             . ($item_key_value !== null ? '[\'' . $item_key_value . '\']' : ''),
-                        $var_location,
+                        $statements_analyzer->getSource(),
+                        $item,
                     );
 
                     $graph->addNode($new_parent_node);
@@ -444,11 +443,10 @@ final class ArrayAnalyzer
                     && $item_key_type->parent_nodes
                     && $item_key_value === null
                 ) {
-                    $var_location = new CodeLocation($statements_analyzer->getSource(), $item);
-
-                    $new_parent_node = DataFlowNode::getForAssignment(
+                    $new_parent_node = DataFlowNode::getForAssignmentAt(
                         'array',
-                        $var_location,
+                        $statements_analyzer->getSource(),
+                        $item,
                     );
 
                     $graph->addNode($new_parent_node);

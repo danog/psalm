@@ -125,14 +125,12 @@ final class ExpressionAnalyzer
                     $negate = !$negate;
                 }
 
-                AssertionFinder::scrapeAssertions(
+                AssertionFinder::checkAssertionIssues(
                     $stmt,
                     $context->self,
                     $statements_analyzer,
                     $codebase,
                     $negate,
-                    true,
-                    false,
                 );
             }
         }
