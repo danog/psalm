@@ -113,6 +113,14 @@ final class ProjectAnalyzer
 
     private ?ParserCacheProvider $parser_cache_provider = null;
 
+    /**
+     * The statements of the files whose methods are analysed for the mutations they make (constructor
+     * property initialization), parsed once per run instead of at every call into the file
+     *
+     * @var array<string, list<\PhpParser\Node\Stmt>>
+     */
+    private array $mutation_file_stmts = [];
+
     public ?ProjectCacheProvider $project_cache_provider = null;
 
     private readonly FileReferenceProvider $file_reference_provider;
@@ -1288,9 +1296,7 @@ final class ProjectAnalyzer
             $file_analyzer = $this->getFileAnalyzerForClassLike($appearing_fq_class_name);
         }
 
-        $stmts = $this->codebase->getStatementsForFile(
-            $file_analyzer->getFilePath(),
-        );
+        $stmts = $this->getStatementsForMutations($file_analyzer->getFilePath());
 
         $file_analyzer->populateCheckers($stmts);
 
@@ -1304,6 +1310,19 @@ final class ProjectAnalyzer
         $file_analyzer->class_analyzers_to_analyze = [];
         $file_analyzer->interface_analyzers_to_analyze = [];
         $file_analyzer->clearSourceBeforeDestruction();
+    }
+
+    /**
+     * @return list<\PhpParser\Node\Stmt>
+     */
+    private function getStatementsForMutations(string $file_path): array
+    {
+        if ($this->codebase->language_server) {
+            // files change between requests
+            return $this->codebase->getStatementsForFile($file_path);
+        }
+
+        return $this->mutation_file_stmts[$file_path] ??= $this->codebase->getStatementsForFile($file_path);
     }
 
     public function getFunctionLikeAnalyzer(
