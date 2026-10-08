@@ -2102,6 +2102,18 @@ final class Builtins
                 $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . '' . ';');
                 return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
             }
+            if (!$flag_string && ($kt->kind === RustType::INT || $kt->kind === RustType::ARRAY_KEY)) {
+                // an int-keyed map sorts in place and renumbers (values sorted stably, keys 0..n): no copy of the
+                // map, no values list converted back
+                $cmp = match ($fn) {
+                    'sort' => 'php_rt::traits::PhpCmp::php_cmp(&__a.1, &__b.1)',
+                    'rsort' => 'php_rt::traits::PhpCmp::php_cmp(&__b.1, &__a.1)',
+                    default => '__cb(__a.1.clone(), __b.1.clone()).cmp(&0)',
+                };
+                $pre = $has_cb ? 'let mut' . substr($pre, 3) : '';
+                $stmt = $place->modify(static fn(string $m): string => '(&mut ' . $m . ').sort_by(|__a, __b| ' . $cmp . ', true);');
+                return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
+            }
             $tmp = '__sorted';
             $stmt = 'let ' . $tmp . ' = ' . $fn . '_m(&' . $place->read() . $cb . ')' . '' . '; ' . $place->write($b->casts->convert($tmp, RustType::list($vt), $pt));
             return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());

@@ -1864,7 +1864,21 @@ trait ExprTrait
                 }
             }
         }
-        [$l, $r, $t] = $this->commonOperandVals($left, $right, false);
+        $l = $this->rawValue($left);
+        $r = $this->rawValue($right);
+        // a list against an int-keyed map of the same values: equal iff the map's keys are 0..n in order with
+        // identical values (PHP `===` on arrays compares keys, order and values), without converting either side
+        foreach ([[$l, $r], [$r, $l]] as [$lv, $mv]) {
+            if ($lv->type->kind === RustType::LIST && $mv->type->kind === RustType::MAP
+                && in_array($mv->type->params[0]->kind, [RustType::INT, RustType::ARRAY_KEY], true)
+                && $lv->type->inner()->toRust() === $mv->type->params[1]->toRust()
+            ) {
+                $key = $mv->type->params[0]->kind === RustType::INT ? '*__k == __i as i64' : 'matches!(__k, ArrayKey::Int(__n) if *__n == __i as i64)';
+                return '{ let (__l, __m) = (' . $lv->borrow() . ', ' . $mv->borrow() . '); __l.len() == __m.len() && __m.iter().zip(__l.iter()).enumerate().all(|(__i, ((__k, __mv), __lv))| ' . $key . ' && identical(__mv, __lv)) }';
+            }
+        }
+        $t = $this->commonType($l->type, $r->type, false);
+        [$l, $r] = [$this->casts->convertVal($l, $t), $this->casts->convertVal($r, $t)];
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
             return '(' . $l->code . ' == ' . $r->code . ')';
         }

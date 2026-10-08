@@ -2065,9 +2065,90 @@ function case_static_map_read(): string
     return $a . ',' . $b . ',' . $c . ',' . $d . ',' . $e;
 }
 
+final class MapSortHolder
+{
+    /** @var array<int, string> */
+    public array $names = [];
+}
+
+/** @param array<int, string|int> $m */
+function map_sort_dump(array $m): string
+{
+    $out = '';
+    foreach ($m as $k => $v) {
+        $out .= $k . '=' . $v . ' ';
+    }
+    return $out;
+}
+
+/** sort()/rsort()/usort() on int-keyed maps (holes, non-sequential keys) sort in place and renumber; stable. */
+function case_map_sort(): string
+{
+    /** @var array<int, string> $m */
+    $m = [5 => 'c', 2 => 'a', 9 => 'b'];
+    unset($m[2]);
+    $m[] = 'a';
+    sort($m);
+    $out = map_sort_dump($m);
+    /** @var array<int, int> $r */
+    $r = [3 => 1, 1 => 3, 7 => 2];
+    rsort($r);
+    $out .= '|' . map_sort_dump($r);
+    /** @var array<int, string> $u */
+    $u = [4 => 'bb', 8 => 'a', 6 => 'cc', 2 => 'd'];
+    usort($u, static fn(string $x, string $y): int => strlen($x) <=> strlen($y));
+    $out .= '|' . map_sort_dump($u);
+    $h = new MapSortHolder();
+    $h->names[10] = 'z';
+    $h->names[3] = 'y';
+    sort($h->names);
+    $out .= '|' . map_sort_dump($h->names);
+    $m[] = 'n';
+    return $out . '|' . map_sort_dump($m);
+}
+
+final class ListIdHolder
+{
+    /** @param list<string> $items */
+    public function __construct(public array $items)
+    {
+    }
+
+    /** @param array<int, string> $items */
+    public function same(array $items): bool
+    {
+        return $items === $this->items;
+    }
+
+    /** @param array<array-key, string> $items */
+    public function sameKeyed(array $items): bool
+    {
+        return $this->items === $items;
+    }
+}
+
+/** `===` between a list and an int-keyed map: keys 0..n in order and identical values, no conversion. */
+function case_list_map_identical(): string
+{
+    $h = new ListIdHolder(['a', 'b']);
+    /** @var array<int, string> $holes */
+    $holes = [0 => 'a', 2 => 'b'];
+    /** @var array<int, string> $swapped */
+    $swapped = [1 => 'b', 0 => 'a'];
+    /** @var array<array-key, string> $named */
+    $named = ['x' => 'a', 'y' => 'b'];
+    /** @var array<array-key, string> $num */
+    $num = [0 => 'a', 1 => 'b'];
+    return ($h->same(['a', 'b']) ? 'y' : 'n') . ($h->same(['a', 'c']) ? 'y' : 'n') . ($h->same($holes) ? 'y' : 'n')
+        . ($h->same($swapped) ? 'y' : 'n') . ($h->same(['a']) ? 'y' : 'n') . ($h->sameKeyed($named) ? 'y' : 'n')
+        . ($h->sameKeyed($num) ? 'y' : 'n') . ($h->sameKeyed([]) ? 'y' : 'n');
+}
+
 function run_all(): string
 {
-    return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+    return check('list_map_identical', case_list_map_identical(), 'ynnnnnyn')
+        . check('map_sort', case_map_sort(), '0=a 1=b 2=c |0=3 1=2 2=1 |0=a 1=d 2=bb 3=cc |0=y 1=z |0=a 1=b 2=c 3=n ')
+        . check('option_instanceof', case_option_instanceof(), 'sc3s-')
         . check('static_map_read', case_static_map_read(), 'none,n,filled,filled,y')
         . check('own_getter', case_own_getter(), '1,2|call|3|virtual|virtual')
         . check('sub_enum_read', case_sub_enum_read(), 'v:x,v:y,c:3,?')
