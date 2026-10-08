@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\SourceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
@@ -112,9 +113,9 @@ final class Methods
 
         $old_method_id = null;
 
-        $fq_class_name = strtolower($this->classlikes->getUnAliasedName($fq_class_name));
+        $fq_class_id = $this->classlikes->getUnAliasedId($fq_class_name);
 
-        $class_storage = $this->classlike_storage_provider->getOrNull($fq_class_name);
+        $class_storage = $this->classlike_storage_provider->getById($fq_class_id);
         if ($class_storage === null) {
             return false;
         }
@@ -147,7 +148,7 @@ final class Methods
             // the nodes a call to this method references, built once per (class, method): the declaring
             // class and method (or its potential declarers), every interface's copy and every override
             // (pzoom records one symbol reference; Psalm's unused-code and cache invalidation need these)
-            $nodes = $this->reference_nodes[strtolower($class_storage->name)][$method_name]
+            $nodes = $this->reference_nodes[$fq_class_id][$method_name]
                 ??= $this->referenceNodesFor($class_storage, $method_name, $declaring_method_id);
 
             if ($calling_method_id === $nodes[0]) {
@@ -189,6 +190,9 @@ final class Methods
 
             return true;
         }
+
+        /** @var lowercase-string */
+        $fq_class_name = Interner::lookup($fq_class_id);
 
         // the method is missing: the references below take a Context (the found path above records
         // without one)
@@ -920,8 +924,8 @@ final class Methods
     }
 
     /**
-     * @var array<lowercase-string, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
-     *      by lowercased class-like name and method name: the declaring method id, the declaring class, and the
+     * @var array<int, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
+     *      by the interned id of the lowercased class-like name, and by method name: the declaring method id, the declaring class, and the
      *      function-like ids a call references (see methodExists)
      */
     private array $reference_nodes = [];
@@ -973,9 +977,9 @@ final class Methods
         MethodIdentifier $method_id,
         bool $with_pseudo = false,
     ): ?MethodIdentifier {
-        $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
-
-        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
+        $class_storage = $this->classlike_storage_provider->getById(
+            $this->classlikes->getUnAliasedId($method_id->fq_class_name),
+        ) ?? throw ClassLikeStorageProvider::missing($this->classlikes->getUnAliasedName($method_id->fq_class_name));
 
         $method_name = $method_id->method_name;
 
@@ -1004,9 +1008,9 @@ final class Methods
     public function getAppearingMethodId(
         MethodIdentifier $method_id,
     ): ?MethodIdentifier {
-        $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
-
-        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
+        $class_storage = $this->classlike_storage_provider->getById(
+            $this->classlikes->getUnAliasedId($method_id->fq_class_name),
+        ) ?? throw ClassLikeStorageProvider::missing($this->classlikes->getUnAliasedName($method_id->fq_class_name));
 
         $method_name = $method_id->method_name;
 

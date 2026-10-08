@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
 use Psalm\Internal\FileManipulation\CodeMigration;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\TraitFinder;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -121,14 +122,18 @@ final class ClassLikes
     }
 
     /**
-     * @var array<lowercase-string, bool>
+     * By the interned id of the lowercase name.
+     *
+     * @var array<int, bool>
      */
-    private array $existing_classlikes_lc = [];
+    private array $existing_classlikes_ids = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * By the interned id of the lowercase name.
+     *
+     * @var array<int, bool>
      */
-    private array $existing_classes_lc = [];
+    private array $existing_classes_ids = [];
 
     /**
      * @var array<string, bool>
@@ -136,9 +141,11 @@ final class ClassLikes
     private array $existing_classes = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * By the interned id of the lowercase name.
+     *
+     * @var array<int, bool>
      */
-    private array $existing_interfaces_lc = [];
+    private array $existing_interfaces_ids = [];
 
     /**
      * @var array<string, bool>
@@ -146,9 +153,11 @@ final class ClassLikes
     private array $existing_interfaces = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * By the interned id of the lowercase name.
+     *
+     * @var array<int, bool>
      */
-    private array $existing_traits_lc = [];
+    private array $existing_traits_ids = [];
 
     /**
      * @var array<string, bool>
@@ -156,9 +165,11 @@ final class ClassLikes
     private array $existing_traits = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * By the interned id of the lowercase name.
+     *
+     * @var array<int, bool>
      */
-    private array $existing_enums_lc = [];
+    private array $existing_enums_ids = [];
 
     /**
      * @var array<string, bool>
@@ -175,7 +186,7 @@ final class ClassLikes
      */
     private array $existing_classlike_aliases = [];
 
-    /** @var array<lowercase-string, int> code-use graph class nodes by lowercase name */
+    /** @var array<int, int> code-use graph class nodes by the interned id of the lowercase name */
     private array $class_nodes = [];
 
     /** @var array<string, int> code-use graph class nodes by spelling */
@@ -189,12 +200,15 @@ final class ClassLikes
      */
     private array $trait_nodes = [];
 
+    private readonly int $generator_id;
+
     public function __construct(
         private readonly Config $config,
         private readonly ClassLikeStorageProvider $classlike_storage_provider,
         public FileReferenceProvider $file_reference_provider,
         private readonly Scanner $scanner,
     ) {
+        $this->generator_id = Interner::intern('generator');
         $this->collectPredefinedClassLikes();
     }
 
@@ -209,9 +223,9 @@ final class ClassLikes
             $reflection_class = new ReflectionClass($predefined_class);
 
             if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_class) {
-                $predefined_class_lc = strtolower($predefined_class);
-                $this->existing_classlikes_lc[$predefined_class_lc] = true;
-                $this->existing_classes_lc[$predefined_class_lc] = true;
+                $predefined_class_id = Interner::intern(strtolower($predefined_class));
+                $this->existing_classlikes_ids[$predefined_class_id] = true;
+                $this->existing_classes_ids[$predefined_class_id] = true;
                 $this->existing_classes[$predefined_class] = true;
             }
         }
@@ -225,9 +239,9 @@ final class ClassLikes
             $reflection_class = new ReflectionClass($predefined_interface);
 
             if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_interface) {
-                $predefined_interface_lc = strtolower($predefined_interface);
-                $this->existing_classlikes_lc[$predefined_interface_lc] = true;
-                $this->existing_interfaces_lc[$predefined_interface_lc] = true;
+                $predefined_interface_id = Interner::intern(strtolower($predefined_interface));
+                $this->existing_classlikes_ids[$predefined_interface_id] = true;
+                $this->existing_interfaces_ids[$predefined_interface_id] = true;
                 $this->existing_interfaces[$predefined_interface] = true;
             }
         }
@@ -240,13 +254,14 @@ final class ClassLikes
     {
         $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
-        $this->existing_classlikes_lc[$fq_class_name_lc] = true;
-        $this->existing_classes_lc[$fq_class_name_lc] = true;
+        $id = Interner::intern($fq_class_name_lc);
+        $this->existing_classlikes_ids[$id] = true;
+        $this->existing_classes_ids[$id] = true;
         $this->existing_classes[$fq_class_name] = true;
 
-        $this->existing_traits_lc[$fq_class_name_lc] = false;
-        $this->existing_interfaces_lc[$fq_class_name_lc] = false;
-        $this->existing_enums_lc[$fq_class_name_lc] = false;
+        $this->existing_traits_ids[$id] = false;
+        $this->existing_interfaces_ids[$id] = false;
+        $this->existing_enums_ids[$id] = false;
 
         if ($file_path) {
             $this->scanner->setClassLikeFilePath($fq_class_name_lc, $file_path);
@@ -260,13 +275,14 @@ final class ClassLikes
     {
         $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
-        $this->existing_classlikes_lc[$fq_class_name_lc] = true;
-        $this->existing_interfaces_lc[$fq_class_name_lc] = true;
+        $id = Interner::intern($fq_class_name_lc);
+        $this->existing_classlikes_ids[$id] = true;
+        $this->existing_interfaces_ids[$id] = true;
         $this->existing_interfaces[$fq_class_name] = true;
 
-        $this->existing_classes_lc[$fq_class_name_lc] = false;
-        $this->existing_traits_lc[$fq_class_name_lc] = false;
-        $this->existing_enums_lc[$fq_class_name_lc] = false;
+        $this->existing_classes_ids[$id] = false;
+        $this->existing_traits_ids[$id] = false;
+        $this->existing_enums_ids[$id] = false;
 
         if ($file_path) {
             $this->scanner->setClassLikeFilePath($fq_class_name_lc, $file_path);
@@ -280,12 +296,13 @@ final class ClassLikes
     {
         $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
-        $this->existing_classlikes_lc[$fq_class_name_lc] = true;
-        $this->existing_traits_lc[$fq_class_name_lc] = true;
+        $id = Interner::intern($fq_class_name_lc);
+        $this->existing_classlikes_ids[$id] = true;
+        $this->existing_traits_ids[$id] = true;
         $this->existing_traits[$fq_class_name] = true;
 
-        $this->existing_classes_lc[$fq_class_name_lc] = false;
-        $this->existing_interfaces_lc[$fq_class_name_lc] = false;
+        $this->existing_classes_ids[$id] = false;
+        $this->existing_interfaces_ids[$id] = false;
         $this->existing_enums[$fq_class_name] = false;
 
         if ($file_path) {
@@ -300,13 +317,14 @@ final class ClassLikes
     {
         $this->invalidateExpansionMemo();
         $fq_class_name_lc = strtolower($fq_class_name);
-        $this->existing_classlikes_lc[$fq_class_name_lc] = true;
-        $this->existing_enums_lc[$fq_class_name_lc] = true;
+        $id = Interner::intern($fq_class_name_lc);
+        $this->existing_classlikes_ids[$id] = true;
+        $this->existing_enums_ids[$id] = true;
         $this->existing_enums[$fq_class_name] = true;
 
-        $this->existing_traits_lc[$fq_class_name_lc] = false;
-        $this->existing_classes_lc[$fq_class_name_lc] = false;
-        $this->existing_interfaces_lc[$fq_class_name_lc] = false;
+        $this->existing_traits_ids[$id] = false;
+        $this->existing_classes_ids[$id] = false;
+        $this->existing_interfaces_ids[$id] = false;
 
         if ($file_path) {
             $this->scanner->setClassLikeFilePath($fq_class_name_lc, $file_path);
@@ -385,38 +403,28 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
+        $id = $this->getUnAliasedId($fq_class_name);
+        $exists = $this->existing_classes_ids[$id] ?? null;
 
-        // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_classes_lc[$fq_class_name_lc])
-            || !$this->existing_classes_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
-        ) {
-            if ((
-                !isset($this->existing_classes_lc[$fq_class_name_lc])
-                    || $this->existing_classes_lc[$fq_class_name_lc]
-                )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
-            ) {
-                if (!isset($this->existing_classes_lc[$fq_class_name_lc])) {
-                    $this->existing_classes_lc[$fq_class_name_lc] = false;
-
-                    return false;
-                }
-
-                return $this->existing_classes_lc[$fq_class_name_lc];
+        if ($exists === true) {
+            // registered without a storage: exists, but is no reference
+            if ($this->classlike_storage_provider->hasId($id)) {
+                $this->file_reference_provider->code_use_graph->addReference(
+                    $this->class_nodes[$id] ??= CodeUseGraph::classNodeOfId($id),
+                    $context,
+                    $location,
+                );
             }
 
-            return false;
+            return true;
         }
 
-        $this->file_reference_provider->code_use_graph->addReference(
-            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
-            $context,
-            $location,
-        );
+        // fixme: this looks like a crazy caching hack
+        if ($exists === null && !$this->classlike_storage_provider->hasId($id)) {
+            $this->existing_classes_ids[$id] = false;
+        }
 
-        return true;
+        return false;
     }
 
     /**
@@ -427,38 +435,28 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
+        $id = $this->getUnAliasedId($fq_class_name);
+        $exists = $this->existing_interfaces_ids[$id] ?? null;
 
-        // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])
-            || !$this->existing_interfaces_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
-        ) {
-            if ((
-                !isset($this->existing_interfaces_lc[$fq_class_name_lc])
-                    || $this->existing_interfaces_lc[$fq_class_name_lc]
-                )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
-            ) {
-                if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])) {
-                    $this->existing_interfaces_lc[$fq_class_name_lc] = false;
-
-                    return false;
-                }
-
-                return $this->existing_interfaces_lc[$fq_class_name_lc];
+        if ($exists === true) {
+            // registered without a storage: exists, but is no reference
+            if ($this->classlike_storage_provider->hasId($id)) {
+                $this->file_reference_provider->code_use_graph->addReference(
+                    $this->class_nodes[$id] ??= CodeUseGraph::classNodeOfId($id),
+                    $context,
+                    $location,
+                );
             }
 
-            return false;
+            return true;
         }
 
-        $this->file_reference_provider->code_use_graph->addReference(
-            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
-            $context,
-            $location,
-        );
+        // fixme: this looks like a crazy caching hack
+        if ($exists === null && !$this->classlike_storage_provider->hasId($id)) {
+            $this->existing_interfaces_ids[$id] = false;
+        }
 
-        return true;
+        return false;
     }
 
     /**
@@ -469,38 +467,28 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
+        $id = $this->getUnAliasedId($fq_class_name);
+        $exists = $this->existing_enums_ids[$id] ?? null;
 
-        // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_enums_lc[$fq_class_name_lc])
-            || !$this->existing_enums_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
-        ) {
-            if ((
-                !isset($this->existing_enums_lc[$fq_class_name_lc])
-                    || $this->existing_enums_lc[$fq_class_name_lc]
-                )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
-            ) {
-                if (!isset($this->existing_enums_lc[$fq_class_name_lc])) {
-                    $this->existing_enums_lc[$fq_class_name_lc] = false;
-
-                    return false;
-                }
-
-                return $this->existing_enums_lc[$fq_class_name_lc];
+        if ($exists === true) {
+            // registered without a storage: exists, but is no reference
+            if ($this->classlike_storage_provider->hasId($id)) {
+                $this->file_reference_provider->code_use_graph->addReference(
+                    $this->class_nodes[$id] ??= CodeUseGraph::classNodeOfId($id),
+                    $context,
+                    $location,
+                );
             }
 
-            return false;
+            return true;
         }
 
-        $this->file_reference_provider->code_use_graph->addReference(
-            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
-            $context,
-            $location,
-        );
+        // fixme: this looks like a crazy caching hack
+        if ($exists === null && !$this->classlike_storage_provider->hasId($id)) {
+            $this->existing_enums_ids[$id] = false;
+        }
 
-        return true;
+        return false;
     }
 
     /**
@@ -511,16 +499,14 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
+        $id = $this->getUnAliasedId($fq_class_name);
 
-        if (!isset($this->existing_traits_lc[$fq_class_name_lc]) ||
-            !$this->existing_traits_lc[$fq_class_name_lc]
-        ) {
+        if (!($this->existing_traits_ids[$id] ?? false)) {
             return false;
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            $this->class_nodes[$fq_class_name_lc] ??= CodeUseGraph::classNode($fq_class_name_lc),
+            $this->class_nodes[$id] ??= CodeUseGraph::classNodeOfId($id),
             $context,
             $location,
         );
@@ -614,14 +600,14 @@ final class ClassLikes
      */
     public function classExtends(string $fq_class_name, string $possible_parent, bool $from_api = false): bool
     {
-        $unaliased_fq_class_name = $this->getUnAliasedName($fq_class_name);
-        $unaliased_fq_class_name_lc = strtolower($unaliased_fq_class_name);
+        $id = $this->getUnAliasedId($fq_class_name);
 
-        if ($unaliased_fq_class_name_lc === 'generator') {
+        if ($id === $this->generator_id) {
             return false;
         }
 
-        $class_storage = ($this->classlike_storage_provider->getOrNull($unaliased_fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($unaliased_fq_class_name));
+        $class_storage = $this->classlike_storage_provider->getById($id)
+            ?? throw ClassLikeStorageProvider::missing($this->getUnAliasedName($fq_class_name));
 
         if ($from_api && !$class_storage->populated) {
             throw new UnpopulatedClasslikeException($fq_class_name);
@@ -659,12 +645,10 @@ final class ClassLikes
             return false;
         }
 
-        $fq_class_name = $this->getUnAliasedName($fq_class_name);
-
-        if (!$this->classlike_storage_provider->has($fq_class_name)) {
+        $class_storage = $this->classlike_storage_provider->getById($this->getUnAliasedId($fq_class_name));
+        if ($class_storage === null) {
             return false;
         }
-        $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
         if (isset($class_storage->class_implements[$interface_id])) {
             return true;
@@ -862,9 +846,38 @@ final class ClassLikes
      * that resolved before neither lowercases nor follows aliases again (pzoom resolves names by their exact
      * spelling; the lowercase path stays for everything else). Emptied when a class-like stops existing.
      *
-     * @var array<string, lowercase-string>
+     * The values are the interned ids of the lowercase forms (pzoom's lowercase-name → `StrId` lookup map).
+     *
+     * @var array<string, int>
      */
     private array $existing_by_spelling = [];
+
+    /**
+     * Interner::intern(strtolower($this->getUnAliasedName($name))): the id the class-like maps and the storage
+     * provider key the class-like by.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function getUnAliasedId(string $name): int
+    {
+        $id = $this->existing_by_spelling[$name] ?? null;
+        if ($id !== null) {
+            return $id;
+        }
+        $lc = strtolower($name);
+        $id = Interner::intern($lc);
+        if ($this->existing_classlikes_ids[$id] ?? false) {
+            /** @psalm-suppress ImpurePropertyAssignment cache */
+            $this->existing_by_spelling[$name] = $id;
+            return $id;
+        }
+        $result = $this->classlike_aliases_map[$lc] ?? $name;
+        if ($result === $name) {
+            return $id;
+        }
+
+        return $this->getUnAliasedId($result);
+    }
 
     /**
      * strtolower($this->getUnAliasedName($name))
@@ -874,17 +887,8 @@ final class ClassLikes
      */
     public function getUnAliasedNameLc(string $name): string
     {
-        $lc = $this->existing_by_spelling[$name] ?? null;
-        if ($lc !== null) {
-            return $lc;
-        }
-        $lc = strtolower($name);
-        if ($this->existing_classlikes_lc[$lc] ?? false) {
-            /** @psalm-suppress ImpurePropertyAssignment cache */
-            $this->existing_by_spelling[$name] = $lc;
-            return $lc;
-        }
-        return strtolower($this->getUnAliasedName($name));
+        /** @var lowercase-string */
+        return Interner::lookup($this->getUnAliasedId($name));
     }
 
     /** @psalm-mutation-free */
@@ -894,10 +898,11 @@ final class ClassLikes
             return $alias_name;
         }
         $alias_name_lc = strtolower($alias_name);
-        if ($this->existing_classlikes_lc[$alias_name_lc] ?? false) {
-            // as getUnAliasedNameLc() does: the next lookup of this spelling skips the lowercasing
+        $id = Interner::intern($alias_name_lc);
+        if ($this->existing_classlikes_ids[$id] ?? false) {
+            // as getUnAliasedId() does: the next lookup of this spelling skips the lowercasing
             /** @psalm-suppress ImpurePropertyAssignment cache */
-            $this->existing_by_spelling[$alias_name] = $alias_name_lc;
+            $this->existing_by_spelling[$alias_name] = $id;
             return $alias_name;
         }
 
@@ -925,8 +930,8 @@ final class ClassLikes
         // the class hierarchy and the public API may have changed since the graph was cached
         $code_use_graph->removeEdgesOfTypes(CodeUseGraph::STRUCTURAL_EDGES);
 
-        foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+        foreach ($this->existing_classlikes_ids as $id => $_) {
+            $classlike_storage = $this->classlike_storage_provider->getById($id);
             if ($classlike_storage === null) {
                 continue;
             }
@@ -937,7 +942,9 @@ final class ClassLikes
                 continue;
             }
 
-            $class_node = CodeUseGraph::classNode($fq_class_name_lc);
+            /** @var lowercase-string */
+            $fq_class_name_lc = Interner::lookup($id);
+            $class_node = CodeUseGraph::classNodeOfId($id);
 
             if ($classlike_storage->public_api) {
                 $code_use_graph->markAsPublicApi($class_node);
@@ -960,8 +967,8 @@ final class ClassLikes
             }
         }
 
-        foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+        foreach ($this->existing_classlikes_ids as $id => $_) {
+            $classlike_storage = $this->classlike_storage_provider->getById($id);
             if ($classlike_storage === null) {
                 continue;
             }
@@ -972,7 +979,9 @@ final class ClassLikes
                 continue;
             }
 
-            $class_node = CodeUseGraph::classNode($fq_class_name_lc);
+            /** @var lowercase-string */
+            $fq_class_name_lc = Interner::lookup($id);
+            $class_node = CodeUseGraph::classNodeOfId($id);
 
             // calls to an overridden parent or interface method may end up in the overriding method
             foreach ($classlike_storage->declaring_method_ids as $method_name => $declaring_method_id) {
@@ -1052,17 +1061,19 @@ final class ClassLikes
                 || !$this->config->isInProjectDirs($owner_storage->location->file_path);
         });
 
-        foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
-            $classlike_storage = $this->classlike_storage_provider->getOrNull($fq_class_name_lc);
+        foreach ($this->existing_classlikes_ids as $id => $_) {
+            $classlike_storage = $this->classlike_storage_provider->getById($id);
             if ($classlike_storage === null) {
                 continue;
             }
+            /** @var lowercase-string */
+            $fq_class_name_lc = Interner::lookup($id);
             if ($classlike_storage->location
                 && $this->config->isInProjectDirs($classlike_storage->location->file_path)
             ) {
                 if (!$classlike_storage->is_trait) {
                     if ($find_unused_code) {
-                        $class_node = CodeUseGraph::classNode($fq_class_name_lc);
+                        $class_node = CodeUseGraph::classNodeOfId($id);
 
                         // a class that is only alive because of its own methods
                         // still has its members unchecked
@@ -2643,7 +2654,7 @@ final class ClassLikes
      */
     public function registerMissingClassLike(string $fq_classlike_name_lc): void
     {
-        $this->existing_classlikes_lc[$fq_classlike_name_lc] = false;
+        $this->existing_classlikes_ids[Interner::intern($fq_classlike_name_lc)] = false;
         $this->existing_by_spelling = [];
     }
 
@@ -2653,8 +2664,7 @@ final class ClassLikes
      */
     public function isMissingClassLike(string $fq_classlike_name_lc): bool
     {
-        return isset($this->existing_classlikes_lc[$fq_classlike_name_lc])
-            && $this->existing_classlikes_lc[$fq_classlike_name_lc] === false;
+        return ($this->existing_classlikes_ids[Interner::find($fq_classlike_name_lc)] ?? null) === false;
     }
 
     /**
@@ -2663,8 +2673,7 @@ final class ClassLikes
      */
     public function doesClassLikeExist(string $fq_classlike_name_lc): bool
     {
-        return isset($this->existing_classlikes_lc[$fq_classlike_name_lc])
-            && $this->existing_classlikes_lc[$fq_classlike_name_lc];
+        return $this->existing_classlikes_ids[Interner::find($fq_classlike_name_lc)] ?? false;
     }
 
     /**
@@ -2672,7 +2681,7 @@ final class ClassLikes
      */
     public function forgetMissingClassLikes(): void
     {
-        $this->existing_classlikes_lc = array_filter($this->existing_classlikes_lc);
+        $this->existing_classlikes_ids = array_filter($this->existing_classlikes_ids);
     }
 
     /**
@@ -2681,16 +2690,17 @@ final class ClassLikes
     public function removeClassLike(string $fq_class_name): void
     {
         $fq_class_name_lc = strtolower($fq_class_name);
+        $id = Interner::find($fq_class_name_lc);
 
         unset(
-            $this->existing_classlikes_lc[$fq_class_name_lc],
-            $this->existing_traits_lc[$fq_class_name_lc],
+            $this->existing_classlikes_ids[$id],
+            $this->existing_traits_ids[$id],
             $this->existing_traits[$fq_class_name],
-            $this->existing_enums_lc[$fq_class_name_lc],
+            $this->existing_enums_ids[$id],
             $this->existing_enums[$fq_class_name],
-            $this->existing_interfaces_lc[$fq_class_name_lc],
+            $this->existing_interfaces_ids[$id],
             $this->existing_interfaces[$fq_class_name],
-            $this->existing_classes_lc[$fq_class_name_lc],
+            $this->existing_classes_ids[$id],
             $this->existing_classes[$fq_class_name],
             $this->trait_nodes[$fq_class_name_lc],
         );
@@ -2715,14 +2725,15 @@ final class ClassLikes
      */
     public function getThreadData(): array
     {
+        // ids are per process: the maps travel by name
         return [
-            $this->existing_classlikes_lc,
-            $this->existing_classes_lc,
-            $this->existing_traits_lc,
+            self::byName($this->existing_classlikes_ids),
+            self::byName($this->existing_classes_ids),
+            self::byName($this->existing_traits_ids),
             $this->existing_traits,
-            $this->existing_enums_lc,
+            self::byName($this->existing_enums_ids),
             $this->existing_enums,
-            $this->existing_interfaces_lc,
+            self::byName($this->existing_interfaces_ids),
             $this->existing_interfaces,
             $this->existing_classes,
         ];
@@ -2756,20 +2767,56 @@ final class ClassLikes
             $existing_classes,
         ] = $thread_data;
 
-        $this->existing_classlikes_lc = self::mergeThreadData($existing_classlikes_lc, $this->existing_classlikes_lc);
+        $this->existing_classlikes_ids = self::mergeThreadData(
+            self::byId($existing_classlikes_lc),
+            $this->existing_classlikes_ids,
+        );
         $this->existing_by_spelling = [];
-        $this->existing_classes_lc = self::mergeThreadData($existing_classes_lc, $this->existing_classes_lc);
-        $this->existing_traits_lc = self::mergeThreadData($existing_traits_lc, $this->existing_traits_lc);
+        $this->existing_classes_ids = self::mergeThreadData(self::byId($existing_classes_lc), $this->existing_classes_ids);
+        $this->existing_traits_ids = self::mergeThreadData(self::byId($existing_traits_lc), $this->existing_traits_ids);
         $this->existing_traits = self::mergeThreadData($existing_traits, $this->existing_traits);
-        $this->existing_enums_lc = self::mergeThreadData($existing_enums_lc, $this->existing_enums_lc);
+        $this->existing_enums_ids = self::mergeThreadData(self::byId($existing_enums_lc), $this->existing_enums_ids);
         $this->existing_enums = self::mergeThreadData($existing_enums, $this->existing_enums);
-        $this->existing_interfaces_lc = self::mergeThreadData($existing_interfaces_lc, $this->existing_interfaces_lc);
+        $this->existing_interfaces_ids = self::mergeThreadData(
+            self::byId($existing_interfaces_lc),
+            $this->existing_interfaces_ids,
+        );
         $this->existing_interfaces = self::mergeThreadData($existing_interfaces, $this->existing_interfaces);
         $this->existing_classes = self::mergeThreadData($existing_classes, $this->existing_classes);
     }
 
     /**
-     * @template T as string|lowercase-string
+     * @param array<int, bool> $by_id
+     * @return array<lowercase-string, bool>
+     * @psalm-external-mutation-free
+     */
+    private static function byName(array $by_id): array
+    {
+        $by_name = [];
+        foreach ($by_id as $id => $value) {
+            /** @var lowercase-string */
+            $name_lc = Interner::lookup($id);
+            $by_name[$name_lc] = $value;
+        }
+        return $by_name;
+    }
+
+    /**
+     * @param array<lowercase-string, bool> $by_name
+     * @return array<int, bool>
+     * @psalm-external-mutation-free
+     */
+    private static function byId(array $by_name): array
+    {
+        $by_id = [];
+        foreach ($by_name as $name_lc => $value) {
+            $by_id[Interner::intern($name_lc)] = $value;
+        }
+        return $by_id;
+    }
+
+    /**
+     * @template T as array-key
      * @param array<T, bool> $old
      * @param array<T, bool> $new
      * @return array<T, bool>
@@ -2790,7 +2837,7 @@ final class ClassLikes
      */
     public function getStorageFor(string $fq_class_name): ?ClassLikeStorage
     {
-        return $this->classlike_storage_provider->getOrNull($this->getUnAliasedName($fq_class_name));
+        return $this->classlike_storage_provider->getById($this->getUnAliasedId($fq_class_name));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace Psalm\Internal\Provider;
 
 use InvalidArgumentException;
 use LogicException;
+use Psalm\Internal\Interner;
 use Psalm\Issue\DuplicateClass;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
@@ -18,9 +19,12 @@ use function strtolower;
 final class ClassLikeStorageProvider
 {
     /**
+     * The storages by the interned id of their lowercase name (pzoom keys its class-like infos by `StrId`);
+     * string lookups go through $by_spelling, the side map for callers that hold a name.
+     *
      * Storing this statically is much faster (at least in PHP 7.2.1)
      *
-     * @var array<string, ClassLikeStorage>
+     * @var array<int, ClassLikeStorage>
      */
     private static array $storage = [];
 
@@ -70,7 +74,7 @@ final class ClassLikeStorageProvider
             return $known;
         }
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        $storage = self::$storage[strtolower($fq_classlike_name)] ?? null;
+        $storage = self::$storage[Interner::find(strtolower($fq_classlike_name))] ?? null;
         if ($storage === null) {
             return null;
         }
@@ -78,6 +82,26 @@ final class ClassLikeStorageProvider
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
         self::$by_spelling[$fq_classlike_name] = $storage;
         return $storage;
+    }
+
+    /**
+     * The storage of a class-like by the interned id of its lowercase name, null when there is none.
+     *
+     * @psalm-mutation-free
+     */
+    public function getById(int $fq_classlike_name_lc_id): ?ClassLikeStorage
+    {
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        return self::$storage[$fq_classlike_name_lc_id] ?? null;
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    public function hasId(int $fq_classlike_name_lc_id): bool
+    {
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        return isset(self::$storage[$fq_classlike_name_lc_id]);
     }
 
     /**
@@ -92,7 +116,7 @@ final class ClassLikeStorageProvider
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        $storage = self::$storage[$fq_classlike_name_lc] ?? null;
+        $storage = self::$storage[Interner::find($fq_classlike_name_lc)] ?? null;
         if ($storage === null) {
             return false;
         }
@@ -104,9 +128,10 @@ final class ClassLikeStorageProvider
     public function exhume(string $fq_classlike_name, string $file_path, string $file_contents): ClassLikeStorage
     {
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
+        $id = Interner::intern($fq_classlike_name_lc);
 
-        if (isset(self::$storage[$fq_classlike_name_lc])) {
-            return self::$storage[$fq_classlike_name_lc];
+        if (isset(self::$storage[$id])) {
+            return self::$storage[$id];
         }
 
         if (!$this->cache) {
@@ -115,7 +140,7 @@ final class ClassLikeStorageProvider
 
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
-        self::$storage[$fq_classlike_name_lc] = $cached_value;
+        self::$storage[$id] = $cached_value;
         self::$by_spelling = [];
         self::$new_storage[$fq_classlike_name_lc] = $cached_value;
 
@@ -123,12 +148,21 @@ final class ClassLikeStorageProvider
     }
 
     /**
-     * @return array<string, ClassLikeStorage>
+     * The storages by lowercase name (built per call: for the few whole-codebase passes and the data sent
+     * between processes, where the ids mean nothing).
+     *
+     * @return array<lowercase-string, ClassLikeStorage>
      * @psalm-external-mutation-free
      */
     public static function getAll(): array
     {
-        return self::$storage;
+        $all = [];
+        foreach (self::$storage as $id => $storage) {
+            /** @var lowercase-string */
+            $name_lc = Interner::lookup($id);
+            $all[$name_lc] = $storage;
+        }
+        return $all;
     }
 
     /**
@@ -146,8 +180,9 @@ final class ClassLikeStorageProvider
     public function addMore(array $more): void
     {
         foreach ($more as $k => $storage) {
-            if (isset(self::$storage[$k])) {
-                $duplicate_storage = self::$storage[$k];
+            $id = Interner::intern($k);
+            if (isset(self::$storage[$id])) {
+                $duplicate_storage = self::$storage[$id];
                 $duplicate_location = $duplicate_storage->location ?? $duplicate_storage->stmt_location;
                 $location = $storage->location ?? $storage->stmt_location;
                 // a project polyfill of a native class stubbed with a newer `@since` replaces the
@@ -177,7 +212,7 @@ final class ClassLikeStorageProvider
                 }
             }
             self::$new_storage[$k] = $storage;
-            self::$storage[$k] = $storage;
+            self::$storage[$id] = $storage;
             self::$by_spelling = [];
         }
     }
@@ -187,7 +222,7 @@ final class ClassLikeStorageProvider
      */
     public function makeNew(string $fq_classlike_name_lc): void
     {
-        self::$new_storage[$fq_classlike_name_lc] = self::$storage[$fq_classlike_name_lc];
+        self::$new_storage[$fq_classlike_name_lc] = self::$storage[Interner::find($fq_classlike_name_lc)];
     }
 
     /**
@@ -198,7 +233,7 @@ final class ClassLikeStorageProvider
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
         $storage = new ClassLikeStorage($fq_classlike_name);
-        self::$storage[$fq_classlike_name_lc] = $storage;
+        self::$storage[Interner::intern($fq_classlike_name_lc)] = $storage;
         self::$by_spelling = [];
         self::$new_storage[$fq_classlike_name_lc] = $storage;
 
@@ -212,7 +247,7 @@ final class ClassLikeStorageProvider
     {
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
-        unset(self::$storage[$fq_classlike_name_lc]);
+        unset(self::$storage[Interner::find($fq_classlike_name_lc)]);
         self::$by_spelling = [];
     }
 

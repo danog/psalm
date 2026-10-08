@@ -296,6 +296,16 @@ final class CodeUseGraph
     }
 
     /**
+     * classNode() of the class-like whose lowercase name has the interned id $fq_class_name_lc_id.
+     *
+     * @psalm-pure
+     */
+    public static function classNodeOfId(int $fq_class_name_lc_id): int
+    {
+        return self::pack(self::KIND_CLASS, $fq_class_name_lc_id, 0);
+    }
+
+    /**
      * @param lowercase-string $function_id_lc a method id (`class::method`) or a function id
      * @psalm-external-mutation-free
      */
