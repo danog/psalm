@@ -689,7 +689,7 @@ final class CodeUseGraph
      * @param lowercase-string|null $calling_function_id
      * @psalm-external-mutation-free
      */
-    private static function scopeNode(?string $calling_method_id, ?string $calling_function_id, ?string $self): int
+    public static function scopeNode(?string $calling_method_id, ?string $calling_function_id, ?string $self): int
     {
         if ($calling_method_id !== null) {
             return self::functionLikeNode($calling_method_id);
@@ -736,8 +736,12 @@ final class CodeUseGraph
         $this->addReferenceFromNode($source_node, $target_node, $location, $type, $file_path);
     }
 
-    /** @psalm-external-mutation-free */
-    private function addReferenceFromNode(
+    /**
+     * addReferenceFrom() with the source node known (see scopeNode()).
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addReferenceFromNode(
         int $source_node,
         int $target_node,
         ?CodeLocation $location,

@@ -157,35 +157,43 @@ final class Methods
 
             $graph = $codebase->code_use_graph;
 
-            if ($nodes[1] !== strtolower((string) $calling_class_name)) {
-                $graph->addReferenceFrom(
-                    CodeUseGraph::classNode($nodes[1]),
-                    $calling_method_id,
-                    null,
-                    $calling_class_name,
+            $file_path = $code_location?->file_path ?? $source_file_path;
+            // 0: no scope to record references from (the return edges are still added)
+            $source_node = CodeUseGraph::scopeNode($calling_method_id, null, $calling_class_name);
+            if ($source_node === 0 && $file_path !== null) {
+                $source_node = CodeUseGraph::fileNode($file_path);
+            }
+
+            $calling_class_id = $calling_class_name === null
+                ? 0
+                : ($this->lowercase_ids[$calling_class_name] ??= Interner::intern(strtolower($calling_class_name)));
+
+            if ($source_node !== 0 && $nodes[1] !== $calling_class_id) {
+                $graph->addReferenceFromNode(
+                    $source_node,
+                    CodeUseGraph::classNodeOfId($nodes[1]),
                     $code_location,
                     CodeUseGraph::EDGE_USE,
-                    $source_file_path,
+                    $file_path,
                 );
             }
 
-            foreach ($nodes[2] as $function_id_lc) {
-                $function_node = CodeUseGraph::functionLikeNode($function_id_lc);
+            foreach ($nodes[2] as $i => $function_node) {
                 if ($is_used) {
                     // using the return value implies calling the function
-                    $return_node = CodeUseGraph::functionLikeReturnNode($function_id_lc);
+                    $return_node = $nodes[3][$i];
                     $graph->addEdge($return_node, $function_node, CodeUseGraph::EDGE_RETURN);
                     $function_node = $return_node;
                 }
-                $graph->addReferenceFrom(
-                    $function_node,
-                    $calling_method_id,
-                    null,
-                    $calling_class_name,
-                    $code_location,
-                    CodeUseGraph::EDGE_USE,
-                    $source_file_path,
-                );
+                if ($source_node !== 0) {
+                    $graph->addReferenceFromNode(
+                        $source_node,
+                        $function_node,
+                        $code_location,
+                        CodeUseGraph::EDGE_USE,
+                        $file_path,
+                    );
+                }
             }
 
             return true;
@@ -925,15 +933,19 @@ final class Methods
     }
 
     /**
-     * @var array<int, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
-     *      by the interned id of the lowercased class-like name, and by method name: the declaring method id, the declaring class, and the
-     *      function-like ids a call references (see methodExists)
+     * @var array<int, array<lowercase-string, array{lowercase-string, int, list<int>, list<int>}>>
+     *      by the interned id of the lowercased class-like name, and by method name: the declaring method id,
+     *      the interned id of the declaring class's lowercase name, and the code-use graph nodes of the
+     *      function-likes a call references and of their return values (see methodExists)
      */
     private array $reference_nodes = [];
 
+    /** @var array<string, int> the interned ids of the lowercase forms of class names, by spelling */
+    private array $lowercase_ids = [];
+
     /**
      * @param lowercase-string $method_name
-     * @return array{lowercase-string, lowercase-string, list<lowercase-string>}
+     * @return array{lowercase-string, int, list<int>, list<int>}
      * @psalm-mutation-free
      */
     private function referenceNodesFor(
@@ -970,7 +982,14 @@ final class Methods
             }
         }
 
-        return [$declaring_method_id_lc, $declaring_fq_class_name_lc, $function_ids];
+        $function_nodes = [];
+        $return_nodes = [];
+        foreach ($function_ids as $function_id_lc) {
+            $function_nodes[] = CodeUseGraph::functionLikeNode($function_id_lc);
+            $return_nodes[] = CodeUseGraph::functionLikeReturnNode($function_id_lc);
+        }
+
+        return [$declaring_method_id_lc, Interner::intern($declaring_fq_class_name_lc), $function_nodes, $return_nodes];
     }
 
     /** @psalm-mutation-free */
