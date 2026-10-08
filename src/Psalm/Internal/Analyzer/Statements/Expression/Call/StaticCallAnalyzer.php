@@ -477,6 +477,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $taint_flow_graph,
                 $method_id,
                 $method_storage,
+                $node_location,
             );
 
             if ($dispatch_node) {
