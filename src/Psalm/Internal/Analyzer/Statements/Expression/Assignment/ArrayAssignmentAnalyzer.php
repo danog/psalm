@@ -406,7 +406,7 @@ final class ArrayAssignmentAnalyzer
                 ? self::getOverwritePathType($stmt_type, $key_values[0])
                 : '=';
 
-            $stmt_type = $stmt_type->setParentNodes([$parent_node->id => $parent_node]);
+            $stmt_type = $stmt_type->setParentNodes([$parent_node->key => $parent_node]);
 
             foreach ($old_parent_nodes as $old_parent_node) {
                 $graph->addPath(

@@ -803,7 +803,7 @@ final class NewAnalyzer extends CallAnalyzer
             self::taintUsingConstructorFlows($statements_analyzer, $stmt, $method_storage, $method_source);
         }
 
-        $parent_nodes = [$method_source->id => $method_source];
+        $parent_nodes = [$method_source->key => $method_source];
 
         // the object is what the constructor leaves in it (see FunctionLikeAnalyzer)
         $constructor_location = $method_storage !== null && $method_storage->specialize_call
@@ -817,7 +817,7 @@ final class NewAnalyzer extends CallAnalyzer
             );
 
             $statements_analyzer->taint_flow_graph->addNode($this_out_node);
-            $parent_nodes[$this_out_node->id] = $this_out_node;
+            $parent_nodes[$this_out_node->key] = $this_out_node;
         }
 
         $stmt_type = $stmt_type->setParentNodes($parent_nodes);

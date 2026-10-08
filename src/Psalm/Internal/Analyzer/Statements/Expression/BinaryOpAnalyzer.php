@@ -369,7 +369,7 @@ final class BinaryOpAnalyzer
             $graph->addNode($new_parent_node);
 
             $result_type = $result_type->setParentNodes([
-                $new_parent_node->id => $new_parent_node,
+                $new_parent_node->key => $new_parent_node,
             ]);
             $statements_analyzer->node_data->setType($stmt, $result_type);
 
@@ -513,7 +513,7 @@ final class BinaryOpAnalyzer
         $graph->addNode($new_parent_node);
 
         $stmt_type = $stmt_type->setParentNodes([
-            $new_parent_node->id => $new_parent_node,
+            $new_parent_node->key => $new_parent_node,
         ]);
 
         $codebase = $statements_analyzer->getCodebase();

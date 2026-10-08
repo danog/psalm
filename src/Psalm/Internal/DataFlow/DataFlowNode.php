@@ -57,6 +57,11 @@ final class DataFlowNode implements Stringable
      * @psalm-mutation-free
      */
     private function __construct(
+        /**
+         * The node's identity as an int (pzoom's DataFlowNodeId role): the key of the node in parent-node maps
+         * and in the variable-use graph. Process-local: see keyOf().
+         */
+        public readonly int $key,
         public readonly string $id,
         public readonly ?string $unspecialized_id,
         public readonly ?string $specialization_key,
@@ -71,7 +76,65 @@ final class DataFlowNode implements Stringable
          * body the flow is currently in, or null outside of any specialized call.
          */
         public readonly ?int $context = null,
+        /** For a node of getForNarrowingToScalar(): the key of the node it narrows */
+        public readonly ?int $narrowed_key = null,
     ) {
+    }
+
+    /** @var array<string, int> node keys by node id */
+    private static array $keys = [];
+
+    private static int $last_key = 0;
+
+    /**
+     * The key of the node id $id: ids get sequential ints the first time they are seen. Keys are only valid in the
+     * process that made them, so nodes coming from another process are re-keyed (see __unserialize()).
+     *
+     * @psalm-external-mutation-free
+     */
+    public static function keyOf(string $id): int
+    {
+        /** @psalm-suppress ImpureStaticProperty a cache of the id -> key function */
+        return self::$keys[$id] ??= ++self::$last_key;
+    }
+
+    /**
+     * Nodes cross processes serialized (forked workers): their keys are re-derived from their ids here.
+     *
+     * @param array{id: string, unspecialized_id: ?string, specialization_key: ?string, label: string, code_location: ?CodeLocation, taints: int, taintSource: ?self, path_types: list<string>, context: ?int} $data
+     * @psalm-suppress InaccessibleProperty readonly properties are initialized here, as in a constructor
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->id = $data['id'];
+        $this->unspecialized_id = $data['unspecialized_id'];
+        $this->specialization_key = $data['specialization_key'];
+        $this->label = $data['label'];
+        $this->code_location = $data['code_location'];
+        $this->taints = $data['taints'];
+        $this->taintSource = $data['taintSource'];
+        $this->path_types = $data['path_types'];
+        $this->context = $data['context'];
+        $this->key = self::keyOf($this->id);
+        $this->narrowed_key = str_starts_with($this->id, self::NARROWED_TO_SCALAR)
+            ? self::keyOf(substr($this->id, strlen(self::NARROWED_TO_SCALAR)))
+            : null;
+    }
+
+    /** @return array{id: string, unspecialized_id: ?string, specialization_key: ?string, label: string, code_location: ?CodeLocation, taints: int, taintSource: ?self, path_types: list<string>, context: ?int} */
+    public function __serialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'unspecialized_id' => $this->unspecialized_id,
+            'specialization_key' => $this->specialization_key,
+            'label' => $this->label,
+            'code_location' => $this->code_location,
+            'taints' => $this->taints,
+            'taintSource' => $this->taintSource,
+            'path_types' => $this->path_types,
+            'context' => $this->context,
+        ];
     }
 
     /**
@@ -98,6 +161,7 @@ final class DataFlowNode implements Stringable
             $id .= ' specialized in ' . $specialization_key;
         }
         return new self(
+            self::keyOf($id),
             $id,
             $unspecialized_id,
             $specialization_key,
@@ -433,7 +497,9 @@ final class DataFlowNode implements Stringable
     public static function getForNarrowingToScalar(self $node): self
     {
         // $node's location is a function of its id, so of this id too: see the class invariant
-        return self::make(self::NARROWED_TO_SCALAR . $node->id, $node->label, $node->code_location);
+        $id = self::NARROWED_TO_SCALAR . $node->id;
+
+        return new self(self::keyOf($id), $id, null, null, $node->label, $node->code_location, narrowed_key: $node->key);
     }
 
     /**
@@ -443,18 +509,34 @@ final class DataFlowNode implements Stringable
      */
     public function getNarrowedNodeId(): ?string
     {
-        return str_starts_with($this->id, self::NARROWED_TO_SCALAR)
-            ? substr($this->id, strlen(self::NARROWED_TO_SCALAR))
-            : null;
+        return $this->narrowed_key !== null ? substr($this->id, strlen(self::NARROWED_TO_SCALAR)) : null;
+    }
+
+    /**
+     * $parent_nodes with $other_parent_nodes added, those with the key of one of $parent_nodes replacing it in
+     * place (array_merge() on parent nodes keyed by id, which renumbers the int keys)
+     *
+     * @param array<int, self> $parent_nodes
+     * @param array<int, self> $other_parent_nodes
+     * @return array<int, self>
+     * @psalm-pure
+     */
+    public static function replaceParentNodes(array $parent_nodes, array $other_parent_nodes): array
+    {
+        foreach ($other_parent_nodes as $key => $parent_node) {
+            $parent_nodes[$key] = $parent_node;
+        }
+
+        return $parent_nodes;
     }
 
     /**
      * The union of $parent_nodes and $other_parent_nodes, without the nodes narrowing others in
      * it (see getForNarrowingToScalar()): those only stand for the nodes they narrow.
      *
-     * @param array<string, self> $parent_nodes
-     * @param array<string, self> $other_parent_nodes
-     * @return array<string, self>
+     * @param array<int, self> $parent_nodes
+     * @param array<int, self> $other_parent_nodes
+     * @return array<int, self>
      * @psalm-pure
      */
     public static function combineParentNodes(array $parent_nodes, array $other_parent_nodes): array
@@ -465,11 +547,11 @@ final class DataFlowNode implements Stringable
 
         $parent_nodes += $other_parent_nodes;
 
-        foreach ($parent_nodes as $parent_node_id => $parent_node) {
-            $narrowed_node_id = $parent_node->getNarrowedNodeId();
+        foreach ($parent_nodes as $parent_node_key => $parent_node) {
+            $narrowed_key = $parent_node->narrowed_key;
 
-            if ($narrowed_node_id !== null && isset($parent_nodes[$narrowed_node_id])) {
-                unset($parent_nodes[$parent_node_id]);
+            if ($narrowed_key !== null && isset($parent_nodes[$narrowed_key])) {
+                unset($parent_nodes[$parent_node_key]);
             }
         }
 
@@ -572,7 +654,7 @@ final class DataFlowNode implements Stringable
      */
     public static function getForVariableUse(): self
     {
-        return self::$forVariableUse ??= new self('variable-use', null, null, 'variable use');
+        return self::$forVariableUse ??= new self(self::keyOf('variable-use'), 'variable-use', null, null, 'variable use');
     }
 
 
@@ -582,7 +664,7 @@ final class DataFlowNode implements Stringable
      */
     public static function getForUnknownOrigin(): self
     {
-        return self::$forUnknownOrigin ??= new self('unknown-origin', null, null, 'unknown origin');
+        return self::$forUnknownOrigin ??= new self(self::keyOf('unknown-origin'), 'unknown-origin', null, null, 'unknown origin');
     }
 
     private static self $forClosureUse;
@@ -591,7 +673,7 @@ final class DataFlowNode implements Stringable
      */
     public static function getForClosureUse(): self
     {
-        return self::$forClosureUse ??= new self('closure-use', null, null, 'closure use');
+        return self::$forClosureUse ??= new self(self::keyOf('closure-use'), 'closure-use', null, null, 'closure use');
     }
 
     /**
@@ -603,6 +685,7 @@ final class DataFlowNode implements Stringable
             return $this;
         }
         return new self(
+            $this->key,
             $this->id,
             $this->unspecialized_id,
             $this->specialization_key,
@@ -612,6 +695,7 @@ final class DataFlowNode implements Stringable
             $this->taintSource,
             $this->path_types,
             $this->context,
+            $this->narrowed_key,
         );
     }
 
@@ -630,6 +714,7 @@ final class DataFlowNode implements Stringable
         ?int $context,
     ): self {
         return new self(
+            self::keyOf($id),
             $id,
             $unspecialized_id,
             $specialization_key,
@@ -639,6 +724,8 @@ final class DataFlowNode implements Stringable
             $this->taintSource,
             $this->path_types,
             $context,
+            // the id the narrowed node specialized narrows (see getNarrowedNodeId())
+            $this->narrowed_key !== null ? self::keyOf(substr($id, strlen(self::NARROWED_TO_SCALAR))) : null,
         );
     }
 
@@ -658,6 +745,7 @@ final class DataFlowNode implements Stringable
         ?int $context,
     ): self {
         return new self(
+            $this->key,
             $this->id,
             $this->unspecialized_id,
             $this->specialization_key,
@@ -667,20 +755,8 @@ final class DataFlowNode implements Stringable
             $taintSource,
             $path_types,
             $context,
+            $this->narrowed_key,
         );
-    }
-
-    /**
-     * A node identified only by its id, with no location and no taint state. Used by the
-     * variable-use graph, whose nodes are never taint-reporting sites; a null location trivially
-     * satisfies the id -> location invariant.
-     *
-     * @param list<string> $path_types
-     * @psalm-pure
-     */
-    public static function getForVariableUseDestination(string $id, array $path_types = []): self
-    {
-        return new self($id, null, null, $id, null, 0, null, $path_types);
     }
 
     /**

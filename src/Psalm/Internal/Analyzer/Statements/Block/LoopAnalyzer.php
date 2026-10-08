@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Clause;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\PhpVisitor\AssignmentMapVisitor;
 use Psalm\Internal\PhpVisitor\NodeCleanerVisitor;
 use Psalm\Internal\Scope\LoopScope;
@@ -442,10 +443,10 @@ final class LoopAnalyzer
                     $loop_parent_context->removeVarFromConflictingClauses($var_id);
                 } else {
                     $loop_parent_context->vars_in_scope[$var_id] =
-                        $loop_parent_context->vars_in_scope[$var_id]->setParentNodes([
-                            ...$loop_parent_context->vars_in_scope[$var_id]->parent_nodes,
-                            ...$continue_context->vars_in_scope[$var_id]->parent_nodes,
-                        ])
+                        $loop_parent_context->vars_in_scope[$var_id]->setParentNodes(DataFlowNode::replaceParentNodes(
+                            $loop_parent_context->vars_in_scope[$var_id]->parent_nodes,
+                            $continue_context->vars_in_scope[$var_id]->parent_nodes,
+                        ))
                     ;
                 }
             }

@@ -651,7 +651,7 @@ final class FunctionCallReturnTypeFetcher
             if ($closure_storage !== null) {
                 $closure_return_node = DataFlowNode::getForMethodReturn($callable_id, $closure_storage);
                 $graph->addNode($closure_return_node);
-                $stmt_type = $stmt_type->addParentNodes([$closure_return_node->id => $closure_return_node]);
+                $stmt_type = $stmt_type->addParentNodes([$closure_return_node->key => $closure_return_node]);
 
                 self::taintCallableParams(
                     $statements_analyzer,
@@ -718,7 +718,7 @@ final class FunctionCallReturnTypeFetcher
             }
         }
 
-        $stmt_type = $stmt_type->addParentNodes([$return_node->id => $return_node]);
+        $stmt_type = $stmt_type->addParentNodes([$return_node->key => $return_node]);
 
         self::taintCallableParams(
             $statements_analyzer,
@@ -784,7 +784,7 @@ final class FunctionCallReturnTypeFetcher
             }
 
             // the variable may hold what the parameter was given
-            if (!isset($var_type->parent_nodes[DataFlowNode::getForAssignment($var_id, $param->location)->id])) {
+            if (!isset($var_type->parent_nodes[DataFlowNode::getForAssignment($var_id, $param->location)->key])) {
                 continue;
             }
 
@@ -796,7 +796,7 @@ final class FunctionCallReturnTypeFetcher
             if ($stmt_type !== null) {
                 $statements_analyzer->node_data->setType(
                     $real_stmt,
-                    $stmt_type->addParentNodes([$return_node->id => $return_node]),
+                    $stmt_type->addParentNodes([$return_node->key => $return_node]),
                 );
             }
 
@@ -1009,7 +1009,7 @@ final class FunctionCallReturnTypeFetcher
                 $graph->addNode($out_node);
 
                 $context->vars_in_scope[$var_id] = $context->vars_in_scope[$var_id]->addParentNodes(
-                    [$out_node->id => $out_node],
+                    [$out_node->key => $out_node],
                 );
             }
         }
@@ -1265,7 +1265,7 @@ final class FunctionCallReturnTypeFetcher
             }
         }
 
-        $stmt_type = $stmt_type->addParentNodes([$return_node->id => $return_node]);
+        $stmt_type = $stmt_type->addParentNodes([$return_node->key => $return_node]);
     }
 
     private static function taintReturnType(
@@ -1351,9 +1351,9 @@ final class FunctionCallReturnTypeFetcher
                 $removed_taints | $conditionally_removed_taints,
             );
 
-            $stmt_type = $stmt_type->addParentNodes([$assignment_node->id => $assignment_node]);
+            $stmt_type = $stmt_type->addParentNodes([$assignment_node->key => $assignment_node]);
         } else {
-            $stmt_type = $stmt_type->addParentNodes([$function_call_node->id => $function_call_node]);
+            $stmt_type = $stmt_type->addParentNodes([$function_call_node->key => $function_call_node]);
         }
 
         if (!$taint_flow_graph) {

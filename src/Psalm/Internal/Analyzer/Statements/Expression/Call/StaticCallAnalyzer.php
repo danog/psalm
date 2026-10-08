@@ -385,9 +385,9 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $conditionally_removed_taints | $removed_taints,
             );
 
-            $return_type_candidate = $return_type_candidate->addParentNodes([$assignment_node->id => $assignment_node]);
+            $return_type_candidate = $return_type_candidate->addParentNodes([$assignment_node->key => $assignment_node]);
         } else {
-            $return_type_candidate = $return_type_candidate->setParentNodes([$method_source->id => $method_source]);
+            $return_type_candidate = $return_type_candidate->setParentNodes([$method_source->key => $method_source]);
         }
 
         $taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed();

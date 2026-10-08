@@ -247,6 +247,6 @@ final class UnsetAnalyzer
             $graph->addPath($parent_node, $node, $path_type);
         }
 
-        return $new_type->setParentNodes([$node->id => $node]);
+        return $new_type->setParentNodes([$node->key => $node]);
     }
 }

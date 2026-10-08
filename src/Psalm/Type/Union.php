@@ -50,7 +50,7 @@ use function get_object_vars;
  *      allow_mutations?: bool,
  *      has_mutations?: bool,
  *      different?: bool,
- *      parent_nodes?: array<string, DataFlowNode>
+ *      parent_nodes?: array<int, DataFlowNode>
  * }
  * @api
  */
@@ -198,7 +198,7 @@ final class Union implements TypeNode
 
 
     /**
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $parent_nodes = [];
 
@@ -244,6 +244,16 @@ final class Union implements TypeNode
         foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
             /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
             $this->$property_name = $properties[$key];
+        }
+
+        // parent nodes are keyed by DataFlowNode::$key, which is process-local: the nodes (unserialized before
+        // this union) were re-keyed for this process, so are they here
+        if ($this->parent_nodes) {
+            $parent_nodes = [];
+            foreach ($this->parent_nodes as $parent_node) {
+                $parent_nodes[$parent_node->key] = $parent_node;
+            }
+            $this->parent_nodes = $parent_nodes;
         }
     }
 
@@ -473,7 +483,7 @@ final class Union implements TypeNode
     }
 
     /**
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      * @return static
      */
     public function setParentNodes(array $parent_nodes, bool $propagate_changes = false): self
@@ -489,7 +499,7 @@ final class Union implements TypeNode
 
 
     /**
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      * @return static
      */
     public function addParentNodes(array $parent_nodes): self

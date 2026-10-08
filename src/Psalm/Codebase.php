@@ -2694,7 +2694,7 @@ final class Codebase
 
         $this->taint_flow_graph->addSource($source);
 
-        return $expr_type->addParentNodes([$source->id => $source]);
+        return $expr_type->addParentNodes([$source->key => $source]);
     }
 
     /**

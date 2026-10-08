@@ -301,7 +301,7 @@ final class YieldAnalyzer
 
         $statements_analyzer->node_data->setType(
             $stmt,
-            $yield_type->addParentNodes([$yield_node->id => $yield_node]),
+            $yield_type->addParentNodes([$yield_node->key => $yield_node]),
         );
     }
 

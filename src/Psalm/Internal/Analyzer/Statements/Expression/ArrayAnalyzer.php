@@ -436,7 +436,7 @@ final class ArrayAnalyzer
                         );
                     }
 
-                    $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
+                    $array_creation_info->parent_taint_nodes += [$new_parent_node->key => $new_parent_node];
                 }
 
                 if ($item_key_type
@@ -482,7 +482,7 @@ final class ArrayAnalyzer
                         );
                     }
 
-                    $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
+                    $array_creation_info->parent_taint_nodes += [$new_parent_node->key => $new_parent_node];
                 }
             }
         }
@@ -590,7 +590,7 @@ final class ArrayAnalyzer
                 }
 
                 $graph->addNode($unpacked_node);
-                $parent_nodes[$unpacked_node->id] = $unpacked_node;
+                $parent_nodes[$unpacked_node->key] = $unpacked_node;
             }
         }
 

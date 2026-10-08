@@ -105,7 +105,7 @@ final class EncapsulatedStringAnalyzer
                     $new_parent_node = DataFlowNode::getForAssignment('concat', $var_location);
                     $graph->addNode($new_parent_node);
 
-                    $parent_nodes[$new_parent_node->id] = $new_parent_node;
+                    $parent_nodes[$new_parent_node->key] = $new_parent_node;
 
                     $codebase = $statements_analyzer->getCodebase();
                     $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);

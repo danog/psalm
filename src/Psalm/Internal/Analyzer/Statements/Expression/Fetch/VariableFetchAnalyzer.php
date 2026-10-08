@@ -484,7 +484,7 @@ final class VariableFetchAnalyzer
                 }
 
                 $stmt_type = $stmt_type->setParentNodes([
-                    $assignment_node->id => $assignment_node,
+                    $assignment_node->key => $assignment_node,
                 ]);
             }
 
@@ -568,7 +568,7 @@ final class VariableFetchAnalyzer
         $graph->addSource($taint_source);
 
         $type = $type->setParentNodes([
-            $taint_source->id => $taint_source,
+            $taint_source->key => $taint_source,
         ]);
     }
 
@@ -588,7 +588,7 @@ final class VariableFetchAnalyzer
         $graph->addPath($taint_source, $name_node, 'arrayvalue-assignment-\'name\'');
         $graph->addPath($name_node, $files_node, 'arrayvalue-assignment');
 
-        return $type->setParentNodes([$files_node->id => $files_node]);
+        return $type->setParentNodes([$files_node->key => $files_node]);
     }
 
     /**

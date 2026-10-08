@@ -68,7 +68,7 @@ final class StrTrReturnTypeProvider implements FunctionReturnTypeProviderInterfa
                 );
             }
 
-            return $type->setParentNodes([$function_return_sink->id => $function_return_sink]);
+            return $type->setParentNodes([$function_return_sink->key => $function_return_sink]);
         }
 
         return $type;

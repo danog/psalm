@@ -946,7 +946,7 @@ final class CastAnalyzer
      * returns carries all their taints (see returnsTheTaintsOfTheObject()), their own taints only reach the string
      * through __toString, so what it does to them (e.g. escaping them) applies.
      *
-     * @return array<string, DataFlowNode>
+     * @return array<int, DataFlowNode>
      */
     public static function getStringConversionParentNodes(
         StatementsAnalyzer $statements_analyzer,
@@ -986,7 +986,7 @@ final class CastAnalyzer
 
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($to_string_id);
 
-            $to_string_parent_nodes = array_merge(
+            $to_string_parent_nodes = DataFlowNode::replaceParentNodes(
                 $to_string_parent_nodes,
                 self::taintToStringResult($statements_analyzer, $context, $expr, $to_string_id, $declaring_method_id),
             );
@@ -1025,13 +1025,13 @@ final class CastAnalyzer
         }
 
         if ($escaped_taints !== null && $to_string_atomics + $escaping_atomics === $converted_atomics) {
-            return array_merge(
+            return DataFlowNode::replaceParentNodes(
                 $to_string_parent_nodes,
                 self::getEscapedObjectParentNodes($statements_analyzer, $expr, $type->parent_nodes, $escaped_taints),
             );
         }
 
-        return array_merge($to_string_parent_nodes, $type->parent_nodes);
+        return DataFlowNode::replaceParentNodes($to_string_parent_nodes, $type->parent_nodes);
     }
 
     /**
@@ -1093,9 +1093,9 @@ final class CastAnalyzer
      * graph only what __toString returns, as the objects' own taints would bypass what __toString does to them; in
      * the variable use graph the objects too, as the conversion uses them
      *
-     * @param array<string, DataFlowNode> $object_parent_nodes
-     * @param array<string, DataFlowNode> $to_string_parent_nodes
-     * @return array<string, DataFlowNode>
+     * @param array<int, DataFlowNode> $object_parent_nodes
+     * @param array<int, DataFlowNode> $to_string_parent_nodes
+     * @return array<int, DataFlowNode>
      */
     private static function getToStringConversionParentNodes(
         StatementsAnalyzer $statements_analyzer,
@@ -1110,7 +1110,7 @@ final class CastAnalyzer
         }
 
         if (!$graph instanceof CombinedFlowGraph || $object_parent_nodes === []) {
-            return array_merge($to_string_parent_nodes, $object_parent_nodes);
+            return DataFlowNode::replaceParentNodes($to_string_parent_nodes, $object_parent_nodes);
         }
 
         $conversion_node = DataFlowNode::getForAssignment(
@@ -1128,7 +1128,7 @@ final class CastAnalyzer
             $graph->variable_use_graph->addPath($parent_node, $conversion_node, '=');
         }
 
-        return [$conversion_node->id => $conversion_node];
+        return [$conversion_node->key => $conversion_node];
     }
 
     /**
@@ -1141,7 +1141,7 @@ final class CastAnalyzer
      * stays intact in every mode; the removed_taints on the edge is ignored by the
      * variable-use graph and only takes effect for taint analysis.
      *
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      */
     private static function stripCastTaints(
         StatementsAnalyzer $statements_analyzer,
@@ -1174,7 +1174,7 @@ final class CastAnalyzer
                 );
             }
 
-            $parent_nodes = [$cast_node->id => $cast_node];
+            $parent_nodes = [$cast_node->key => $cast_node];
         }
 
         return $result_type->setParentNodes($parent_nodes);
@@ -1272,7 +1272,7 @@ final class CastAnalyzer
     /**
      * The parent nodes of what the __toString $expr converts through returns
      *
-     * @return array<string, DataFlowNode>
+     * @return array<int, DataFlowNode>
      */
     private static function taintToStringResult(
         StatementsAnalyzer $statements_analyzer,
@@ -1316,8 +1316,8 @@ final class CastAnalyzer
      * stub) but declares the taints it escapes: their own taints, less those (only when every such __toString escapes
      * them)
      *
-     * @param array<string, DataFlowNode> $object_parent_nodes
-     * @return array<string, DataFlowNode>
+     * @param array<int, DataFlowNode> $object_parent_nodes
+     * @return array<int, DataFlowNode>
      */
     private static function getEscapedObjectParentNodes(
         StatementsAnalyzer $statements_analyzer,
@@ -1342,6 +1342,6 @@ final class CastAnalyzer
             $graph->addPath($parent_node, $conversion_node, '=', 0, $escaped_taints);
         }
 
-        return [$conversion_node->id => $conversion_node];
+        return [$conversion_node->key => $conversion_node];
     }
 }

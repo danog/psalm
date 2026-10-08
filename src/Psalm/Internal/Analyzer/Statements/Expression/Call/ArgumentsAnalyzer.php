@@ -1418,8 +1418,8 @@ final class ArgumentsAnalyzer
                 $out_type_holds_value = self::hasAnalyzedBody($codebase, $method_identifier, $function_storage);
 
                 $by_ref_out_type = $out_type_holds_value
-                    ? $by_ref_out_type->setParentNodes([$out_node->id => $out_node])
-                    : $by_ref_out_type->addParentNodes([$out_node->id => $out_node]);
+                    ? $by_ref_out_type->setParentNodes([$out_node->key => $out_node])
+                    : $by_ref_out_type->addParentNodes([$out_node->key => $out_node]);
             }
 
             // a builtin filling this parameter with data given to other ones (preg_match(), ...)

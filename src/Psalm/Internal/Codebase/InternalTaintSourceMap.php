@@ -73,6 +73,6 @@ final class InternalTaintSourceMap
 
         $graph->addSource($source);
 
-        return $type->addParentNodes([$source->id => $source]);
+        return $type->addParentNodes([$source->key => $source]);
     }
 }

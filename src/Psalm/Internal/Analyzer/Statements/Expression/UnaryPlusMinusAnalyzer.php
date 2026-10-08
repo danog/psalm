@@ -133,7 +133,7 @@ final class UnaryPlusMinusAnalyzer
             $statements_analyzer->node_data->setType(
                 $stmt,
                 $result_type->setParentNodes([
-                    $new_parent_node->id => $new_parent_node,
+                    $new_parent_node->key => $new_parent_node,
                 ]),
             );
 

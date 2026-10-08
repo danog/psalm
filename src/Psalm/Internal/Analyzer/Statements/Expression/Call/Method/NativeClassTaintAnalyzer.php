@@ -85,7 +85,7 @@ final class NativeClassTaintAnalyzer
             $graph->addPath($parent_node, $output_node, $output);
         }
 
-        return $return_type->addParentNodes([$output_node->id => $output_node]);
+        return $return_type->addParentNodes([$output_node->key => $output_node]);
     }
 
     /**
@@ -207,7 +207,7 @@ final class NativeClassTaintAnalyzer
 
         if ($object_id !== null && isset($context->vars_in_scope[$object_id])) {
             $context->vars_in_scope[$object_id] = $context->vars_in_scope[$object_id]->setParentNodes(
-                [$object_node->id => $object_node],
+                [$object_node->key => $object_node],
             );
         }
 
@@ -220,7 +220,7 @@ final class NativeClassTaintAnalyzer
                 $stmt->var,
                 $property_id,
                 $class_storage,
-                Type::getMixed()->setParentNodes([$object_node->id => $object_node]),
+                Type::getMixed()->setParentNodes([$object_node->key => $object_node]),
                 $context,
                 $object_id,
             );

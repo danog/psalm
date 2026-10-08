@@ -360,7 +360,7 @@ class Reconciler
                     $narrowed_parent_nodes = [];
 
                     foreach ($parent_nodes as $parent_node) {
-                        if ($parent_node->getNarrowedNodeId() === null) {
+                        if ($parent_node->narrowed_key === null) {
                             $narrowed_node = DataFlowNode::getForNarrowingToScalar($parent_node);
 
                             $graph->addNode($narrowed_node);
@@ -369,7 +369,7 @@ class Reconciler
                             $parent_node = $narrowed_node;
                         }
 
-                        $narrowed_parent_nodes[$parent_node->id] = $parent_node;
+                        $narrowed_parent_nodes[$parent_node->key] = $parent_node;
                     }
 
                     $parent_nodes = $narrowed_parent_nodes;

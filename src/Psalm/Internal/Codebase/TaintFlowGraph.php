@@ -11,6 +11,7 @@ use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\DataFlow\Path;
 use Psalm\Issue\TaintedCallable;
 use Psalm\Issue\TaintedCookie;
 use Psalm\Issue\TaintedCustom;
@@ -46,6 +47,8 @@ use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 use Webmozart\Assert\Assert;
 
+use function abs;
+use function array_keys;
 use function array_pop;
 use function array_slice;
 use function array_splice;
@@ -110,6 +113,9 @@ final class TaintFlowGraph extends DataFlowGraph
      * linkGeneratorSends()): recursive calls nest without end.
      */
     private const GENERATOR_SEND_CALL_DEPTH = 8;
+
+    /** @var array<string, array<string, Path>> */
+    private array $forward_edges = [];
 
     /** @var array<string, DataFlowNode> */
     private array $sources = [];
@@ -449,13 +455,31 @@ final class TaintFlowGraph extends DataFlowGraph
         int $removed_taints = 0,
     ): void {
         if ($removed_taints === TaintKind::ALL
-            || $to->id === DataFlowNode::getForVariableUse()->id
-            || $to->id === DataFlowNode::getForClosureUse()->id
+            || $to->key === DataFlowNode::getForVariableUse()->key
+            || $to->key === DataFlowNode::getForClosureUse()->key
         ) {
             return;
         }
 
-        parent::addPath($from, $to, $path_type, $added_taints, $removed_taints);
+        $from_id = $from->id;
+        $to_id = $to->id;
+
+        if ($from_id === $to_id) {
+            return;
+        }
+
+        $length = 0;
+
+        if ($from->code_location
+            && $to->code_location
+            && $from->code_location->file_path === $to->code_location->file_path
+        ) {
+            $to_line = $to->code_location->raw_line_number;
+            $from_line = $from->code_location->raw_line_number;
+            $length = abs($to_line - $from_line);
+        }
+
+        $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length, $added_taints, $removed_taints);
     }
 
     /**
@@ -472,7 +496,7 @@ final class TaintFlowGraph extends DataFlowGraph
     /**
      * Records that what flows into $sent_node is sent to the generator with the parent nodes $generator_nodes.
      *
-     * @param array<string, DataFlowNode> $generator_nodes
+     * @param array<int, DataFlowNode> $generator_nodes
      * @psalm-external-mutation-free
      */
     public function addGeneratorSend(DataFlowNode $sent_node, array $generator_nodes): void
@@ -482,6 +506,21 @@ final class TaintFlowGraph extends DataFlowGraph
         foreach ($generator_nodes as $generator_node) {
             $this->generator_sends[$sent_node->id][$generator_node->id] = true;
         }
+    }
+
+    /**
+     * @psalm-return list<list<string>>
+     * @psalm-mutation-free
+     */
+    public function summarizeEdges(): array
+    {
+        $edges = [];
+
+        foreach ($this->forward_edges as $source => $destinations) {
+            $edges[] = [$source, ...array_keys($destinations)];
+        }
+
+        return $edges;
     }
 
     /**

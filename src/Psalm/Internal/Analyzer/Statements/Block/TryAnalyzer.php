@@ -300,7 +300,7 @@ final class TryAnalyzer
 
                     $catch_context->vars_in_scope[$catch_var_id] =
                         $catch_context->vars_in_scope[$catch_var_id]->addParentNodes([
-                            $catch_var_node->id => $catch_var_node,
+                            $catch_var_node->key => $catch_var_node,
                         ])
                     ;
 

@@ -1149,7 +1149,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         $stmt_type = $this->node_data->getType($stmt);
 
         if ($stmt_type) {
-            $stmt_type = $stmt_type->addParentNodes([$use_node->id => $use_node]);
+            $stmt_type = $stmt_type->addParentNodes([$use_node->key => $use_node]);
             $this->node_data->setType($stmt, $stmt_type);
         }
 
@@ -1163,7 +1163,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @return array<string, DataFlowNode>
+     * @return array<int, DataFlowNode>
      * @psalm-mutation-free
      */
     public function getParentNodesForPossiblyUndefinedVariable(string $undefined_var_id): array
@@ -1177,7 +1177,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         foreach ($this->unused_var_locations as [$var_id, $original_location]) {
             if ($var_id === $undefined_var_id) {
                 $assignment_node = DataFlowNode::getForAssignment($var_id, $original_location);
-                $parent_nodes[$assignment_node->id] = $assignment_node;
+                $parent_nodes[$assignment_node->key] = $assignment_node;
             }
         }
 

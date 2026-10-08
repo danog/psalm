@@ -576,7 +576,7 @@ final class ForeachAnalyzer
             $graph->addPath($parent_node, $array_node, '=');
         }
 
-        $array_type = $context->vars_in_scope[$array_var_id]->setParentNodes([$array_node->id => $array_node]);
+        $array_type = $context->vars_in_scope[$array_var_id]->setParentNodes([$array_node->key => $array_node]);
 
         $context->vars_in_scope[$array_var_id] = $array_type;
 
@@ -670,8 +670,8 @@ final class ForeachAnalyzer
         }
 
         return [
-            ($key_type ?? Type::getMixed())->addParentNodes([$key_node->id => $key_node]),
-            ($value_type ?? Type::getMixed())->addParentNodes([$value_node->id => $value_node]),
+            ($key_type ?? Type::getMixed())->addParentNodes([$key_node->key => $key_node]),
+            ($value_type ?? Type::getMixed())->addParentNodes([$value_node->key => $value_node]),
         ];
     }
 

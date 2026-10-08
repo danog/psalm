@@ -953,7 +953,7 @@ final class AtomicPropertyFetchAnalyzer
                     }
                 }
 
-                $type = $type->setParentNodes([$property_node->id => $property_node], true);
+                $type = $type->setParentNodes([$property_node->key => $property_node], true);
 
                 $taints = $added_taints & ~$removed_taints;
                 if ($taints !== 0 && !$graph instanceof VariableUseGraph) {
@@ -1059,7 +1059,7 @@ final class AtomicPropertyFetchAnalyzer
             }
         }
 
-        $type = $type->setParentNodes([$localized_property_node->id => $localized_property_node], true);
+        $type = $type->setParentNodes([$localized_property_node->key => $localized_property_node], true);
 
         $taints = $added_taints & ~$removed_taints;
         if ($taints !== 0 && $statements_analyzer->taint_flow_graph) {

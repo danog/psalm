@@ -604,7 +604,7 @@ final class InstancePropertyAssignmentAnalyzer
 
                 if (isset($context->vars_in_scope[$var_id])) {
                     $stmt_var_type = $context->vars_in_scope[$var_id]->setParentNodes(
-                        [$var_node->id => $var_node],
+                        [$var_node->key => $var_node],
                     );
 
                     if ($context->vars_in_scope[$var_id]->parent_nodes) {

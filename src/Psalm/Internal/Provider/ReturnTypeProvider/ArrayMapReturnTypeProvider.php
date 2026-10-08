@@ -257,7 +257,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
      * The array holds what the callback returns as its elements, so a fetch of an element gets the whole of what the
      * callback returned, keys included, and what takes the whole array (implode(), ...) takes its taints
      *
-     * @return array<string, DataFlowNode>
+     * @return array<int, DataFlowNode>
      */
     private static function getElementNodes(
         StatementsAnalyzer $statements_analyzer,
@@ -281,7 +281,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
             $graph->addPath($parent_node, $element_node, 'arrayvalue-assignment');
         }
 
-        return [$element_node->id => $element_node];
+        return [$element_node->key => $element_node];
     }
 
     /**

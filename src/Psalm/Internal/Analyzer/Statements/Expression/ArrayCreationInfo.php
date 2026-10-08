@@ -50,7 +50,7 @@ final class ArrayCreationInfo
     public bool $all_list = true;
 
     /**
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $parent_taint_nodes = [];
 
@@ -58,7 +58,7 @@ final class ArrayCreationInfo
      * The nodes of the unpacked items, whose paths are added once the keys they end up at are
      * known, with the parent nodes of the arrays unpacked
      *
-     * @var list<array{DataFlowNode, array<string, DataFlowNode>}>
+     * @var list<array{DataFlowNode, array<int, DataFlowNode>}>
      */
     public array $unpacked_nodes = [];
 

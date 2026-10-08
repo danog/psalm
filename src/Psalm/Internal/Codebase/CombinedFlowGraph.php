@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
-use AssertionError;
 use Override;
 use Psalm\Internal\DataFlow\DataFlowNode;
 
@@ -60,23 +59,5 @@ final class CombinedFlowGraph extends DataFlowGraph
     public function addSink(DataFlowNode $node): void
     {
         $this->taint_flow_graph->addSink($node);
-    }
-
-    /**
-     * @psalm-pure
-     */
-    #[Override]
-    public function summarizeEdges(): never
-    {
-        throw new AssertionError("Unreachable");
-    }
-
-    /**
-     * @psalm-pure
-     */
-    #[Override]
-    public function getEdgeStats(): never
-    {
-        throw new AssertionError("Unreachable");
     }
 }

@@ -187,7 +187,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * Holds param nodes for functions with func_get_args calls
      *
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $param_nodes = [];
 
@@ -321,7 +321,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                     $context->vars_in_scope[$use_var_id] =
                         $context->vars_in_scope[$use_var_id]->addParentNodes(
-                            [$use_assignment->id => $use_assignment],
+                            [$use_assignment->key => $use_assignment],
                         );
                 }
 
@@ -1519,10 +1519,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 }
 
                 if ($storage->variadic) {
-                    $this->param_nodes += [$param_assignment->id => $param_assignment];
+                    $this->param_nodes += [$param_assignment->key => $param_assignment];
                 }
 
-                $parent_nodes = [$param_assignment->id => $param_assignment];
+                $parent_nodes = [$param_assignment->key => $param_assignment];
             }
 
             if ($function_param->type) {
@@ -2409,7 +2409,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $new_parent_node = DataFlowNode::getForAssignment('$this in ' . $method_id, $storage->location);
 
                     $codebase->taint_flow_graph->addNode($new_parent_node);
-                    $props['parent_nodes'] = [$new_parent_node->id => $new_parent_node];
+                    $props['parent_nodes'] = [$new_parent_node->key => $new_parent_node];
                 }
 
                 if ($this->storage instanceof MethodStorage && $this->storage->if_this_is_type) {

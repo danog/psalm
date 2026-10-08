@@ -1759,7 +1759,7 @@ trait UnionTrait
      * DataFlowNode::getForNarrowingToScalar()) replaced by the ids of the nodes they narrow, or null
      * if there is none of those.
      *
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      * @return list<array-key>|null
      * @psalm-pure
      */
@@ -1768,15 +1768,15 @@ trait UnionTrait
         $parent_node_ids = [];
         $has_narrowing = false;
 
-        foreach ($parent_nodes as $parent_node_id => $parent_node) {
-            $narrowed_node_id = $parent_node->getNarrowedNodeId();
+        foreach ($parent_nodes as $parent_node_key => $parent_node) {
+            $narrowed_key = $parent_node->narrowed_key;
 
-            if ($narrowed_node_id !== null) {
-                $parent_node_id = $narrowed_node_id;
+            if ($narrowed_key !== null) {
+                $parent_node_key = $narrowed_key;
                 $has_narrowing = true;
             }
 
-            $parent_node_ids[$parent_node_id] = true;
+            $parent_node_ids[$parent_node_key] = true;
         }
 
         return $has_narrowing ? array_keys($parent_node_ids) : null;

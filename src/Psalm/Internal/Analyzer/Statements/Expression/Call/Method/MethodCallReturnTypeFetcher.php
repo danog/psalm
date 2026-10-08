@@ -298,7 +298,7 @@ final class MethodCallReturnTypeFetcher
             }
 
             $return_type_candidate = $return_type_candidate->addParentNodes(
-                [$generator_node->id => $generator_node],
+                [$generator_node->key => $generator_node],
             );
 
             // what is sent becomes the value of the yield expressions of the generator
@@ -497,12 +497,12 @@ final class MethodCallReturnTypeFetcher
                 }
 
                 $return_type_candidate = $return_type_candidate->setParentNodes([
-                    $method_call_node->id => $method_call_node,
+                    $method_call_node->key => $method_call_node,
                 ]);
 
                 if ($var_id !== null && $var_node !== null) {
                     $context->vars_in_scope[$var_id] = $receiver_type->setParentNodes(
-                        [$var_node->id => $var_node],
+                        [$var_node->key => $var_node],
                     );
                 }
             } else {
@@ -534,7 +534,7 @@ final class MethodCallReturnTypeFetcher
                 $taint_flow_graph->addNode($method_call_node);
 
                 $return_type_candidate = $return_type_candidate->setParentNodes([
-                    $method_call_node->id => $method_call_node,
+                    $method_call_node->key => $method_call_node,
                 ]);
             }
         } else {
@@ -568,7 +568,7 @@ final class MethodCallReturnTypeFetcher
             $graph->addNode($method_call_node);
 
             $return_type_candidate = $return_type_candidate->setParentNodes([
-                $method_call_node->id => $method_call_node,
+                $method_call_node->key => $method_call_node,
             ]);
         }
 

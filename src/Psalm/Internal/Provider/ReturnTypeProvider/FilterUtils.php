@@ -1520,7 +1520,7 @@ final class FilterUtils
                 'arg',
             );
 
-            $return_type = $return_type->setParentNodes([$function_return_sink->id => $function_return_sink]);
+            $return_type = $return_type->setParentNodes([$function_return_sink->key => $function_return_sink]);
         }
 
         return $return_type;
