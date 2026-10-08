@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use Override;
-use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Atomic\TIterable;
@@ -20,8 +19,12 @@ use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
+use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TNever;
+use Psalm\Type\Atomic\TNull;
 
 use function assert;
+use function count;
 use function array_key_exists;
 use function get_object_vars;
 
@@ -171,9 +174,6 @@ final class Union implements TypeNode
     public bool $allow_mutations = true;
 
     public bool $has_mutations = true;
-
-    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
-    private ?IdMemo $memo = null;
 
     /**
      * ExpansionTraitsCollector traits of this union (-1: not computed yet); memoized with the expansions below
@@ -560,7 +560,7 @@ final class Union implements TypeNode
     public function getBuilder(): MutableUnion
     {
         /** @psalm-suppress InvalidArgument It's actually filtered internally */
-        return new MutableUnion($this->getAtomicTypes(), $this->getConstructionProperties());
+        return new MutableUnion($this->types, $this->getConstructionProperties(), true);
     }
 
     /**
@@ -627,10 +627,48 @@ final class Union implements TypeNode
         if ($this->expansion_traits === -1) {
             $collector = new ExpansionTraitsCollector();
             $collector->traverseArray($this->types);
+            $traits = $collector->getTraits();
+            if (($traits & ExpansionTraitsCollector::EXPANDABLE) === 0 && $this->isExpansionNormal()) {
+                $traits |= ExpansionTraitsCollector::INERT;
+            }
             /** @psalm-suppress ImpurePropertyAssignment memo of an immutable value */
-            $this->expansion_traits = $collector->getTraits();
+            $this->expansion_traits = $traits;
         }
         return $this->expansion_traits;
+    }
+
+    /**
+     * Whether no template-dependent type occurs anywhere in this union (ExpansionTraitsCollector::TEMPLATED):
+     * template replacement has nothing to replace and no bound to record (pzoom's `replace_in` gate).
+     *
+     * @internal
+     * @psalm-mutation-free
+     */
+    public function isTemplateFree(): bool
+    {
+        return ($this->getExpansionTraits() & ExpansionTraitsCollector::TEMPLATED) === 0;
+    }
+
+    /**
+     * Inert atomics (ExpansionTraitsCollector::isInertLeaf()) the expansion would not recombine: one that is not
+     * null, mixed or never, or such an atomic followed by null (TypeExpander::isCombineNormal(), in the order
+     * the combiner lists them).
+     *
+     * @psalm-mutation-free
+     */
+    private function isExpansionNormal(): bool
+    {
+        $types = $this->types;
+        $n = count($types);
+        if ($n === 2) {
+            if (!$types[1] instanceof TNull) {
+                return false;
+            }
+        } elseif ($n !== 1) {
+            return false;
+        }
+        $first = $types[0];
+        return !$first instanceof TNull && !$first instanceof TMixed && !$first instanceof TNever;
     }
 
     /**

@@ -19,7 +19,6 @@ use Psalm\Internal\TypeVisitor\TypeChecker;
 use Psalm\Internal\TypeVisitor\TypeScanner;
 use Psalm\StatementsSource;
 use Psalm\Storage\FileStorage;
-use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
@@ -52,6 +51,7 @@ use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeAlias;
+use Psalm\Type\Atomic\TVoid;
 use UnexpectedValueException;
 
 use function array_filter;
@@ -114,9 +114,11 @@ trait UnionTrait
      *
      * @param non-empty-list<Atomic> $types
      * @param TProperties $properties
+     * @param bool $keys_unique the caller guarantees one atomic per Atomic::getKey() (the atomics of another
+     *        union or builder): taken as they are, like pzoom's `TUnion::new(Vec<TAtomic>)`
      * @psalm-mutation-free
      */
-    public function __construct(array $types, array $properties = [])
+    public function __construct(array $types, array $properties = [], bool $keys_unique = false)
     {
         // most unions are built without properties: skip the per-property checks for them
         if ($properties !== []) {
@@ -191,9 +193,8 @@ trait UnionTrait
             }
         }
         $this->checked = false;
-        $this->memo = null;
 
-        $this->types = self::listOfTypes($types);
+        $this->types = $keys_unique ? $types : self::listOfTypes($types);
 
         // an explicit from_docblock is exact; otherwise a union is from a docblock when any of its atomics is
         $exact_from_docblock = array_key_exists('from_docblock', $properties);
@@ -219,8 +220,14 @@ trait UnionTrait
      */
     private static function listOfTypes(array $types): array
     {
-        if (count($types) === 1) {
-            return $types; // kept as it is: no copy
+        $count = count($types);
+        if ($count === 1) {
+            // kept as it is (no copy) when it is a list, as the other methods index it
+            return isset($types[0]) ? $types : array_values($types);
+        }
+        if ($count === 2 && isset($types[0], $types[1])) {
+            // the common case: two keys compared, no map
+            return $types[0]->getKey() === $types[1]->getKey() ? [$types[1]] : $types;
         }
         $by_key = [];
         foreach ($types as $type) {
@@ -408,6 +415,48 @@ trait UnionTrait
     }
 
     /**
+     * Whether a named object is a native type (null, false, true, void, never, mixed, ...) by its key, which is
+     * what Psalm's keyed union looked up: Atomic::create() makes such a TNamedObject of a native type in a
+     * signature before the PHP version that has it. Elsewhere the predicates check the atomic's class, as pzoom
+     * matches on `TAtomic` (a named object's key is its name, with any intersection appended: the name is
+     * compared first).
+     *
+     * @psalm-pure
+     */
+    private static function isNamedAs(TNamedObject $type, string $key): bool
+    {
+        return $type->value === $key && $type->getKey() === $key;
+    }
+
+    /** @psalm-pure */
+    private static function isKeyOf(string $key, string $a, string $b, string $c): bool
+    {
+        return $key === $a || $key === $b || $key === $c;
+    }
+
+    /** @psalm-mutation-free */
+    private function hasFalse(): bool
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TFalse || ($type instanceof TNamedObject && self::isNamedAs($type, 'false'))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @psalm-mutation-free */
+    private function hasTrue(): bool
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TTrue || ($type instanceof TNamedObject && self::isNamedAs($type, 'true'))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @psalm-mutation-free
      * @return non-empty-list<Atomic>
      */
@@ -498,19 +547,13 @@ trait UnionTrait
     }
 
     /**
+     * The id, rendered on demand (pzoom's `TUnion::get_id`: for display and string-keyed lookups; the analysis
+     * compares unions structurally). Each atomic's id is memoized.
+     *
      * @psalm-mutation-free
      */
     public function getId(bool $exact = true): string
     {
-        $memo = $this->memo;
-        if ($memo !== null) {
-            if ($exact && $memo->id !== null) {
-                return $memo->id;
-            } elseif (!$exact && $memo->inexact_id !== null) {
-                return $memo->inexact_id;
-            }
-        }
-
         $types = [];
         foreach ($this->types as $type) {
             $types[] = $type->getId($exact);
@@ -526,19 +569,7 @@ trait UnionTrait
             }
         }
 
-        $id = implode('|', $types);
-
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        $memo = $this->memo ??= new IdMemo();
-        if ($exact) {
-            /** @psalm-suppress ImpurePropertyAssignment Cache */
-            $memo->id = $id;
-        } else {
-            /** @psalm-suppress ImpurePropertyAssignment Cache */
-            $memo->inexact_id = $id;
-        }
-
-        return $id;
+        return implode('|', $types);
     }
 
     /**
@@ -606,7 +637,7 @@ trait UnionTrait
                 return null;
             }
         } elseif ($analysis_php_version_id < 7_00_00
-            || ($this->has('null') && $analysis_php_version_id < 7_01_00)
+            || ($this->hasNull() && $analysis_php_version_id < 7_01_00)
         ) {
             return null;
         }
@@ -946,7 +977,7 @@ trait UnionTrait
      */
     public function isNullable(): bool
     {
-        if ($this->has('null')) {
+        if ($this->hasNull()) {
             return true;
         }
 
@@ -964,7 +995,7 @@ trait UnionTrait
      */
     public function isFalsable(): bool
     {
-        if ($this->has('false')) {
+        if ($this->hasFalse()) {
             return true;
         }
 
@@ -982,7 +1013,16 @@ trait UnionTrait
      */
     public function hasBool(): bool
     {
-        return $this->has('bool') || $this->has('false') || $this->has('true');
+        foreach ($this->types as $type) {
+            if ($type instanceof TBool
+                || ($type instanceof TNamedObject
+                    && self::isKeyOf($type->value, 'bool', 'false', 'true')
+                    && self::isKeyOf($type->getKey(), 'bool', 'false', 'true'))
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -990,7 +1030,12 @@ trait UnionTrait
      */
     public function hasNull(): bool
     {
-        return $this->has('null');
+        foreach ($this->types as $type) {
+            if ($type instanceof TNull || ($type instanceof TNamedObject && self::isNamedAs($type, 'null'))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1078,20 +1123,32 @@ trait UnionTrait
      */
     public function hasScalarType(): bool
     {
-        return $this->has('int')
-            || $this->has('float')
-            || $this->has('string')
-            || $this->has('class-string')
-            || $this->has('trait-string')
-            || $this->has('bool')
-            || $this->has('false')
-            || $this->has('true')
-            || $this->has('numeric')
-            || $this->has('numeric-string')
-            || $this->countLiteralInts() > 0
-            || $this->countLiteralFloats() > 0
-            || $this->countLiteralStrings() > 0
-            || $this->hasTypedClassString();
+        // one pass over the atomics (was a key scan per scalar key)
+        foreach ($this->types as $type) {
+            if ($type instanceof TBool
+                || $type instanceof TLiteralInt
+                || $type instanceof TLiteralFloat
+                || $type instanceof TLiteralString
+                || ($type instanceof TClassString && ($type->as_type || $type instanceof TTemplateParamClass))
+            ) {
+                return true;
+            }
+            $key = $type->getKey();
+            if ($key === 'int'
+                || $key === 'bool'
+                || $key === 'false'
+                || $key === 'true'
+                || $key === 'float'
+                || $key === 'string'
+                || $key === 'class-string'
+                || $key === 'trait-string'
+                || $key === 'numeric'
+                || $key === 'numeric-string'
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1156,7 +1213,12 @@ trait UnionTrait
      */
     public function hasMixed(): bool
     {
-        return $this->has('mixed');
+        foreach ($this->types as $type) {
+            if ($type instanceof TMixed || ($type instanceof TNamedObject && self::isNamedAs($type, 'mixed'))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1165,8 +1227,7 @@ trait UnionTrait
     public function isMixed(bool $check_templates = false): bool
     {
         foreach ($this->types as $t) {
-            $key = $t->getKey();
-            if ($key === 'mixed' || $t instanceof TMixed) {
+            if ($t instanceof TMixed || ($t instanceof TNamedObject && self::isNamedAs($t, 'mixed'))) {
                 continue;
             }
             if ($check_templates
@@ -1185,8 +1246,7 @@ trait UnionTrait
      */
     public function isEmptyMixed(): bool
     {
-        return $this->find('mixed') instanceof TEmptyMixed
-            && count($this->types) === 1;
+        return count($this->types) === 1 && $this->types[0] instanceof TEmptyMixed;
     }
 
     /**
@@ -1194,11 +1254,11 @@ trait UnionTrait
      */
     public function isVanillaMixed(): bool
     {
-        $mixed = $this->find('mixed');
-        return $mixed !== null
-            && $mixed::class === TMixed::class
-            && !$mixed->from_loop_isset
-            && count($this->types) === 1;
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $mixed = $this->types[0];
+        return $mixed::class === TMixed::class && !$mixed->from_loop_isset;
     }
 
     /**
@@ -1214,7 +1274,11 @@ trait UnionTrait
      */
     public function isNull(): bool
     {
-        return count($this->types) === 1 && $this->has('null');
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TNull || ($type instanceof TNamedObject && self::isNamedAs($type, 'null'));
     }
 
     /**
@@ -1222,7 +1286,11 @@ trait UnionTrait
      */
     public function isFalse(): bool
     {
-        return count($this->types) === 1 && $this->has('false');
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TFalse || ($type instanceof TNamedObject && self::isNamedAs($type, 'false'));
     }
 
     /**
@@ -1244,7 +1312,11 @@ trait UnionTrait
      */
     public function isTrue(): bool
     {
-        return count($this->types) === 1 && $this->has('true');
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TTrue || ($type instanceof TNamedObject && self::isNamedAs($type, 'true'));
     }
 
     /**
@@ -1270,7 +1342,11 @@ trait UnionTrait
      */
     public function isVoid(): bool
     {
-        return $this->has('void') && count($this->types) === 1;
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TVoid || ($type instanceof TNamedObject && self::isNamedAs($type, 'void'));
     }
 
     /**
@@ -1278,7 +1354,11 @@ trait UnionTrait
      */
     public function isNever(): bool
     {
-        return $this->has('never') && count($this->types) === 1;
+        if (count($this->types) !== 1) {
+            return false;
+        }
+        $type = $this->types[0];
+        return $type instanceof TNever || ($type instanceof TNamedObject && self::isNamedAs($type, 'never'));
     }
 
     /**
@@ -1321,7 +1401,7 @@ trait UnionTrait
      */
     public function isSingleAndMaybeNullable(): bool
     {
-        $is_nullable = $this->has('null');
+        $is_nullable = $this->hasNull();
 
         $type_count = count($this->types);
 
@@ -1583,8 +1663,8 @@ trait UnionTrait
         return $this->countLiteralInts() > 0
             || $this->countLiteralStrings() > 0
             || $this->countLiteralFloats() > 0
-            || $this->has('false')
-            || $this->has('true');
+            || $this->hasFalse()
+            || $this->hasTrue();
     }
 
     /**
@@ -1783,9 +1863,6 @@ trait UnionTrait
     }
 
     /**
-     * @psalm-mutation-free
-     */
-    /**
      * Whether both unions hold the same atomics: exactly `getId() === getId()` (a union's id is the sorted set of
      * its atomics' ids), without building or comparing the union strings. Each atomic's id is memoized.
      *
@@ -1827,18 +1904,6 @@ trait UnionTrait
     ): bool {
         if ($other_type === $this) {
             return true;
-        }
-
-        $memo = $this->memo;
-        $other_memo = $other_type->memo;
-        if ($memo !== null && $other_memo !== null) {
-            if ($other_memo->inexact_id !== null && $memo->inexact_id !== null && $other_memo->inexact_id !== $memo->inexact_id) {
-                return false;
-            }
-
-            if ($other_memo->id !== null && $memo->id !== null && $other_memo->id !== $memo->id) {
-                return false;
-            }
         }
 
         if ($this->possibly_undefined !== $other_type->possibly_undefined && $ensure_possibly_undefined_equality) {
