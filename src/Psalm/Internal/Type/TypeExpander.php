@@ -71,13 +71,18 @@ final class TypeExpander
         bool $expand_templates = false,
         bool $throw_on_unresolvable_constant = false,
     ): Union {
+        // pzoom's `union_needs_expansion` gate: nothing to expand, the expansion below would return the input
+        $traits = $return_type->getExpansionTraits();
+        if (($traits & ExpansionTraitsCollector::INERT) !== 0 && self::isReturnedAsItIs($return_type)) {
+            return $return_type;
+        }
+
         // during analysis an expansion is memoized on the union it expands (types are immutable, the storages it
         // reads no longer change): Psalm expanded the same declared types at every use (70% of the expansions of
         // an analysis repeat one already made), pzoom resolves them in the storages once
         $epoch = $codebase->classlikes->expansion_epoch;
         $key = null;
         if ($epoch !== 0) {
-            $traits = $return_type->getExpansionTraits();
             if (($traits & ExpansionTraitsCollector::UNMEMOIZABLE) === 0) {
                 $key = ($evaluate_class_constants ? '1' : '0') . ($evaluate_conditional_types ? '1' : '0')
                     . ($expand_generic ? '1' : '0') . ($expand_templates ? '1' : '0')
@@ -181,17 +186,7 @@ final class TypeExpander
         if (!$changed && self::isCombineNormal($new_return_type_parts)) {
             // the input itself when the fresh union below would be identical to it -- it carries none of the flags
             // that union drops, and no null is to be moved last: no new union, and its memoized id is kept
-            if (!$return_type->from_calculation
-                && $return_type->initialized_class === null
-                && !$return_type->checked
-                && !$return_type->failed_reconciliation
-                && !$return_type->ignore_isset
-                && !$return_type->from_template_default
-                && !$return_type->reference_free
-                && $return_type->allow_mutations
-                && $return_type->has_mutations
-                && !$return_type->propagate_parent_nodes
-                && !$return_type->different
+            if (self::isReturnedAsItIs($return_type)
                 && !(count($new_return_type_parts) === 2 && $new_return_type_parts[0] instanceof TNull)
             ) {
                 return $return_type;
@@ -239,6 +234,27 @@ final class TypeExpander
                 'parent_nodes' => $return_type->parent_nodes,
             ],
         );
+    }
+
+    /**
+     * Whether an expansion that changes no atomic returns the union itself: it carries none of the flags a fresh
+     * union for the expansion drops.
+     *
+     * @psalm-mutation-free
+     */
+    private static function isReturnedAsItIs(Union $type): bool
+    {
+        return !$type->from_calculation
+            && $type->initialized_class === null
+            && !$type->checked
+            && !$type->failed_reconciliation
+            && !$type->ignore_isset
+            && !$type->from_template_default
+            && !$type->reference_free
+            && $type->allow_mutations
+            && $type->has_mutations
+            && !$type->propagate_parent_nodes
+            && !$type->different;
     }
 
     /**

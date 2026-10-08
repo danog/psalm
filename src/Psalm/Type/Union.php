@@ -19,8 +19,12 @@ use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
+use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TNever;
+use Psalm\Type\Atomic\TNull;
 
 use function assert;
+use function count;
 use function array_key_exists;
 use function get_object_vars;
 
@@ -623,10 +627,36 @@ final class Union implements TypeNode
         if ($this->expansion_traits === -1) {
             $collector = new ExpansionTraitsCollector();
             $collector->traverseArray($this->types);
+            $traits = $collector->getTraits();
+            if (($traits & ExpansionTraitsCollector::EXPANDABLE) === 0 && $this->isExpansionNormal()) {
+                $traits |= ExpansionTraitsCollector::INERT;
+            }
             /** @psalm-suppress ImpurePropertyAssignment memo of an immutable value */
-            $this->expansion_traits = $collector->getTraits();
+            $this->expansion_traits = $traits;
         }
         return $this->expansion_traits;
+    }
+
+    /**
+     * Inert atomics (ExpansionTraitsCollector::isInertLeaf()) the expansion would not recombine: one that is not
+     * null, mixed or never, or such an atomic followed by null (TypeExpander::isCombineNormal(), in the order
+     * the combiner lists them).
+     *
+     * @psalm-mutation-free
+     */
+    private function isExpansionNormal(): bool
+    {
+        $types = $this->types;
+        $n = count($types);
+        if ($n === 2) {
+            if (!$types[1] instanceof TNull) {
+                return false;
+            }
+        } elseif ($n !== 1) {
+            return false;
+        }
+        $first = $types[0];
+        return !$first instanceof TNull && !$first instanceof TMixed && !$first instanceof TNever;
     }
 
     /**
