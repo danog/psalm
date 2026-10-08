@@ -880,6 +880,27 @@ final class ClassLikes
     }
 
     /**
+     * The interned id of the lowercase form of $name when $name itself (no alias) names an existing class-like,
+     * else 0.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function getExistingId(string $name): int
+    {
+        $id = $this->existing_by_spelling[$name] ?? null;
+        if ($id !== null) {
+            return $id;
+        }
+        $id = Interner::intern(strtolower($name));
+        if ($this->existing_classlikes_ids[$id] ?? false) {
+            /** @psalm-suppress ImpurePropertyAssignment cache */
+            $this->existing_by_spelling[$name] = $id;
+            return $id;
+        }
+        return 0;
+    }
+
+    /**
      * strtolower($this->getUnAliasedName($name))
      *
      * @return lowercase-string

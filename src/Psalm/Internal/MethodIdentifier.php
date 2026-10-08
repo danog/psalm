@@ -34,6 +34,15 @@ final class MethodIdentifier implements Stringable
     public ?string $string_memo = null;
 
     /**
+     * Memo of the interned id of the lowercase class name when that names an existing class-like (pzoom's
+     * `MethodIdentifier(StrId, StrId)`): storage lookups through the identifier are then int lookups. 0 until
+     * known. Ids are per process, so it is not serialized (see __serialize()).
+     *
+     * @internal
+     */
+    public int $class_id = 0;
+
+    /**
      * @param lowercase-string $method_name
      * @psalm-mutation-free
      */
@@ -62,6 +71,19 @@ final class MethodIdentifier implements Stringable
         $method_id = ltrim($method_id, '\\');
         $method_id_parts = explode('::', $method_id);
         return new self($method_id_parts[0], strtolower($method_id_parts[1]));
+    }
+
+    /**
+     * @return array{fq_class_name: string, method_name: lowercase-string, string_memo: non-empty-string|null}
+     * @psalm-mutation-free
+     */
+    public function __serialize(): array
+    {
+        return [
+            'fq_class_name' => $this->fq_class_name,
+            'method_name' => $this->method_name,
+            'string_memo' => $this->string_memo,
+        ];
     }
 
     /** @return non-empty-string */
