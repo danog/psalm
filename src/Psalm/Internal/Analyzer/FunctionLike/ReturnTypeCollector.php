@@ -32,6 +32,8 @@ final class ReturnTypeCollector
      *
      * @param  list<PhpParser\Node>     $stmts
      * @param  list<Union>               $yield_types
+     * @param  bool                      $has_yield whether the body yields (FunctionLikeStorage::has_yield, found
+     *                                              by the scan): yield types are only collected then
      * @return list<Union>               a list of return types
      * @psalm-suppress ComplexMethod to be refactored
      */
@@ -41,6 +43,7 @@ final class ReturnTypeCollector
         array $stmts,
         array &$yield_types,
         bool $collapse_types = false,
+        bool $has_yield = true,
     ): array {
         $return_types = [];
 
@@ -51,7 +54,9 @@ final class ReturnTypeCollector
                 } elseif ($stmt_type = $nodes->getType($stmt)) {
                     $return_types[] = $stmt_type;
 
-                    $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->expr, $nodes));
+                    if ($has_yield) {
+                        $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->expr, $nodes));
+                    }
                 } elseif ($stmt->expr instanceof PhpParser\Node\Scalar\String_) {
                     $return_types[] = Type::getString();
                 } elseif ($stmt->expr instanceof PhpParser\Node\Scalar\Int_) {
@@ -105,11 +110,15 @@ final class ReturnTypeCollector
                             $nodes,
                             [$stmt->expr->expr],
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }
 
-                $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->expr, $nodes));
+                if ($has_yield) {
+                    $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->expr, $nodes));
+                }
             } elseif ($stmt instanceof PhpParser\Node\Stmt\If_) {
                 $return_types = [
                     ...$return_types,
@@ -118,6 +127,8 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
 
@@ -129,6 +140,8 @@ final class ReturnTypeCollector
                             $nodes,
                             $elseif->stmts,
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }
@@ -141,6 +154,8 @@ final class ReturnTypeCollector
                             $nodes,
                             $stmt->else->stmts,
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }
@@ -152,6 +167,8 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
 
@@ -163,6 +180,8 @@ final class ReturnTypeCollector
                             $nodes,
                             $catch->stmts,
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }
@@ -175,6 +194,8 @@ final class ReturnTypeCollector
                             $nodes,
                             $stmt->finally->stmts,
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }
@@ -186,6 +207,8 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
             } elseif ($stmt instanceof PhpParser\Node\Stmt\Foreach_) {
@@ -196,10 +219,14 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
             } elseif ($stmt instanceof PhpParser\Node\Stmt\While_) {
-                $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->cond, $nodes));
+                if ($has_yield) {
+                    $yield_types = array_merge($yield_types, self::getYieldTypeFromExpression($stmt->cond, $nodes));
+                }
                 $return_types = [
                     ...$return_types,
                     ...self::getReturnTypes(
@@ -207,6 +234,8 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
             } elseif ($stmt instanceof PhpParser\Node\Stmt\Do_) {
@@ -217,6 +246,8 @@ final class ReturnTypeCollector
                         $nodes,
                         $stmt->stmts,
                         $yield_types,
+                        false,
+                        $has_yield,
                     ),
                 ];
             } elseif ($stmt instanceof PhpParser\Node\Stmt\Switch_) {
@@ -228,6 +259,8 @@ final class ReturnTypeCollector
                             $nodes,
                             $case->stmts,
                             $yield_types,
+                            false,
+                            $has_yield,
                         ),
                     ];
                 }

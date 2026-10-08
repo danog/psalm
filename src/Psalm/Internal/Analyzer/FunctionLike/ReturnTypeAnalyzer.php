@@ -146,6 +146,7 @@ final class ReturnTypeAnalyzer
             $function_stmts,
             $inferred_yield_types,
             true,
+            $function_like_analyzer->getStorage()->has_yield,
         );
 
         if (!$inferred_return_type_parts) {
