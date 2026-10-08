@@ -463,7 +463,7 @@ final class MutableUnion implements TypeNode
      */
     public function freeze(): Union
     {
-        return new Union($this->getAtomicTypes(), $this->getConstructionProperties());
+        return new Union($this->types, $this->getConstructionProperties(), true);
     }
 
     /**

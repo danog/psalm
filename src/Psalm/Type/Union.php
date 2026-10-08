@@ -560,7 +560,7 @@ final class Union implements TypeNode
     public function getBuilder(): MutableUnion
     {
         /** @psalm-suppress InvalidArgument It's actually filtered internally */
-        return new MutableUnion($this->getAtomicTypes(), $this->getConstructionProperties());
+        return new MutableUnion($this->types, $this->getConstructionProperties(), true);
     }
 
     /**
