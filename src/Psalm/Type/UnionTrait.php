@@ -19,7 +19,6 @@ use Psalm\Internal\TypeVisitor\TypeChecker;
 use Psalm\Internal\TypeVisitor\TypeScanner;
 use Psalm\StatementsSource;
 use Psalm\Storage\FileStorage;
-use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
@@ -194,7 +193,6 @@ trait UnionTrait
             }
         }
         $this->checked = false;
-        $this->memo = null;
 
         $this->types = $keys_unique ? $types : self::listOfTypes($types);
 
@@ -571,19 +569,13 @@ trait UnionTrait
     }
 
     /**
+     * The id, rendered on demand (pzoom's `TUnion::get_id`: for display and string-keyed lookups; the analysis
+     * compares unions structurally). Each atomic's id is memoized.
+     *
      * @psalm-mutation-free
      */
     public function getId(bool $exact = true): string
     {
-        $memo = $this->memo;
-        if ($memo !== null) {
-            if ($exact && $memo->id !== null) {
-                return $memo->id;
-            } elseif (!$exact && $memo->inexact_id !== null) {
-                return $memo->inexact_id;
-            }
-        }
-
         $types = [];
         foreach ($this->types as $type) {
             $types[] = $type->getId($exact);
@@ -599,19 +591,7 @@ trait UnionTrait
             }
         }
 
-        $id = implode('|', $types);
-
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        $memo = $this->memo ??= new IdMemo();
-        if ($exact) {
-            /** @psalm-suppress ImpurePropertyAssignment Cache */
-            $memo->id = $id;
-        } else {
-            /** @psalm-suppress ImpurePropertyAssignment Cache */
-            $memo->inexact_id = $id;
-        }
-
-        return $id;
+        return implode('|', $types);
     }
 
     /**
@@ -1889,9 +1869,6 @@ trait UnionTrait
     }
 
     /**
-     * @psalm-mutation-free
-     */
-    /**
      * Whether both unions hold the same atomics: exactly `getId() === getId()` (a union's id is the sorted set of
      * its atomics' ids), without building or comparing the union strings. Each atomic's id is memoized.
      *
@@ -1933,18 +1910,6 @@ trait UnionTrait
     ): bool {
         if ($other_type === $this) {
             return true;
-        }
-
-        $memo = $this->memo;
-        $other_memo = $other_type->memo;
-        if ($memo !== null && $other_memo !== null) {
-            if ($other_memo->inexact_id !== null && $memo->inexact_id !== null && $other_memo->inexact_id !== $memo->inexact_id) {
-                return false;
-            }
-
-            if ($other_memo->id !== null && $memo->id !== null && $other_memo->id !== $memo->id) {
-                return false;
-            }
         }
 
         if ($this->possibly_undefined !== $other_type->possibly_undefined && $ensure_possibly_undefined_equality) {

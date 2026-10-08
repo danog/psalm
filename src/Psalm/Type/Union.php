@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use Override;
-use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Atomic\TIterable;
@@ -171,9 +170,6 @@ final class Union implements TypeNode
     public bool $allow_mutations = true;
 
     public bool $has_mutations = true;
-
-    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
-    private ?IdMemo $memo = null;
 
     /**
      * ExpansionTraitsCollector traits of this union (-1: not computed yet); memoized with the expansions below

@@ -9,7 +9,6 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Type;
-use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\Scalar;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
@@ -144,9 +143,6 @@ final class MutableUnion implements TypeNode
 
     public bool $has_mutations = true;
 
-    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
-    private ?IdMemo $memo = null;
-
     /**
      * @var array<int, DataFlowNode>
      */
@@ -174,7 +170,6 @@ final class MutableUnion implements TypeNode
             $from_docblock = $from_docblock || $type->from_docblock;
         }
         $this->from_docblock = $from_docblock;
-        $this->bustCache();
 
         return $this;
     }
@@ -274,8 +269,6 @@ final class MutableUnion implements TypeNode
             $this->explicit_never = true;
         }
 
-        $this->bustCache();
-
         return $this;
     }
 
@@ -289,8 +282,6 @@ final class MutableUnion implements TypeNode
     public function removeType(string $type_string): bool
     {
         if ($this->drop($type_string)) {
-            $this->bustCache();
-
             return true;
         }
 
@@ -312,7 +303,6 @@ final class MutableUnion implements TypeNode
             if (count($kept) !== count($this->types)) {
                 /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
                 $this->types = $kept;
-                $this->bustCache();
             }
         } elseif ($type_string === 'int' && $this->countLiteralInts() > 0) {
             $kept = [];
@@ -323,7 +313,6 @@ final class MutableUnion implements TypeNode
             }
             /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
             $this->types = $kept;
-            $this->bustCache();
         } elseif ($type_string === 'float' && $this->countLiteralFloats() > 0) {
             $kept = [];
             foreach ($this->types as $existing) {
@@ -333,7 +322,6 @@ final class MutableUnion implements TypeNode
             }
             /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
             $this->types = $kept;
-            $this->bustCache();
         }
 
         return false;
@@ -346,14 +334,6 @@ final class MutableUnion implements TypeNode
         (new FromDocblockSetter($fromDocblock))->traverseArray($this->types);
 
         return $this;
-    }
-
-    /**
-     * @psalm-external-mutation-free
-     */
-    public function bustCache(): void
-    {
-        $this->memo = null;
     }
 
     /**
@@ -444,8 +424,6 @@ final class MutableUnion implements TypeNode
                 $this->put(new TMixed());
             }
         }
-
-        $this->bustCache();
 
         return $this;
     }
