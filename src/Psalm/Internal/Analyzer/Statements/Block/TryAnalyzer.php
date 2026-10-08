@@ -205,7 +205,7 @@ final class TryAnalyzer
                         new CodeLocation($statements_analyzer->getSource(), $catch_type, $context->include_location),
                         $context,
                         $statements_analyzer->getSuppressedIssues(),
-                        new ClassLikeNameOptions(true, context: $context),
+                        new ClassLikeNameOptions(true, context: $context, spelled: true),
                     );
                 }
 

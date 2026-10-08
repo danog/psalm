@@ -426,6 +426,28 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     }
                 }
             }
+
+            // pzoom resolves method names case-sensitively: an abstract method of an ancestor class stays
+            // unimplemented when its name is implemented only with another casing
+            $unimplemented = self::findAbstractMethodImplementedWithOtherCasing($codebase, $storage);
+            if ($unimplemented !== null
+                && IssueBuffer::accepts(
+                    new UnimplementedAbstractMethod(
+                        'Method ' . ($unimplemented[1]->cased_name ?? $unimplemented[0]->method_name)
+                            . ' is not defined on class ' . $this->fq_class_name
+                            . ', defined abstract in ' . $unimplemented[0]->fq_class_name,
+                        new CodeLocation(
+                            $this,
+                            $class->name ?? $class,
+                            $class_context->include_location,
+                            true,
+                        ),
+                    ),
+                    $storage->suppressed_issues + $this->getSuppressedIssues(),
+                )
+            ) {
+                return;
+            }
         }
 
         AttributesAnalyzer::analyze(
@@ -2110,6 +2132,52 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
     }
 
     /**
+     * An abstract method of an ancestor class that a concrete class implements only with another casing of its
+     * name: with case-sensitive method names (pzoom) the nearest declaration spelled as the abstract one is still
+     * that abstract method. As in pzoom, a trait's abstract method is not checked this way, and interfaces are
+     * checked by checkImplementedInterfaces().
+     *
+     * @return array{MethodIdentifier, MethodStorage}|null
+     */
+    private static function findAbstractMethodImplementedWithOtherCasing(
+        Codebase $codebase,
+        ClassLikeStorage $storage,
+    ): ?array {
+        foreach ($storage->parent_classes as $parent_class) {
+            $parent_storage = $codebase->classlike_storage_provider->getOrNull($parent_class);
+            if ($parent_storage === null || !$parent_storage->abstract) {
+                continue;
+            }
+            foreach ($parent_storage->methods as $method_name_lc => $abstract_storage) {
+                $abstract_name = $abstract_storage->cased_name;
+                if (!$abstract_storage->abstract || $abstract_name === null) {
+                    continue;
+                }
+                $declaring_method_id = $storage->declaring_method_ids[$method_name_lc] ?? null;
+                if ($declaring_method_id === null || $declaring_method_id->fq_class_name === $parent_storage->name) {
+                    // unimplemented whatever the casing: reported as such
+                    continue;
+                }
+                // the nearest declaration spelled as the abstract method decides
+                $implemented = false;
+                foreach ([$declaring_method_id, ...array_values($storage->overridden_method_ids[$method_name_lc] ?? [])] as $method_id) {
+                    $declaration = $codebase->methods->getStorageOrNull($method_id);
+                    if ($declaration === null || $declaration->cased_name !== $abstract_name) {
+                        continue;
+                    }
+                    $implemented = !$declaration->abstract;
+                    break;
+                }
+                if (!$implemented) {
+                    return [new MethodIdentifier($parent_storage->name, $method_name_lc), $abstract_storage];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param PhpParser\Node\Stmt\Class_|PhpParser\Node\Stmt\Enum_ $class
      */
     private function checkImplementedInterfaces(
@@ -2312,6 +2380,17 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $implementer_classlike_storage = ($classlike_storage_provider->getOrNull(
                             $implementer_fq_class_name,
                         ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($implementer_fq_class_name));
+                    }
+
+                    // pzoom resolves method names case-sensitively: a method declared with another casing
+                    // does not implement the interface's
+                    if ($implementer_method_storage !== null
+                        && $implementer_method_storage !== $interface_method_storage
+                        && $implementer_method_storage->cased_name !== null
+                        && $interface_method_storage->cased_name !== null
+                        && $implementer_method_storage->cased_name !== $interface_method_storage->cased_name
+                    ) {
+                        $implementer_method_storage = null;
                     }
 
                     if ($storage->is_enum) {

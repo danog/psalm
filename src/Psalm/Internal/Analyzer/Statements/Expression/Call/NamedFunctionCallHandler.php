@@ -68,6 +68,44 @@ use const EXTR_SKIP;
 final class NamedFunctionCallHandler
 {
     /**
+     * ForbiddenCode for a call of an unsafe or a configured forbidden function; true for a configured one.
+     * pzoom reports it by the name called, also for a call that is undefined for its casing.
+     *
+     * @param lowercase-string $function_id
+     */
+    public static function reportForbiddenFunction(
+        StatementsAnalyzer $statements_analyzer,
+        string $function_id,
+        CodeLocation $code_location,
+    ): bool {
+        if ($function_id === 'var_dump'
+            || $function_id === 'shell_exec'
+        ) {
+            IssueBuffer::maybeAdd(
+                new ForbiddenCode(
+                    'Unsafe ' . $function_id,
+                    $code_location,
+                ),
+                $statements_analyzer->getSuppressedIssues(),
+            );
+        }
+
+        if (isset($statements_analyzer->getCodebase()->config->forbidden_functions[$function_id])) {
+            IssueBuffer::maybeAdd(
+                new ForbiddenCode(
+                    'You have forbidden the use of ' . $function_id,
+                    $code_location,
+                ),
+                $statements_analyzer->getSuppressedIssues(),
+            );
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * @param lowercase-string $function_id
      */
     public static function handle(
@@ -437,27 +475,11 @@ final class NamedFunctionCallHandler
             return;
         }
 
-        if ($function_id === 'var_dump'
-            || $function_id === 'shell_exec'
-        ) {
-            IssueBuffer::maybeAdd(
-                new ForbiddenCode(
-                    'Unsafe ' . $function_id,
-                    new CodeLocation($statements_analyzer->getSource(), $stmt),
-                ),
-                $statements_analyzer->getSuppressedIssues(),
-            );
-        }
-
-        if (isset($codebase->config->forbidden_functions[$function_id])) {
-            IssueBuffer::maybeAdd(
-                new ForbiddenCode(
-                    'You have forbidden the use of ' . $function_id,
-                    new CodeLocation($statements_analyzer->getSource(), $stmt),
-                ),
-                $statements_analyzer->getSuppressedIssues(),
-            );
-
+        if (self::reportForbiddenFunction(
+            $statements_analyzer,
+            $function_id,
+            new CodeLocation($statements_analyzer->getSource(), $stmt),
+        )) {
             return;
         }
 

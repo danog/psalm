@@ -2513,6 +2513,23 @@ final class FunctionCallTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            // pzoom resolves function names case-sensitively, natives included
+            'nativeFunctionWithOtherCasing' => [
+                'code' => '<?php
+                    echo strLEN("abc");',
+                'error_message' => 'UndefinedFunction - src/somefile.php:2:26 - Function strLEN does not exist (incorrect casing of strlen',
+            ],
+            'qualifiedNativeFunctionWithOtherCasing' => [
+                'code' => '<?php
+                    namespace Ns;
+                    echo \\STRTOUPPER("abc");',
+                'error_message' => 'UndefinedFunction - src/somefile.php:3:26 - Function STRTOUPPER does not exist (incorrect casing of strtoupper',
+            ],
+            'mixedCaseNativeFunctionWithOtherCasing' => [
+                'code' => '<?php
+                    $tz = intltz_getgmt();',
+                'error_message' => 'UndefinedFunction - src/somefile.php:2:27 - Function intltz_getgmt does not exist (incorrect casing of intltz_getGMT',
+            ],
             'invalidScalarArgument' => [
                 'code' => '<?php
                     function fooFoo(int $a): void {}

@@ -823,6 +823,12 @@ final class InterfaceTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            // pzoom resolves method names case-sensitively: an implementation spelled otherwise is another method
+            'interfaceMethodImplementedWithOtherCasing' => [
+                'code' => '<?php
+                    final class Foo implements Countable { public function Count(): int { return 1; } }',
+                'error_message' => 'UnimplementedInterfaceMethod',
+            ],
             'invalidInterface' => [
                 'code' => '<?php
                     class C2 implements A { }',
