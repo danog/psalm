@@ -1226,12 +1226,21 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         $property_id = $fq_class_name . '::$' . $prop_name;
+        // the class part of $property_id, for the lookups by class and name
+        $property_class = $fq_class_name;
 
         $has_magic_setter = false;
 
         $set_method_id = new MethodIdentifier($fq_class_name, '__set');
 
-        if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
+        if ((!$codebase->properties->propertyExistsOf(
+            $codebase,
+            $property_class,
+            $prop_name,
+            false,
+            $statements_analyzer,
+            $context,
+        )
                 || ($lhs_var_id !== '$this'
                     && $fq_class_name !== $context->self
                     && ClassLikeAnalyzer::checkPropertyVisibility(
@@ -1346,14 +1355,17 @@ final class InstancePropertyAssignmentAnalyzer
             $self_property_id = $context->self . '::$' . $prop_name;
 
             if ($self_property_id !== $property_id
-                && $codebase->propertyExists(
-                    $self_property_id,
+                && $codebase->properties->propertyExistsOf(
+                    $codebase,
+                    $context->self,
+                    $prop_name,
                     false,
                     $statements_analyzer,
                     $context,
                 )
             ) {
                 $property_id = $self_property_id;
+                $property_class = $context->self;
             }
         }
 
@@ -1373,16 +1385,18 @@ final class InstancePropertyAssignmentAnalyzer
             );
         }
 
-        if (!$codebase->propertyExists(
-            $property_id,
+        if (!$codebase->properties->propertyExistsOf(
+            $codebase,
+            $property_class,
+            $prop_name,
             false,
             $statements_analyzer,
             $context,
             new CodeLocation($statements_analyzer->getSource(), $stmt),
         )
         // when property existence is asserted by a plugin it doesn't necessarily has storage
-        || ($codebase->properties->hasStorage($property_id)
-            && $codebase->properties->getStorage($property_id)->is_static
+        || ($codebase->properties->hasStorageOf($property_class, $prop_name)
+            && $codebase->properties->getStorageOf($property_class, $prop_name)->is_static
         )
         ) {
             if ($stmt->var instanceof PhpParser\Node\Expr\Variable && $stmt->var->name === 'this') {
@@ -1463,8 +1477,9 @@ final class InstancePropertyAssignmentAnalyzer
             }
         }
 
-        $declaring_property_class = (string)$codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = (string)$codebase->properties->getDeclaringClassForPropertyOf(
+            $property_class,
+            $prop_name,
             false,
         );
 
@@ -1521,8 +1536,9 @@ final class InstancePropertyAssignmentAnalyzer
             }
         }
 
-        $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+        $class_property_type = $codebase->properties->getPropertyTypeOf(
+            $property_class,
+            $prop_name,
             true,
             $statements_analyzer,
             $context,
@@ -1672,8 +1688,9 @@ final class InstancePropertyAssignmentAnalyzer
         string $property_name,
         ClassLikeStorage $storage,
     ): ?Union {
-        $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name . '::$' . $property_name,
+        $property_class_name = $codebase->properties->getDeclaringClassForPropertyOf(
+            $fq_class_name,
+            $property_name,
             true,
         );
 

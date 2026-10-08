@@ -448,8 +448,9 @@ final class InstancePropertyFetchAnalyzer
                     $context->vars_in_scope[$var_id] = $stmt_type;
                     $statements_analyzer->node_data->setType($stmt, $stmt_type);
 
-                    $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-                        $property_id,
+                    $declaring_property_class = $codebase->properties->getDeclaringClassForPropertyOf(
+                        $lhs_type_part->value,
+                        $stmt->name->name,
                         true,
                         $statements_analyzer,
                     );
@@ -463,8 +464,10 @@ final class InstancePropertyFetchAnalyzer
                         );
                     }
 
-                    $codebase->propertyExists(
-                        $property_id,
+                    $codebase->properties->propertyExistsOf(
+                        $codebase,
+                        $lhs_type_part->value,
+                        $stmt->name->name,
                         true,
                         $statements_analyzer,
                         $context,

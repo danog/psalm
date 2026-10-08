@@ -54,10 +54,32 @@ final class Properties
         ?Context $context = null,
         ?CodeLocation $code_location = null,
     ): bool {
-        // remove leading backslash if it exists
-        $property_id = ltrim($property_id, '\\');
+        [$fq_class_name, $property_name] = explode('::$', ltrim($property_id, '\\'));
 
-        [$fq_class_name, $property_name] = explode('::$', $property_id);
+        return $this->propertyExistsOf(
+            $codebase,
+            $fq_class_name,
+            $property_name,
+            $read_mode,
+            $source,
+            $context,
+            $code_location,
+        );
+    }
+
+    /**
+     * propertyExists() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     */
+    public function propertyExistsOf(
+        Codebase $codebase,
+        string $fq_class_name,
+        string $property_name,
+        bool $read_mode,
+        ?StatementsSource $source = null,
+        ?Context $context = null,
+        ?CodeLocation $code_location = null,
+    ): bool {
         $fq_class_name_lc = strtolower($fq_class_name);
 
         if ($this->property_existence_provider->has($fq_class_name)) {
@@ -122,6 +144,20 @@ final class Properties
     ): ?string {
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
+        return $this->getDeclaringClassForPropertyOf($fq_class_name, $property_name, $read_mode, $source);
+    }
+
+    /**
+     * getDeclaringClassForProperty() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     */
+    public function getDeclaringClassForPropertyOf(
+        string $fq_class_name,
+        string $property_name,
+        bool $read_mode,
+        ?StatementsSource $source = null,
+    ): ?string {
+
         if ($this->property_existence_provider->has($fq_class_name)) {
             if ($this->property_existence_provider->doesPropertyExist(
                 $fq_class_name,
@@ -153,6 +189,20 @@ final class Properties
     ): ?string {
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
+        return $this->getAppearingClassForPropertyOf($fq_class_name, $property_name, $read_mode, $source);
+    }
+
+    /**
+     * getAppearingClassForProperty() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     */
+    public function getAppearingClassForPropertyOf(
+        string $fq_class_name,
+        string $property_name,
+        bool $read_mode,
+        ?StatementsSource $source = null,
+    ): ?string {
+
         if ($this->property_existence_provider->has($fq_class_name)) {
             if ($this->property_existence_provider->doesPropertyExist(
                 $fq_class_name,
@@ -181,10 +231,19 @@ final class Properties
      */
     public function getStorage(string $property_id): PropertyStorage
     {
-        // remove leading backslash if it exists
-        $property_id = ltrim($property_id, '\\');
+        [$fq_class_name, $property_name] = explode('::$', ltrim($property_id, '\\'));
 
-        [$fq_class_name, $property_name] = explode('::$', $property_id);
+        return $this->getStorageOf($fq_class_name, $property_name);
+    }
+
+    /**
+     * getStorage() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     *
+     * @psalm-mutation-free
+     */
+    public function getStorageOf(string $fq_class_name, string $property_name): PropertyStorage
+    {
 
         $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
@@ -202,7 +261,7 @@ final class Properties
             }
         }
 
-        throw new UnexpectedValueException('Property ' . $property_id . ' should exist');
+        throw new UnexpectedValueException('Property ' . $fq_class_name . '::$' . $property_name . ' should exist');
     }
 
     /**
@@ -210,10 +269,19 @@ final class Properties
      */
     public function hasStorage(string $property_id): bool
     {
-        // remove leading backslash if it exists
-        $property_id = ltrim($property_id, '\\');
+        [$fq_class_name, $property_name] = explode('::$', ltrim($property_id, '\\'));
 
-        [$fq_class_name, $property_name] = explode('::$', $property_id);
+        return $this->hasStorageOf($fq_class_name, $property_name);
+    }
+
+    /**
+     * hasStorage() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     *
+     * @psalm-mutation-free
+     */
+    public function hasStorageOf(string $fq_class_name, string $property_name): bool
+    {
 
         $class_storage = ($this->classlike_storage_provider->getOrNull($fq_class_name) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
 
@@ -232,10 +300,22 @@ final class Properties
         ?StatementsSource $source = null,
         ?Context $context = null,
     ): ?Union {
-        // remove leading backslash if it exists
-        $property_id = ltrim($property_id, '\\');
+        [$fq_class_name, $property_name] = explode('::$', ltrim($property_id, '\\'));
 
-        [$fq_class_name, $property_name] = explode('::$', $property_id);
+        return $this->getPropertyTypeOf($fq_class_name, $property_name, $property_set, $source, $context);
+    }
+
+    /**
+     * getPropertyType() of `$fq_class_name::$$property_name`
+     * (pzoom identifies a member by its class and name, not by a joined string to split again)
+     */
+    public function getPropertyTypeOf(
+        string $fq_class_name,
+        string $property_name,
+        bool $property_set,
+        ?StatementsSource $source = null,
+        ?Context $context = null,
+    ): ?Union {
 
         if ($this->property_type_provider->has($fq_class_name)) {
             $property_type = $this->property_type_provider->getPropertyType(
@@ -260,10 +340,10 @@ final class Properties
             if (isset($declaring_class_storage->properties[$property_name])) {
                 $storage = $declaring_class_storage->properties[$property_name];
             } else {
-                throw new UnexpectedValueException('Property ' . $property_id . ' should exist');
+                throw new UnexpectedValueException('Property ' . $fq_class_name . '::$' . $property_name . ' should exist');
             }
         } else {
-            throw new UnexpectedValueException('Property ' . $property_id . ' should exist');
+            throw new UnexpectedValueException('Property ' . $fq_class_name . '::$' . $property_name . ' should exist');
         }
 
         if ($storage->type) {

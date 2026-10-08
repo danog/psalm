@@ -213,6 +213,8 @@ final class AtomicPropertyFetchAnalyzer
         $config = $statements_analyzer->getProjectAnalyzer()->getConfig();
 
         $property_id = $fq_class_name . '::$' . $prop_name;
+        // the class part of $property_id, for the lookups by class and name
+        $property_class = $fq_class_name;
 
         if ($class_storage->is_enum || in_array('UnitEnum', $codebase->getParentInterfaces($fq_class_name))) {
             if ($prop_name === 'value' && !$class_storage->is_enum) {
@@ -253,8 +255,10 @@ final class AtomicPropertyFetchAnalyzer
             return;
         }
 
-        $naive_property_exists = $codebase->propertyExists(
-            $property_id,
+        $naive_property_exists = $codebase->properties->propertyExistsOf(
+            $codebase,
+            $property_class,
+            $prop_name,
             !$in_assignment,
             $statements_analyzer,
             $context,
@@ -295,6 +299,7 @@ final class AtomicPropertyFetchAnalyzer
                         }
 
                         $property_id = $new_property_id;
+                        $property_class = $mixin->value;
                     }
                 }
             } elseif ($intersection_types !== [] && !$class_storage->final) {
@@ -321,8 +326,9 @@ final class AtomicPropertyFetchAnalyzer
             }
         }
 
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = $codebase->properties->getDeclaringClassForPropertyOf(
+            $property_class,
+            $prop_name,
             true,
             $statements_analyzer,
         );
@@ -364,8 +370,10 @@ final class AtomicPropertyFetchAnalyzer
             && $fq_class_name !== $context->self
             && $context->self
             && $codebase->classlikes->classExtends($fq_class_name, $context->self)
-            && $codebase->propertyExists(
-                $context->self . '::$' . $prop_name,
+            && $codebase->properties->propertyExistsOf(
+                $codebase,
+                $context->self,
+                $prop_name,
                 true,
                 $statements_analyzer,
                 $context,
@@ -375,11 +383,12 @@ final class AtomicPropertyFetchAnalyzer
             )
         ) {
             $property_id = $context->self . '::$' . $prop_name;
+            $property_class = $context->self;
         } elseif (!$naive_property_exists
             || (!$is_static_access
                 // when property existence is asserted by a plugin it doesn't necessarily has storage
-                && $codebase->properties->hasStorage($property_id)
-                && $codebase->properties->getStorage($property_id)->is_static
+                && $codebase->properties->hasStorageOf($property_class, $prop_name)
+                && $codebase->properties->getStorageOf($property_class, $prop_name)->is_static
             )
         ) {
             self::handleNonExistentProperty(
@@ -433,8 +442,9 @@ final class AtomicPropertyFetchAnalyzer
         // FIXME: the following line look superfluous, but removing it makes
         // Psalm\Tests\PropertyTypeTest::testValidCode with data set "callInParentContext"
         // fail
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = $codebase->properties->getDeclaringClassForPropertyOf(
+            $property_class,
+            $prop_name,
             true,
             $statements_analyzer,
         );
@@ -530,6 +540,7 @@ final class AtomicPropertyFetchAnalyzer
             $class_storage,
             $declaring_class_storage,
             $property_id,
+            $property_class,
             $fq_class_name,
             $prop_name,
             $lhs_type_part,
@@ -1368,12 +1379,14 @@ final class AtomicPropertyFetchAnalyzer
         ClassLikeStorage $class_storage,
         ClassLikeStorage $declaring_class_storage,
         string $property_id,
+        string $property_class,
         string $fq_class_name,
         string $prop_name,
         TNamedObject $lhs_type_part,
     ): Union {
-        $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+        $class_property_type = $codebase->properties->getPropertyTypeOf(
+            $property_class,
+            $prop_name,
             false,
             $statements_analyzer,
             $context,

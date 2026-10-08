@@ -1029,9 +1029,7 @@ class Reconciler
         string $fq_class_name,
         string $property_name,
     ): ?Union {
-        $property_id = $fq_class_name . '::$' . $property_name;
-
-        if (!$codebase->propertyExists($property_id, true)) {
+        if (!$codebase->properties->propertyExistsOf($codebase, $fq_class_name, $property_name, true)) {
             $declaring_class_storage = ($codebase->classlike_storage_provider->getOrNull(
                 $fq_class_name,
             ) ?? throw \Psalm\Internal\Provider\ClassLikeStorageProvider::missing($fq_class_name));
@@ -1039,8 +1037,9 @@ class Reconciler
             return $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
         }
 
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = $codebase->properties->getDeclaringClassForPropertyOf(
+            $fq_class_name,
+            $property_name,
             true,
         );
 
@@ -1048,8 +1047,9 @@ class Reconciler
             return null;
         }
 
-        $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+        $class_property_type = $codebase->properties->getPropertyTypeOf(
+            $fq_class_name,
+            $property_name,
             false,
             null,
             null,

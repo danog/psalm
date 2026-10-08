@@ -712,12 +712,14 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             }
         }
 
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = $codebase->properties->getDeclaringClassForPropertyOf(
+            $fq_class_name,
+            $property_name,
             true,
         );
-        $appearing_property_class = $codebase->properties->getAppearingClassForProperty(
-            $property_id,
+        $appearing_property_class = $codebase->properties->getAppearingClassForPropertyOf(
+            $fq_class_name,
+            $property_name,
             true,
         );
 
