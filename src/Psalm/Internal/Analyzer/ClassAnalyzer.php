@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\PropertyDocblockManipulator;
 use Psalm\Internal\MethodIdentifier;
@@ -1580,13 +1581,23 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             foreach ($trait_node->stmts as $trait_stmt) {
                 if ($trait_stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
-                    $trait_method_analyzer = $this->analyzeClassMethod(
-                        $trait_stmt,
-                        $storage,
-                        $trait_analyzer,
-                        $class_context,
-                        $global_context,
-                    );
+                    // the body of a trait method is analyzed for each class using the trait, with nodes of its own
+                    // at its locations (see DataFlowNode::$body_suffix): what one class's calls take through it
+                    // doesn't reach the calls of the others
+                    $old_body_suffix = DataFlowNode::$body_suffix;
+                    DataFlowNode::$body_suffix = ($old_body_suffix ?? '') . ' in ' . $storage->name;
+
+                    try {
+                        $trait_method_analyzer = $this->analyzeClassMethod(
+                            $trait_stmt,
+                            $storage,
+                            $trait_analyzer,
+                            $class_context,
+                            $global_context,
+                        );
+                    } finally {
+                        DataFlowNode::$body_suffix = $old_body_suffix;
+                    }
 
                     if ($trait_stmt->name->name === '__construct') {
                         $constructor_analyzer = $trait_method_analyzer;

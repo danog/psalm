@@ -514,6 +514,50 @@ final class TaintTest extends TestCase
                     relay(["wrapper" => ["name" => "safe"]]);
                 ',
             ],
+            'traitMethodReturnOfOneUsingClassDoesNotReachAnother' => [
+                'code' => '<?php
+                    trait Passes {
+                        public function pass(string $s): string {
+                            return $s;
+                        }
+                    }
+
+                    final class A {
+                        use Passes;
+                    }
+
+                    final class B {
+                        use Passes;
+                    }
+
+                    (new A())->pass((string) $_GET["x"]);
+                    echo (new B())->pass("safe");',
+            ],
+            'traitPropertyOfOneUsingClassDoesNotReachAnother' => [
+                'code' => '<?php
+                    trait Stores {
+                        private string $value = "";
+
+                        public function set(string $value): void {
+                            $this->value = $value;
+                        }
+
+                        public function get(): string {
+                            return $this->value;
+                        }
+                    }
+
+                    final class A {
+                        use Stores;
+                    }
+
+                    final class B {
+                        use Stores;
+                    }
+
+                    (new A())->set((string) $_GET["x"]);
+                    echo (new B())->get();',
+            ],
             'traitMethodEscapingWhatItReturns' => [
                 'code' => '<?php
                     trait Escapes {
