@@ -286,9 +286,10 @@ final class MethodCallReturnTypeFetcher
             && ($var_type = $statements_analyzer->node_data->getType($stmt->var))
             && $var_type->parent_nodes
         ) {
-            $generator_node = DataFlowNode::getForAssignment(
+            $generator_node = DataFlowNode::getForAssignmentAt(
                 'generator ' . $cased_method_id,
-                new CodeLocation($statements_analyzer, $stmt->name),
+                $statements_analyzer,
+                $stmt->name,
             );
 
             $graph->addNode($generator_node);
@@ -309,9 +310,10 @@ final class MethodCallReturnTypeFetcher
                 && $sent_type->parent_nodes
                 && strtolower((string) $declaring_method_id) === 'generator::send'
             ) {
-                $sent_node = DataFlowNode::getForAssignment(
+                $sent_node = DataFlowNode::getForAssignmentAt(
                     'sent to the generator',
-                    new CodeLocation($statements_analyzer, $args[0]->value),
+                    $statements_analyzer,
+                    $args[0]->value,
                 );
 
                 $taint_flow_graph->addNode($sent_node);
@@ -394,7 +396,7 @@ final class MethodCallReturnTypeFetcher
                 $parent_nodes = $receiver_type->parent_nodes;
 
                 $var_node = $var_id !== null
-                    ? DataFlowNode::getForAssignment($var_id, new CodeLocation($statements_analyzer, $var_expr))
+                    ? DataFlowNode::getForAssignmentAt($var_id, $statements_analyzer, $var_expr)
                     : null;
 
                 // This call is specialized by its own location, whatever specializations the receiver's nodes

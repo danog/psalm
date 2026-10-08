@@ -6,7 +6,6 @@ namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
 use Override;
 use PhpParser;
-use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\Expression\AssertionFinder;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallAnalyzer;
@@ -270,9 +269,10 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
             return [];
         }
 
-        $element_node = DataFlowNode::getForAssignment(
+        $element_node = DataFlowNode::getForAssignmentAt(
             'array_map elements',
-            new CodeLocation($statements_analyzer, $event->getStmt()),
+            $statements_analyzer,
+            $event->getStmt(),
         );
 
         $graph->addNode($element_node);

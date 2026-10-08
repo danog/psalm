@@ -363,9 +363,7 @@ final class BinaryOpAnalyzer
             $stmt_left_type = $statements_analyzer->node_data->getType($left);
             $stmt_right_type = $statements_analyzer->node_data->getType($right);
 
-            $var_location = new CodeLocation($statements_analyzer, $stmt);
-
-            $new_parent_node = DataFlowNode::getForAssignment($type, $var_location);
+            $new_parent_node = DataFlowNode::getForAssignmentAt($type, $statements_analyzer, $stmt);
             $graph->addNode($new_parent_node);
 
             $result_type = $result_type->setParentNodes([
@@ -507,9 +505,7 @@ final class BinaryOpAnalyzer
         Context $context,
         Union $stmt_type,
     ): Union {
-        $var_location = new CodeLocation($statements_analyzer, $stmt);
-
-        $new_parent_node = DataFlowNode::getForAssignment('concat', $var_location);
+        $new_parent_node = DataFlowNode::getForAssignmentAt('concat', $statements_analyzer, $stmt);
         $graph->addNode($new_parent_node);
 
         $stmt_type = $stmt_type->setParentNodes([

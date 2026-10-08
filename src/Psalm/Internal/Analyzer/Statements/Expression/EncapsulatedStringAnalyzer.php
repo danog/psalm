@@ -7,7 +7,6 @@ namespace Psalm\Internal\Analyzer\Statements\Expression;
 use PhpParser;
 use PhpParser\Node\Expr;
 use PhpParser\Node\InterpolatedStringPart;
-use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\Expression\BinaryOp\ConcatAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
@@ -100,9 +99,7 @@ final class EncapsulatedStringAnalyzer
                 }
 
                 if ($graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
-                    $var_location = new CodeLocation($statements_analyzer, $part);
-
-                    $new_parent_node = DataFlowNode::getForAssignment('concat', $var_location);
+                    $new_parent_node = DataFlowNode::getForAssignmentAt('concat', $statements_analyzer, $part);
                     $graph->addNode($new_parent_node);
 
                     $parent_nodes[$new_parent_node->key] = $new_parent_node;

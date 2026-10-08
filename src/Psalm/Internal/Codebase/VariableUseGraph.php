@@ -81,13 +81,10 @@ final class VariableUseGraph extends DataFlowGraph
 
         $length = 0;
 
-        if ($from->code_location
-            && $to->code_location
-            && $from->code_location->file_path === $to->code_location->file_path
-        ) {
-            $to_line = $to->code_location->raw_line_number;
-            $from_line = $from->code_location->raw_line_number;
-            $length = abs($to_line - $from_line);
+        $from_file_path = $from->getFilePath();
+
+        if ($from_file_path !== null && $from_file_path === $to->getFilePath()) {
+            $length = abs($to->getLine() - $from->getLine());
         }
 
         $this->backward_edges[$to_key][$from_key] = true;
@@ -161,8 +158,10 @@ final class VariableUseGraph extends DataFlowGraph
                 );
 
                 if (!$had_parent_nodes) {
-                    if ($child_node->code_location) {
-                        $origin_locations[] = $child_node->code_location;
+                    $origin_location = $child_node->getCodeLocation();
+
+                    if ($origin_location) {
+                        $origin_locations[] = $origin_location;
                     }
 
                     continue;

@@ -1143,8 +1143,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
             return;
         }
 
-        $use_location = new CodeLocation($this->getSource(), $stmt);
-        $use_node = DataFlowNode::getForAssignment($undefined_var_id, $use_location);
+        $use_node = DataFlowNode::getForAssignmentAt($undefined_var_id, $this->getSource(), $stmt);
 
         $stmt_type = $this->node_data->getType($stmt);
 

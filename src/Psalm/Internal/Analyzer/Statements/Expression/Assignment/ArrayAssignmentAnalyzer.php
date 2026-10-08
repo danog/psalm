@@ -390,11 +390,10 @@ final class ArrayAssignmentAnalyzer
         array $key_values,
     ): void {
         if ($graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
-            $var_location = new CodeLocation($statements_analyzer->getSource(), $expr->var);
-
-            $parent_node = DataFlowNode::getForAssignment(
+            $parent_node = DataFlowNode::getForAssignmentAt(
                 $var_var_id ?: 'assignment',
-                $var_location,
+                $statements_analyzer->getSource(),
+                $expr->var,
             );
 
             $graph->addNode($parent_node);
@@ -912,9 +911,10 @@ final class ArrayAssignmentAnalyzer
         ) {
             // Array is a reference to an external scope, mark it as used
             $statements_analyzer->data_flow_graph->addPath(
-                DataFlowNode::getForAssignment(
+                DataFlowNode::getForAssignmentAt(
                     $root_var_id,
-                    new CodeLocation($statements_analyzer->getSource(), $root_var),
+                    $statements_analyzer->getSource(),
+                    $root_var,
                 ),
                 DataFlowNode::getForVariableUse(),
                 'variable-use',

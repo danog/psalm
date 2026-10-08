@@ -294,7 +294,7 @@ final class YieldAnalyzer
             return;
         }
 
-        $yield_node = DataFlowNode::getForAssignment('yield', new CodeLocation($statements_analyzer, $stmt));
+        $yield_node = DataFlowNode::getForAssignmentAt('yield', $statements_analyzer, $stmt);
 
         $statements_analyzer->taint_flow_graph->addNode($yield_node);
         $statements_analyzer->taint_flow_graph->addPath($sent_node, $yield_node, '=');

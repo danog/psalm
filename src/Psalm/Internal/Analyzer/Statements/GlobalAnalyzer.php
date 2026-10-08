@@ -105,9 +105,10 @@ final class GlobalAnalyzer
                 }
             }
 
-            $assignment_node = DataFlowNode::getForAssignment(
+            $assignment_node = DataFlowNode::getForAssignmentAt(
                 $var_id,
-                new CodeLocation($statements_analyzer, $var),
+                $statements_analyzer,
+                $var,
             );
             $context->vars_in_scope[$var_id] = $context->vars_in_scope[$var_id]->setProperties([
                 'parent_nodes' => [$assignment_node->key => $assignment_node],

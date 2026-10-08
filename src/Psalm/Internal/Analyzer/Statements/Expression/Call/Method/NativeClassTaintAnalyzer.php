@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use PhpParser;
-use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
@@ -72,9 +71,10 @@ final class NativeClassTaintAnalyzer
             return $return_type;
         }
 
-        $output_node = DataFlowNode::getForAssignment(
+        $output_node = DataFlowNode::getForAssignmentAt(
             'call to ' . (string) $method_id,
-            new CodeLocation($statements_analyzer, $stmt->name),
+            $statements_analyzer,
+            $stmt->name,
         );
 
         $graph->addNode($output_node);
@@ -169,9 +169,10 @@ final class NativeClassTaintAnalyzer
     ): void {
         $object_id = ExpressionIdentifier::getExtendedVarId($stmt->var, null, $statements_analyzer);
 
-        $object_node = DataFlowNode::getForAssignment(
+        $object_node = DataFlowNode::getForAssignmentAt(
             $object_id ?? 'object',
-            new CodeLocation($statements_analyzer, $stmt->var),
+            $statements_analyzer,
+            $stmt->var,
         );
 
         $has_input = false;

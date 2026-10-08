@@ -915,19 +915,18 @@ final class AtomicPropertyFetchAnalyzer
                     return;
                 }
 
-                $var_location = new CodeLocation($statements_analyzer->getSource(), $stmt->var);
-                $property_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
-
-                $var_node = DataFlowNode::getForAssignment(
+                $var_node = DataFlowNode::getForAssignmentAt(
                     $var_id,
-                    $var_location,
+                    $statements_analyzer->getSource(),
+                    $stmt->var,
                 );
 
                 $graph->addNode($var_node);
 
-                $property_node = DataFlowNode::getForAssignment(
+                $property_node = DataFlowNode::getForAssignmentAt(
                     $var_property_id ?: $var_id . '->$property',
-                    $property_location,
+                    $statements_analyzer->getSource(),
+                    $stmt,
                 );
 
                 $graph->addNode($property_node);
@@ -995,11 +994,10 @@ final class AtomicPropertyFetchAnalyzer
             $statements_analyzer,
         );
 
-        $property_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
-
-        $localized_property_node = DataFlowNode::getForAssignment(
+        $localized_property_node = DataFlowNode::getForAssignmentAt(
             $var_property_id ?: $property_id,
-            $property_location,
+            $statements_analyzer->getSource(),
+            $stmt,
         );
 
         $data_flow_graph->addNode($localized_property_node);

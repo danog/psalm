@@ -74,7 +74,7 @@ class CodeLocation
 
     public ?int $docblock_start = null;
 
-    private ?int $docblock_start_line_number = null;
+    protected ?int $docblock_start_line_number = null;
 
     protected ?int $docblock_line_number = null;
 
@@ -112,7 +112,7 @@ class CodeLocation
         "\0" . self::class . "\0" . 'snippet' => 'snippet',
         "\0" . self::class . "\0" . 'text' => 'text',
         'docblock_start' => 'docblock_start',
-        "\0" . self::class . "\0" . 'docblock_start_line_number' => 'docblock_start_line_number',
+        "\0*\0" . 'docblock_start_line_number' => 'docblock_start_line_number',
         "\0*\0" . 'docblock_line_number' => 'docblock_line_number',
         "\0" . self::class . "\0" . 'regex_type' => 'regex_type',
         "\0" . self::class . "\0" . 'have_recalculated' => 'have_recalculated',

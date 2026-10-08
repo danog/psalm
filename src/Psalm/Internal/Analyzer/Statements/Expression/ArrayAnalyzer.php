@@ -287,9 +287,10 @@ final class ArrayAnalyzer
 
             if ($statements_analyzer->data_flow_graph) {
                 $array_creation_info->unpacked_nodes[] = [
-                    DataFlowNode::getForAssignment(
+                    DataFlowNode::getForAssignmentAt(
                         'array',
-                        new CodeLocation($statements_analyzer->getSource(), $item->value),
+                        $statements_analyzer->getSource(),
+                        $item->value,
                     ),
                     $unpacked_array_type->parent_nodes,
                 ];
@@ -554,7 +555,7 @@ final class ArrayAnalyzer
             $type = new Union([$array_type]);
 
             foreach ($array_creation_info->unpacked_nodes as [$unpacked_node, $unpacked_parent_nodes]) {
-                $location = $unpacked_node->code_location;
+                $location = $unpacked_node->getCodeLocation();
 
                 if (!$location) {
                     continue;

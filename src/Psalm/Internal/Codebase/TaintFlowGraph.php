@@ -470,13 +470,10 @@ final class TaintFlowGraph extends DataFlowGraph
 
         $length = 0;
 
-        if ($from->code_location
-            && $to->code_location
-            && $from->code_location->file_path === $to->code_location->file_path
-        ) {
-            $to_line = $to->code_location->raw_line_number;
-            $from_line = $from->code_location->raw_line_number;
-            $length = abs($to_line - $from_line);
+        $from_file_path = $from->getFilePath();
+
+        if ($from_file_path !== null && $from_file_path === $to->getFilePath()) {
+            $length = abs($to->getLine() - $from->getLine());
         }
 
         $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length, $added_taints, $removed_taints);
@@ -584,8 +581,10 @@ final class TaintFlowGraph extends DataFlowGraph
     {
         $location_summary = '';
 
-        if ($source->code_location) {
-            $location_summary = $source->code_location->getShortSummary();
+        $source_location = $source->getCodeLocation();
+
+        if ($source_location) {
+            $location_summary = $source_location->getShortSummary();
         }
 
         $source_descriptor = $source->label . ($location_summary ? ' (' . $location_summary . ')' : '');
@@ -597,9 +596,11 @@ final class TaintFlowGraph extends DataFlowGraph
                 return '';
             }
 
-            if ($source->code_location
-                && $previous_source->code_location
-                && $previous_source->code_location->getHash() === $source->code_location->getHash()
+            $previous_source_location = $previous_source->getCodeLocation();
+
+            if ($source_location
+                && $previous_source_location
+                && $previous_source_location->getHash() === $source_location->getHash()
                 && $previous_source->taintSource
             ) {
                 return $this->getPredecessorPath($previous_source->taintSource) . ' -> ' . $source_descriptor;
@@ -618,8 +619,10 @@ final class TaintFlowGraph extends DataFlowGraph
     {
         $location_summary = '';
 
-        if ($sink->code_location) {
-            $location_summary = $sink->code_location->getShortSummary();
+        $sink_location = $sink->getCodeLocation();
+
+        if ($sink_location) {
+            $location_summary = $sink_location->getShortSummary();
         }
 
         $sink_descriptor = $sink->label . ($location_summary ? ' (' . $location_summary . ')' : '');
@@ -631,9 +634,11 @@ final class TaintFlowGraph extends DataFlowGraph
                 return '';
             }
 
-            if ($sink->code_location
-                && $next_sink->code_location
-                && $next_sink->code_location->getHash() === $sink->code_location->getHash()
+            $next_sink_location = $next_sink->getCodeLocation();
+
+            if ($sink_location
+                && $next_sink_location
+                && $next_sink_location->getHash() === $sink_location->getHash()
                 && $next_sink->taintSource
             ) {
                 return $sink_descriptor . ' -> ' . $this->getSuccessorPath($next_sink->taintSource);
@@ -660,7 +665,7 @@ final class TaintFlowGraph extends DataFlowGraph
             }
             $path_types = $current->path_types;
             array_unshift($out, [
-                'location' => $current->code_location,
+                'location' => $current->getCodeLocation(),
                 'label' => $current->label,
                 'entry_path_type' => end($path_types) ?: '',
             ]);
@@ -1589,9 +1594,11 @@ final class TaintFlowGraph extends DataFlowGraph
         ProjectAnalyzer $project_analyzer,
         Codebase $codebase,
     ): void {
-        if ($generated_source->code_location
-            && $project_analyzer->canReportIssues($generated_source->code_location->file_path)
-            && !$config->reportIssueInFile('TaintedInput', $generated_source->code_location->file_path)
+        $generated_source_file_path = $generated_source->getFilePath();
+
+        if ($generated_source_file_path !== null
+            && $project_analyzer->canReportIssues($generated_source_file_path)
+            && !$config->reportIssueInFile('TaintedInput', $generated_source_file_path)
         ) {
             return;
         }
@@ -1687,7 +1694,7 @@ final class TaintFlowGraph extends DataFlowGraph
 
             // a flow is reported at its sink, or else at the node it reaches the sink from: a plugin can
             // connect a node without a location to a sink
-            if ($sink !== null && ($generated_source->code_location || $sink->code_location)) {
+            if ($sink !== null && ($generated_source->getFilePath() !== null || $sink->getFilePath() !== null)) {
                 $matching_taints = $sink->taints & $new_taints;
 
                 if ($matching_taints) {
@@ -1837,12 +1844,15 @@ final class TaintFlowGraph extends DataFlowGraph
         Config $config,
         Codebase $codebase,
     ): void {
-        if ($sink->code_location
-            && $config->reportIssueInFile('TaintedInput', $sink->code_location->file_path)
+        $sink_location = $sink->getCodeLocation();
+        $predecessor_location = $predecessor->getCodeLocation();
+
+        if ($sink_location
+            && $config->reportIssueInFile('TaintedInput', $sink_location->file_path)
         ) {
-            $issue_location = $sink->code_location;
-        } elseif ($predecessor->code_location !== null) {
-            $issue_location = $predecessor->code_location;
+            $issue_location = $sink_location;
+        } elseif ($predecessor_location !== null) {
+            $issue_location = $predecessor_location;
         } else {
             return;
         }

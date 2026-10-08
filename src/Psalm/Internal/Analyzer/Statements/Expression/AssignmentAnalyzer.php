@@ -910,14 +910,12 @@ final class AssignmentAnalyzer
     private static function taintAssignment(
         Union &$type,
         DataFlowGraph $flow_graph,
-        string $var_id,
-        CodeLocation $var_location,
+        DataFlowNode $new_parent_node,
         int $removed_taints,
         int $added_taints,
     ): void {
         $parent_nodes = $type->parent_nodes;
 
-        $new_parent_node = DataFlowNode::getForAssignment($var_id, $var_location);
         $flow_graph->addNode($new_parent_node);
         $new_parent_nodes = [$new_parent_node->key => $new_parent_node];
 
@@ -1801,14 +1799,13 @@ final class AssignmentAnalyzer
                     $context->vars_in_scope[$list_var_id] = $new_assign_type ?: Type::getMixed();
 
                     if ($statements_analyzer->data_flow_graph) {
-                        $var_location = new CodeLocation($statements_analyzer->getSource(), $var);
+                        $assignment_node = DataFlowNode::getForAssignmentAt(
+                            $list_var_id,
+                            $statements_analyzer->getSource(),
+                            $var,
+                        );
 
                         if (!$context->vars_in_scope[$list_var_id]->parent_nodes) {
-                            $assignment_node = DataFlowNode::getForAssignment(
-                                $list_var_id,
-                                $var_location,
-                            );
-
                             $context->vars_in_scope[$list_var_id] =
                                 $context->vars_in_scope[$list_var_id]->setParentNodes([
                                     $assignment_node->key => $assignment_node,
@@ -1827,8 +1824,7 @@ final class AssignmentAnalyzer
                                 self::taintAssignment(
                                     $context->vars_in_scope[$list_var_id],
                                     $graph,
-                                    $list_var_id,
-                                    $var_location,
+                                    $assignment_node,
                                     $removed_taints,
                                     $added_taints,
                                 );
@@ -2108,8 +2104,11 @@ final class AssignmentAnalyzer
         Context $context,
     ): Union {
         if ($extended_var_id) {
-            $assignment_location = new CodeLocation($statements_analyzer->getSource(), $assign_var);
-            $assignment_node = DataFlowNode::getForAssignment($extended_var_id, $assignment_location);
+            $assignment_node = DataFlowNode::getForAssignmentAt(
+                $extended_var_id,
+                $statements_analyzer->getSource(),
+                $assign_var,
+            );
 
             // Analysing taints, the new node hides from the taint graph the parent nodes nested in
             // the assigned value, which carry its taint: lead them to it.
@@ -2119,7 +2118,7 @@ final class AssignmentAnalyzer
                 && $taint_flow_graph->addPathsFromNestedParentNodes(
                     $assignment_node,
                     $assign_value_type,
-                    $assignment_location,
+                    new CodeLocation($statements_analyzer->getSource(), $assign_var),
                 )
             ) {
                 $taint_flow_graph->addNode($assignment_node);
@@ -2162,8 +2161,6 @@ final class AssignmentAnalyzer
         if (!$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
             $context->vars_in_scope[$var_id] = $context->vars_in_scope[$var_id]->setParentNodes([]);
         } else {
-            $var_location = new CodeLocation($statements_analyzer->getSource(), $assign_var);
-
             $event = new AddRemoveTaintsEvent($assign_var, $context, $statements_analyzer, $codebase);
 
             $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
@@ -2172,17 +2169,17 @@ final class AssignmentAnalyzer
             self::taintAssignment(
                 $context->vars_in_scope[$var_id],
                 $graph,
-                $var_id,
-                $var_location,
+                DataFlowNode::getForAssignmentAt($var_id, $statements_analyzer->getSource(), $assign_var),
                 $removed_taints,
                 $added_taints,
             );
         }
 
         if ($assign_expr) {
-            $new_parent_node = DataFlowNode::getForAssignment(
+            $new_parent_node = DataFlowNode::getForAssignmentAt(
                 'assignment_expr',
-                new CodeLocation($statements_analyzer->getSource(), $assign_expr),
+                $statements_analyzer->getSource(),
+                $assign_expr,
             );
 
             $data_flow_graph->addNode($new_parent_node);

@@ -6,13 +6,16 @@ namespace Psalm\Internal\DataFlow;
 
 use InvalidArgumentException;
 use Override;
+use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\FileSource;
 use Psalm\Internal\Codebase\Methods;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
 use Stringable;
 
+use function array_replace;
 use function count;
 use function ltrim;
 use function str_starts_with;
@@ -24,7 +27,7 @@ use function substr;
 /**
  * A node in the data-flow / taint graph.
  *
- * INVARIANT: a node's {@see self::$code_location} MUST be a pure function of its {@see self::$id}
+ * INVARIANT: a node's location ({@see self::getCodeLocation()}) MUST be a pure function of its {@see self::$id}
  * -- every node created with a given id anywhere, in any (forked) analysis process, must carry the
  * same location. The forked-worker graphs are merged in a non-deterministic order, so if two
  * workers gave the same id two different locations the surviving one -- and therefore the location
@@ -35,15 +38,34 @@ use function substr;
  * through one of the factories below, and each derives it deterministically from the node's
  * identity -- from the entity's {@see FunctionLikeStorage} (methods/functions), from a location
  * that is itself encoded into the id (assignments, taint sinks, specialized callables), or not at
- * all (null). Nodes produced while resolving the graph ({@see self::withSpecialization()},
- * {@see self::withFlow()}) copy the location from an existing node and can never introduce a new
- * one. There is therefore no code path -- internal or in a plugin -- that can attach a location a
- * caller chose independently of the id. Keep it that way: never add a factory that accepts a raw
- * CodeLocation which is not also folded into the id.
+ * all (null). getForAssignmentAt() keeps the position a location is built from instead, folded into
+ * the id as getForAssignment() folds the location. Nodes produced while resolving the graph
+ * ({@see self::withSpecialization()}, {@see self::withFlow()}) copy the location or position from an
+ * existing node and can never introduce a new one. There is therefore no code path -- internal or
+ * in a plugin -- that can attach a location a caller chose independently of the id. Keep it that
+ * way: never add a factory that accepts a raw CodeLocation which is not also folded into the id.
  *
  * @psalm-consistent-constructor
  * @internal
  * @psalm-external-mutation-free
+ * @psalm-type SerializedNode = array{
+ *     id: string,
+ *     unspecialized_id: ?string,
+ *     specialization_key: ?string,
+ *     label: string,
+ *     code_location: ?CodeLocation,
+ *     taints: int,
+ *     taintSource: ?self,
+ *     path_types: list<string>,
+ *     context: ?int,
+ *     file_path: ?string,
+ *     file_name: string,
+ *     file_start: int,
+ *     file_end: int,
+ *     line: int,
+ *     docblock_start: ?int,
+ *     docblock_line: ?int,
+ * }
  * @psalm-type CallableKind = 'builtin'|'inherited-method'|'magic-method'|'dynamic-function-call'|'dynamic-instantiation'|'callable-object'
  */
 final class DataFlowNode implements Stringable
@@ -66,7 +88,8 @@ final class DataFlowNode implements Stringable
         public readonly ?string $unspecialized_id,
         public readonly ?string $specialization_key,
         public readonly string $label,
-        public readonly ?CodeLocation $code_location = null,
+        /** The node's location, if it was given one: see getCodeLocation() */
+        private readonly ?CodeLocation $code_location = null,
         public readonly int $taints = 0,
         public readonly ?self $taintSource = null,
         /** @var list<string> */
@@ -78,7 +101,61 @@ final class DataFlowNode implements Stringable
         public readonly ?int $context = null,
         /** For a node of getForNarrowingToScalar(): the key of the node it narrows */
         public readonly ?int $narrowed_key = null,
+        /**
+         * The compact position (pzoom's DataFlowNodePosition) of a node located at a parsed node without a
+         * CodeLocation (see getForAssignmentAt()): null for the others
+         */
+        private readonly ?string $file_path = null,
+        private readonly string $file_name = '',
+        private readonly int $file_start = -1,
+        private readonly int $file_end = -1,
+        private readonly int $line = -1,
+        private readonly ?int $docblock_start = null,
+        private readonly ?int $docblock_line = null,
     ) {
+    }
+
+    /**
+     * The node's location: the one it was given, or the one its position stands for, built on demand (issues,
+     * origin locations), as pzoom builds a location only to report one
+     *
+     * @psalm-mutation-free
+     */
+    public function getCodeLocation(): ?CodeLocation
+    {
+        if ($this->code_location !== null || $this->file_path === null) {
+            return $this->code_location;
+        }
+
+        return new DataFlowNodeLocation(
+            $this->file_path,
+            $this->file_name,
+            $this->file_start,
+            $this->file_end,
+            $this->line,
+            $this->docblock_start,
+            $this->docblock_line,
+        );
+    }
+
+    /**
+     * The path of the file of the node's location, if it has one
+     *
+     * @psalm-mutation-free
+     */
+    public function getFilePath(): ?string
+    {
+        return $this->code_location?->file_path ?? $this->file_path;
+    }
+
+    /**
+     * The start line of the node's location (raw_line_number), if it has one
+     *
+     * @psalm-mutation-free
+     */
+    public function getLine(): int
+    {
+        return $this->code_location?->raw_line_number ?? $this->line;
     }
 
     /** @var array<string, int> node keys by node id */
@@ -101,7 +178,7 @@ final class DataFlowNode implements Stringable
     /**
      * Nodes cross processes serialized (forked workers): their keys are re-derived from their ids here.
      *
-     * @param array{id: string, unspecialized_id: ?string, specialization_key: ?string, label: string, code_location: ?CodeLocation, taints: int, taintSource: ?self, path_types: list<string>, context: ?int} $data
+     * @param SerializedNode $data
      * @psalm-suppress InaccessibleProperty readonly properties are initialized here, as in a constructor
      */
     public function __unserialize(array $data): void
@@ -115,13 +192,20 @@ final class DataFlowNode implements Stringable
         $this->taintSource = $data['taintSource'];
         $this->path_types = $data['path_types'];
         $this->context = $data['context'];
+        $this->file_path = $data['file_path'];
+        $this->file_name = $data['file_name'];
+        $this->file_start = $data['file_start'];
+        $this->file_end = $data['file_end'];
+        $this->line = $data['line'];
+        $this->docblock_start = $data['docblock_start'];
+        $this->docblock_line = $data['docblock_line'];
         $this->key = self::keyOf($this->id);
         $this->narrowed_key = str_starts_with($this->id, self::NARROWED_TO_SCALAR)
             ? self::keyOf(substr($this->id, strlen(self::NARROWED_TO_SCALAR)))
             : null;
     }
 
-    /** @return array{id: string, unspecialized_id: ?string, specialization_key: ?string, label: string, code_location: ?CodeLocation, taints: int, taintSource: ?self, path_types: list<string>, context: ?int} */
+    /** @return SerializedNode */
     public function __serialize(): array
     {
         return [
@@ -134,6 +218,13 @@ final class DataFlowNode implements Stringable
             'taintSource' => $this->taintSource,
             'path_types' => $this->path_types,
             'context' => $this->context,
+            'file_path' => $this->file_path,
+            'file_name' => $this->file_name,
+            'file_start' => $this->file_start,
+            'file_end' => $this->file_end,
+            'line' => $this->line,
+            'docblock_start' => $this->docblock_start,
+            'docblock_line' => $this->docblock_line,
         ];
     }
 
@@ -499,7 +590,22 @@ final class DataFlowNode implements Stringable
         // $node's location is a function of its id, so of this id too: see the class invariant
         $id = self::NARROWED_TO_SCALAR . $node->id;
 
-        return new self(self::keyOf($id), $id, null, null, $node->label, $node->code_location, narrowed_key: $node->key);
+        return new self(
+            self::keyOf($id),
+            $id,
+            null,
+            null,
+            $node->label,
+            $node->code_location,
+            narrowed_key: $node->key,
+            file_path: $node->file_path,
+            file_name: $node->file_name,
+            file_start: $node->file_start,
+            file_end: $node->file_end,
+            line: $node->line,
+            docblock_start: $node->docblock_start,
+            docblock_line: $node->docblock_line,
+        );
     }
 
     /**
@@ -514,7 +620,7 @@ final class DataFlowNode implements Stringable
 
     /**
      * $parent_nodes with $other_parent_nodes added, those with the key of one of $parent_nodes replacing it in
-     * place (array_merge() on parent nodes keyed by id, which renumbers the int keys)
+     * place: what array_merge() and spreads did to parent nodes keyed by id, which would renumber int keys
      *
      * @param array<int, self> $parent_nodes
      * @param array<int, self> $other_parent_nodes
@@ -523,11 +629,7 @@ final class DataFlowNode implements Stringable
      */
     public static function replaceParentNodes(array $parent_nodes, array $other_parent_nodes): array
     {
-        foreach ($other_parent_nodes as $key => $parent_node) {
-            $parent_nodes[$key] = $parent_node;
-        }
-
-        return $parent_nodes;
+        return array_replace($parent_nodes, $other_parent_nodes);
     }
 
     /**
@@ -580,6 +682,59 @@ final class DataFlowNode implements Stringable
             . ':' . $assignment_location->raw_file_start . '-' . $assignment_location->raw_file_end;
 
         return self::make($id, $var_id, $assignment_location, $specialization_key);
+    }
+
+    /**
+     * getForAssignment() at the parsed node $at of $source, without building its location: the node keeps the
+     * compact position of $at (pzoom's DataFlowNodePosition), from which getCodeLocation() builds the location
+     * `new CodeLocation($source, $at)` is, only if one is asked for. Same id, so same node, as getForAssignment()
+     * at that location.
+     *
+     * @psalm-external-mutation-free
+     */
+    public static function getForAssignmentAt(
+        string $var_id,
+        FileSource $source,
+        PhpParser\Node $at,
+    ): self {
+        // what the CodeLocation constructor reads of $at
+        $attrs = $at->attrs();
+        $file_start = $attrs->startFilePos ?? -1;
+        $file_end = $attrs->endFilePos ?? -1;
+
+        $docblock_start = null;
+        $docblock_line = null;
+        $comments = $attrs->comments;
+        if ($comments !== null) {
+            for ($i = count($comments) - 1; $i >= 0; $i--) {
+                $comment = $comments[$i];
+                if ($comment instanceof PhpParser\Comment\Doc) {
+                    $docblock_start = $comment->getStartFilePos();
+                    $docblock_line = $comment->getStartLine();
+                    break;
+                }
+            }
+        }
+
+        $file_name = $source->getFileName();
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        $file_name_lc = self::$file_names_lc[$file_name] ??= strtolower($file_name);
+        $id = $var_id . ' from ' . $file_name_lc . ':' . $file_start . '-' . $file_end;
+
+        return new self(
+            self::keyOf($id),
+            $id,
+            null,
+            null,
+            $var_id,
+            file_path: $source->getFilePath(),
+            file_name: $file_name,
+            file_start: $file_start,
+            file_end: $file_end,
+            line: $attrs->startLine ?? -1,
+            docblock_start: $docblock_start,
+            docblock_line: $docblock_line,
+        );
     }
 
     /**
@@ -696,6 +851,13 @@ final class DataFlowNode implements Stringable
             $this->path_types,
             $this->context,
             $this->narrowed_key,
+            $this->file_path,
+            $this->file_name,
+            $this->file_start,
+            $this->file_end,
+            $this->line,
+            $this->docblock_start,
+            $this->docblock_line,
         );
     }
 
@@ -726,6 +888,13 @@ final class DataFlowNode implements Stringable
             $context,
             // the id the narrowed node specialized narrows (see getNarrowedNodeId())
             $this->narrowed_key !== null ? self::keyOf(substr($id, strlen(self::NARROWED_TO_SCALAR))) : null,
+            $this->file_path,
+            $this->file_name,
+            $this->file_start,
+            $this->file_end,
+            $this->line,
+            $this->docblock_start,
+            $this->docblock_line,
         );
     }
 
@@ -756,6 +925,13 @@ final class DataFlowNode implements Stringable
             $path_types,
             $context,
             $this->narrowed_key,
+            $this->file_path,
+            $this->file_name,
+            $this->file_start,
+            $this->file_end,
+            $this->line,
+            $this->docblock_start,
+            $this->docblock_line,
         );
     }
 

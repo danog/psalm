@@ -234,9 +234,10 @@ final class UnsetAnalyzer
             return $new_type;
         }
 
-        $node = DataFlowNode::getForAssignment(
+        $node = DataFlowNode::getForAssignmentAt(
             $root_var_id,
-            new CodeLocation($statements_analyzer->getSource(), $var->var),
+            $statements_analyzer->getSource(),
+            $var->var,
         );
 
         $graph->addNode($node);

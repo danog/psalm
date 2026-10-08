@@ -511,11 +511,10 @@ final class ArrayFetchAnalyzer
                 return;
             }
 
-            $var_location = new CodeLocation($statements_analyzer->getSource(), $var);
-
-            $new_parent_node = DataFlowNode::getForAssignment(
+            $new_parent_node = DataFlowNode::getForAssignmentAt(
                 $keyed_array_var_id ?: 'arrayvalue-fetch',
-                $var_location,
+                $statements_analyzer->getSource(),
+                $var,
             );
 
             $added_taints = 0;
@@ -546,9 +545,10 @@ final class ArrayFetchAnalyzer
                     : null);
 
             if ($keyed_array_var_id === null && $dim_value === null) {
-                $array_key_node = DataFlowNode::getForAssignment(
+                $array_key_node = DataFlowNode::getForAssignmentAt(
                     'arraykey-fetch',
-                    $var_location,
+                    $statements_analyzer->getSource(),
+                    $var,
                 );
 
                 $graph->addNode($array_key_node);
@@ -1236,9 +1236,11 @@ final class ArrayFetchAnalyzer
             && ($stmt_var_type = $statements_analyzer->node_data->getType($stmt->var))
         ) {
             if ($stmt_var_type->parent_nodes) {
-                $var_location = new CodeLocation($statements_analyzer->getSource(), $stmt->var);
-
-                $new_parent_node = DataFlowNode::getForAssignment('mixed-var-array-access', $var_location);
+                $new_parent_node = DataFlowNode::getForAssignmentAt(
+                    'mixed-var-array-access',
+                    $statements_analyzer->getSource(),
+                    $stmt->var,
+                );
 
                 $graph->addNode($new_parent_node);
 

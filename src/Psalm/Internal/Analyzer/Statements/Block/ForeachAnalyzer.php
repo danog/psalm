@@ -561,9 +561,10 @@ final class ForeachAnalyzer
             return;
         }
 
-        $array_node = DataFlowNode::getForAssignment(
+        $array_node = DataFlowNode::getForAssignmentAt(
             $array_var_id,
-            new CodeLocation($statements_analyzer->getSource(), $stmt->expr),
+            $statements_analyzer->getSource(),
+            $stmt->expr,
         );
 
         $graph->addNode($array_node);
@@ -656,10 +657,8 @@ final class ForeachAnalyzer
             return [$key_type, $value_type];
         }
 
-        $location = new CodeLocation($statements_analyzer->getSource(), $expr);
-
-        $key_node = DataFlowNode::getForAssignment('foreach key', $location);
-        $value_node = DataFlowNode::getForAssignment('foreach value', $location);
+        $key_node = DataFlowNode::getForAssignmentAt('foreach key', $statements_analyzer->getSource(), $expr);
+        $value_node = DataFlowNode::getForAssignmentAt('foreach value', $statements_analyzer->getSource(), $expr);
 
         $graph->addNode($key_node);
         $graph->addNode($value_node);

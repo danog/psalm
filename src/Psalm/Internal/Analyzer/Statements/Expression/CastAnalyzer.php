@@ -1113,9 +1113,10 @@ final class CastAnalyzer
             return DataFlowNode::replaceParentNodes($to_string_parent_nodes, $object_parent_nodes);
         }
 
-        $conversion_node = DataFlowNode::getForAssignment(
+        $conversion_node = DataFlowNode::getForAssignmentAt(
             'string conversion',
-            new CodeLocation($statements_analyzer->getSource(), $expr),
+            $statements_analyzer->getSource(),
+            $expr,
         );
 
         $graph->addNode($conversion_node);
@@ -1158,9 +1159,10 @@ final class CastAnalyzer
         $removed_taints = $result_type->getTaintsToRemove();
 
         if ($removed_taints !== 0 && $parent_nodes) {
-            $cast_node = DataFlowNode::getForAssignment(
+            $cast_node = DataFlowNode::getForAssignmentAt(
                 $cast_type . '-cast',
-                new CodeLocation($statements_analyzer->getSource(), $stmt),
+                $statements_analyzer->getSource(),
+                $stmt,
             );
             $graph->addNode($cast_node);
 
@@ -1331,9 +1333,10 @@ final class CastAnalyzer
             return $object_parent_nodes;
         }
 
-        $conversion_node = DataFlowNode::getForAssignment(
+        $conversion_node = DataFlowNode::getForAssignmentAt(
             'escaping string conversion',
-            new CodeLocation($statements_analyzer->getSource(), $expr),
+            $statements_analyzer->getSource(),
+            $expr,
         );
 
         $graph->addNode($conversion_node);

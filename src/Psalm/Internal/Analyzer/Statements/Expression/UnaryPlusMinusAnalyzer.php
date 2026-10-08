@@ -6,7 +6,6 @@ namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
 use PhpParser\Node\Expr\UnaryMinus;
-use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -124,11 +123,9 @@ final class UnaryPlusMinusAnalyzer
     ): void {
         $result_type = $statements_analyzer->node_data->getType($stmt);
         if (($graph = $statements_analyzer->data_flow_graph) && $result_type) {
-            $var_location = new CodeLocation($statements_analyzer, $stmt);
-
             $stmt_value_type = $statements_analyzer->node_data->getType($value);
 
-            $new_parent_node = DataFlowNode::getForAssignment($type, $var_location);
+            $new_parent_node = DataFlowNode::getForAssignmentAt($type, $statements_analyzer, $stmt);
             $graph->addNode($new_parent_node);
             $statements_analyzer->node_data->setType(
                 $stmt,
