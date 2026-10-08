@@ -44,8 +44,8 @@ final class FileReferenceCacheProvider
 
     /**
      * @var array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
+     *     edges: array<int, array<int, int>>,
+     *     node_files: array<int, int>,
      *     mutation_info: array<string, \Psalm\Internal\Codebase\MutationInfo>
      * }|null
      */
@@ -122,8 +122,8 @@ final class FileReferenceCacheProvider
 
     /**
      * @return array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
+     *     edges: array<int, array<int, int>>,
+     *     node_files: array<int, int>,
      *     mutation_info: array<string, \Psalm\Internal\Codebase\MutationInfo>
      * }|null
      */
@@ -194,8 +194,8 @@ final class FileReferenceCacheProvider
 
     /**
      * @param array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
+     *     edges: array<int, array<int, int>>,
+     *     node_files: array<int, int>,
      *     mutation_info: array<string, MutationInfo>
      * } $data
      */

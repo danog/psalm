@@ -29,7 +29,9 @@ use function substr;
  * cached analysis results in `--diff` mode.
  *
  * Every node is an int packing a node kind and one or two interned names (pzoom's symbol references are
- * `(StrId, StrId)` pairs): `kind << 58 | a << 29 | b`. A class node is (class), a function-like, return or
+ * `(StrId, StrId)` pairs): `kind << 58 | b << 29 | (a ^ mix(b, kind))`. PHP hashes an int key to itself and
+ * picks the bucket from its low bits, so those must vary between nodes: with `b` (0 for single-name nodes)
+ * in the low bits nearly every node would land in one bucket chain. A class node is (class), a function-like, return or
  * missing-method node is (function or method id), a property, constant or missing-property node is (class,
  * member), a use-alias node is (alias, file hash), a file node is (file path); the public API root is 0.
  * Nothing is concatenated or lowercased to form a node on the reference path. The old string form
@@ -122,8 +124,10 @@ final class CodeUseGraph
     private const KIND_FILE = 9;
 
     private const SHIFT_KIND = 58;
-    private const SHIFT_A = 29;
+    private const SHIFT_B = 29;
     private const MASK = 0x1FFFFFFF;
+    /** odd, so mix() is a bijection of (b, kind) modulo 2^29 */
+    private const MIX = 0x9E3779B1;
 
     /**
      * Forward edges: source node => target node => edge type
@@ -213,6 +217,29 @@ final class CodeUseGraph
     /** @var array<string, int> interned md5 of each file path seen by useAliasNode() */
     private static array $file_path_hash_ids = [];
 
+    /**
+     * The nodes formed so far, by name: a repeated reference costs one lookup here.
+     *
+     * @var array<string, int>
+     */
+    private static array $class_nodes = [];
+    /** @var array<string, int> */
+    private static array $function_like_nodes = [];
+    /** @var array<string, int> */
+    private static array $return_nodes = [];
+    /** @var array<string, int> */
+    private static array $missing_method_nodes = [];
+    /** @var array<string, int> */
+    private static array $file_path_nodes = [];
+    /** @var array<string, array<string, int>> */
+    private static array $property_nodes = [];
+    /** @var array<string, array<string, int>> */
+    private static array $constant_nodes = [];
+    /** @var array<string, array<string, int>> */
+    private static array $missing_property_nodes = [];
+    /** @var array<string, array<int, int>> */
+    private static array $use_alias_nodes = [];
+
     /** @var array<int, int> owner class (interned lowercase name, 0 for none) of the nodes asked about */
     private static array $owner_class_ids = [];
 
@@ -229,7 +256,13 @@ final class CodeUseGraph
     /** @psalm-pure */
     private static function pack(int $kind, int $a, int $b): int
     {
-        return ($kind << self::SHIFT_KIND) | ($a << self::SHIFT_A) | $b;
+        return ($kind << self::SHIFT_KIND) | ($b << self::SHIFT_B) | ($a ^ self::mix($b, $kind));
+    }
+
+    /** @psalm-pure */
+    private static function mix(int $b, int $kind): int
+    {
+        return (($b ^ ($kind << 24)) * self::MIX) & self::MASK;
     }
 
     /** @psalm-pure */
@@ -241,13 +274,15 @@ final class CodeUseGraph
     /** @psalm-pure */
     private static function firstOf(int $node): int
     {
-        return ($node >> self::SHIFT_A) & self::MASK;
+        $b = ($node >> self::SHIFT_B) & self::MASK;
+
+        return ($node & self::MASK) ^ self::mix($b, $node >> self::SHIFT_KIND);
     }
 
     /** @psalm-pure */
     private static function secondOf(int $node): int
     {
-        return $node & self::MASK;
+        return ($node >> self::SHIFT_B) & self::MASK;
     }
 
     /**
@@ -256,7 +291,8 @@ final class CodeUseGraph
      */
     public static function classNode(string $fq_class_name_lc): int
     {
-        return self::pack(self::KIND_CLASS, Interner::intern($fq_class_name_lc), 0);
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$class_nodes[$fq_class_name_lc] ??= self::pack(self::KIND_CLASS, Interner::intern($fq_class_name_lc), 0);
     }
 
     /**
@@ -265,7 +301,8 @@ final class CodeUseGraph
      */
     public static function functionLikeNode(string $function_id_lc): int
     {
-        return self::pack(self::KIND_FUNCTION_LIKE, Interner::intern($function_id_lc), 0);
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$function_like_nodes[$function_id_lc] ??= self::pack(self::KIND_FUNCTION_LIKE, Interner::intern($function_id_lc), 0);
     }
 
     /**
@@ -274,7 +311,8 @@ final class CodeUseGraph
      */
     public static function functionLikeReturnNode(string $function_id_lc): int
     {
-        return self::pack(self::KIND_RETURN, Interner::intern($function_id_lc), 0);
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$return_nodes[$function_id_lc] ??= self::pack(self::KIND_RETURN, Interner::intern($function_id_lc), 0);
     }
 
     /**
@@ -284,7 +322,8 @@ final class CodeUseGraph
      */
     public static function propertyNode(string $fq_class_name_lc, string $property_name): int
     {
-        return self::pack(self::KIND_PROPERTY, Interner::intern($fq_class_name_lc), Interner::intern($property_name));
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$property_nodes[$fq_class_name_lc][$property_name] ??= self::pack(self::KIND_PROPERTY, Interner::intern($fq_class_name_lc), Interner::intern($property_name));
     }
 
     /**
@@ -293,7 +332,8 @@ final class CodeUseGraph
      */
     public static function classConstantNode(string $fq_class_name_lc, string $const_name): int
     {
-        return self::pack(self::KIND_CONSTANT, Interner::intern($fq_class_name_lc), Interner::intern($const_name));
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$constant_nodes[$fq_class_name_lc][$const_name] ??= self::pack(self::KIND_CONSTANT, Interner::intern($fq_class_name_lc), Interner::intern($const_name));
     }
 
     /**
@@ -302,7 +342,8 @@ final class CodeUseGraph
      */
     public static function missingMethodNode(string $method_id_lc): int
     {
-        return self::pack(self::KIND_MISSING_METHOD, Interner::intern($method_id_lc), 0);
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$missing_method_nodes[$method_id_lc] ??= self::pack(self::KIND_MISSING_METHOD, Interner::intern($method_id_lc), 0);
     }
 
     /**
@@ -312,7 +353,8 @@ final class CodeUseGraph
      */
     public static function missingPropertyNode(string $fq_class_name_lc, string $property_name): int
     {
-        return self::pack(
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$missing_property_nodes[$fq_class_name_lc][$property_name] ??= self::pack(
             self::KIND_MISSING_PROPERTY,
             Interner::intern($fq_class_name_lc),
             Interner::intern($property_name),
@@ -331,7 +373,7 @@ final class CodeUseGraph
         /** @psalm-suppress ImpureStaticProperty cache of a pure function */
         $hash_id = self::$file_path_hash_ids[$file_path] ??= Interner::intern(md5($file_path));
 
-        return self::pack(self::KIND_USE_ALIAS, Interner::intern($alias), $hash_id);
+        return self::$use_alias_nodes[$alias][$hash_id] ??= self::pack(self::KIND_USE_ALIAS, Interner::intern($alias), $hash_id);
     }
 
     /**
@@ -341,7 +383,8 @@ final class CodeUseGraph
      */
     public static function fileNode(string $file_path): int
     {
-        return self::pack(self::KIND_FILE, Interner::intern($file_path), 0);
+        /** @psalm-suppress ImpureStaticProperty cache of a pure function */
+        return self::$file_path_nodes[$file_path] ??= self::pack(self::KIND_FILE, Interner::intern($file_path), 0);
     }
 
     /**
@@ -1289,9 +1332,12 @@ final class CodeUseGraph
     // Caching
 
     /**
+     * The graph's data for the reference cache. The port's cache lives in memory for the run (see
+     * FileReferenceCacheProvider), so it keeps the interned node ids: they are valid for the whole process.
+     *
      * @return array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
+     *     edges: array<int, array<int, int>>,
+     *     node_files: array<int, int>,
      *     mutation_info: array<string, MutationInfo>
      * }
      * @psalm-external-mutation-free
@@ -1303,16 +1349,9 @@ final class CodeUseGraph
         foreach ($this->forward_edges as $source_node => $targets) {
             foreach ($targets as $target_node => $type) {
                 if (!isset(self::STRUCTURAL_EDGES[$type])) {
-                    $edges[self::nodeToString($source_node)][self::nodeToString($target_node)]
-                        = self::EDGE_NAMES[$type] ?? 'use';
+                    $edges[$source_node][$target_node] = $type;
                 }
             }
-        }
-
-        $node_files = [];
-
-        foreach ($this->node_files as $node => $file_id) {
-            $node_files[self::nodeToString($node)] = Interner::lookup($file_id);
         }
 
         $mutation_info = [];
@@ -1325,7 +1364,7 @@ final class CodeUseGraph
 
         return [
             'edges' => $edges,
-            'node_files' => $node_files,
+            'node_files' => $this->node_files,
             'mutation_info' => $mutation_info,
         ];
     }
@@ -1334,16 +1373,21 @@ final class CodeUseGraph
      * Merges cached data produced by getCacheData() into the graph.
      *
      * @param array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
+     *     edges: array<int, array<int, int>>,
+     *     node_files: array<int, int>,
      *     mutation_info?: array<string, MutationInfo>
      * } $data
      * @psalm-external-mutation-free
      */
     public function loadCacheData(array $data): void
     {
-        $this->addEdgeNames($data['edges']);
-        $this->addNodeFileNames($data['node_files']);
+        foreach ($data['edges'] as $source_node => $targets) {
+            foreach ($targets as $target_node => $type) {
+                $this->addEdge($source_node, $target_node, $type);
+            }
+        }
+
+        $this->node_files += $data['node_files'];
 
         $this->mutation_info += $data['mutation_info'] ?? [];
         $this->mutation_levels = null;
