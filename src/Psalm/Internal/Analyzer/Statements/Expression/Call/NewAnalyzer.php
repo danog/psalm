@@ -449,7 +449,7 @@ final class NewAnalyzer extends CallAnalyzer
                 $method_id,
                 $context,
                 $statements_analyzer->getSource(),
-                new CodeLocation($statements_analyzer->getSource(), $stmt),
+                $stmt,
                 $statements_analyzer->getSuppressedIssues(),
             ) === false) {
                 return;

@@ -368,8 +368,6 @@ final class MethodCallReturnTypeFetcher
             $declaring_method_id,
         ) ?? throw $codebase->methods->missing($declaring_method_id));
 
-        $node_location = new CodeLocation($statements_analyzer, $name_expr);
-
         $is_declaring = (string) $declaring_method_id === (string) $method_id;
 
         $var_id = ExpressionIdentifier::getExtendedVarId(
@@ -378,14 +376,18 @@ final class MethodCallReturnTypeFetcher
             $statements_analyzer,
         );
 
-        $specialize_call = TaintFlowGraph::isCallSpecialized(
+        // the call's location only matters to the taint graph: without one, isCallSpecialized() decides nothing
+        // that is used below (and records nothing)
+        $node_location = $taint_flow_graph !== null ? new CodeLocation($statements_analyzer, $name_expr) : null;
+
+        $specialize_call = $node_location !== null && TaintFlowGraph::isCallSpecialized(
             $taint_flow_graph,
             $codebase,
             $method_storage,
             $node_location,
         );
 
-        if ($specialize_call && $taint_flow_graph) {
+        if ($specialize_call && $taint_flow_graph && $node_location !== null) {
             // the receiver is only tracked through calls explicitly specialized: see FunctionLikeAnalyzer
             // a receiver without a variable, like `(new A())->m()`, enters the body through its own type
             $receiver_type = $var_id !== null && isset($context->vars_in_scope[$var_id])
@@ -574,7 +576,7 @@ final class MethodCallReturnTypeFetcher
             ]);
         }
 
-        if (!$taint_flow_graph) {
+        if (!$taint_flow_graph || $node_location === null) {
             return;
         }
 

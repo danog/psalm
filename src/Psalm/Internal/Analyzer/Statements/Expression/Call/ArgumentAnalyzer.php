@@ -698,7 +698,7 @@ final class ArgumentAnalyzer
             $cased_method_id,
             $method_id,
             $argument_offset,
-            new CodeLocation($statements_analyzer->getSource(), $arg->value),
+            $arg->value,
             $arg->value,
             $context,
             $function_storage,
@@ -727,7 +727,7 @@ final class ArgumentAnalyzer
         ?string $cased_method_id,
         ?MethodIdentifier $method_id,
         int $argument_offset,
-        CodeLocation $arg_location,
+        CodeLocation|PhpParser\Node $arg_at,
         PhpParser\Node\Expr $input_expr,
         Context $context,
         ?FunctionLikeStorage $function_storage,
@@ -767,7 +767,7 @@ final class ArgumentAnalyzer
                     $cased_method_id,
                     $method_id,
                     $argument_offset,
-                    $arg_location,
+                    $arg_at,
                     $function_call_location,
                     $function_storage,
                     $function_param,
@@ -808,7 +808,7 @@ final class ArgumentAnalyzer
 
             $origin_location = count($origin_locations) === 1 ? reset($origin_locations) : null;
 
-            if ($origin_location && $origin_location->getHash() === $arg_location->getHash()) {
+            if ($origin_location && $origin_location->getHash() === CodeLocation::of($statements_analyzer->getSource(), $arg_at)->getHash()) {
                 $origin_location = null;
             }
 
@@ -817,7 +817,7 @@ final class ArgumentAnalyzer
                     'Argument ' . ($argument_offset + 1) . $method_identifier
                         . ' cannot be ' . $input_type->getId() . ', expecting ' .
                         $param_type,
-                    $arg_location,
+                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                     $cased_method_id,
                     $origin_location,
                 ),
@@ -851,7 +851,7 @@ final class ArgumentAnalyzer
                     $cased_method_id,
                     $method_id,
                     $argument_offset,
-                    $arg_location,
+                    $arg_at,
                     $function_call_location,
                     $function_storage,
                     $function_param,
@@ -872,7 +872,7 @@ final class ArgumentAnalyzer
             if (!IssueBuffer::accepts(
                 new NoValue(
                     'All possible types for this argument were invalidated - This may be dead code',
-                    $arg_location,
+                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                 ),
                 $statements_analyzer->getSuppressedIssues(),
             )) {
@@ -951,7 +951,7 @@ final class ArgumentAnalyzer
                         $codebase->methodExists(
                             $potential_method_id,
                             $context->calling_method_id,
-                            $arg_location,
+                            CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                             $statements_analyzer,
                             $statements_analyzer->getFilePath(),
                             true,
@@ -964,7 +964,7 @@ final class ArgumentAnalyzer
                             $method_id,
                             $atomic_type,
                             $argument_offset,
-                            $arg_location,
+                            CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                             $context,
                             $codebase,
                             $statements_analyzer,
@@ -1013,7 +1013,7 @@ final class ArgumentAnalyzer
             $statements_analyzer->type_variable_tracker->addBounds(
                 $union_comparison_results->type_variable_lower_bounds,
                 $union_comparison_results->type_variable_upper_bounds,
-                $arg_location,
+                CodeLocation::of($statements_analyzer->getSource(), $arg_at),
             );
         }
 
@@ -1030,7 +1030,7 @@ final class ArgumentAnalyzer
                 $cased_method_id,
                 $method_id,
                 $argument_offset,
-                $arg_location,
+                $arg_at,
                 $function_call_location,
                 $function_storage,
                 $function_param,
@@ -1089,7 +1089,7 @@ final class ArgumentAnalyzer
                             IssueBuffer::maybeAdd(
                                 new DeprecatedConstant(
                                     'Use of "' . $lhs->getSingleStringLiteral()->value . '" in callables is deprecated',
-                                    $arg_location,
+                                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -1103,7 +1103,7 @@ final class ArgumentAnalyzer
                             $method_id,
                             $input_type_part,
                             $argument_offset,
-                            $arg_location,
+                            CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                             $context,
                             $codebase,
                             $statements_analyzer,
@@ -1141,7 +1141,7 @@ final class ArgumentAnalyzer
                         IssueBuffer::maybeAdd(
                             new DeprecatedConstant(
                                 'Use of "' . $potential_method_id->fq_class_name . '" in callables is deprecated',
-                                $arg_location,
+                                CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                             ),
                             $statements_analyzer->getSuppressedIssues(),
                         );
@@ -1153,7 +1153,7 @@ final class ArgumentAnalyzer
                         $method_id,
                         $input_type_part,
                         $argument_offset,
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $context,
                         $codebase,
                         $statements_analyzer,
@@ -1169,7 +1169,7 @@ final class ArgumentAnalyzer
                 $codebase->methodExists(
                     $potential_method_id,
                     $context->calling_method_id,
-                    $arg_location,
+                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                     $statements_analyzer,
                     $statements_analyzer->getFilePath(),
                     true,
@@ -1208,7 +1208,7 @@ final class ArgumentAnalyzer
 
                 $origin_location = count($origin_locations) === 1 ? reset($origin_locations) : null;
 
-                if ($origin_location && $origin_location->getHash() === $arg_location->getHash()) {
+                if ($origin_location && $origin_location->getHash() === CodeLocation::of($statements_analyzer->getSource(), $arg_at)->getHash()) {
                     $origin_location = null;
                 }
 
@@ -1216,7 +1216,7 @@ final class ArgumentAnalyzer
                     new MixedArgumentTypeCoercion(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' expects ' . $param_type->getId() .
                             ', but parent type ' . $input_type->getId() . ' provided',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                         $origin_location,
                     ),
@@ -1227,7 +1227,7 @@ final class ArgumentAnalyzer
                     new ArgumentTypeCoercion(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' expects ' . $param_type->getId() .
                             ', but parent type ' . $input_type->getId() . ' provided',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1240,7 +1240,7 @@ final class ArgumentAnalyzer
                 new ImplicitToStringCast(
                     'Argument ' . ($argument_offset + 1) . $method_identifier . ' expects ' .
                         $param_type->getId() . ', but ' . $input_type->getId() . ' provided with a __toString method',
-                    $arg_location,
+                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                 ),
                 $statements_analyzer->getSuppressedIssues(),
             );
@@ -1262,7 +1262,7 @@ final class ArgumentAnalyzer
                         new InvalidScalarArgument(
                             'Argument ' . ($argument_offset + 1) . $method_identifier . ' expects ' .
                                 $param_type->getId() . ', but ' . $type . ' provided',
-                            $arg_location,
+                            CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                             $cased_method_id,
                         ),
                         $statements_analyzer->getSuppressedIssues(),
@@ -1273,7 +1273,7 @@ final class ArgumentAnalyzer
                     new PossiblyInvalidArgument(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' expects ' . $param_type->getId() .
                             ', but possibly different type ' . $type . ' provided',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1289,7 +1289,7 @@ final class ArgumentAnalyzer
                                     . ') was'
                                 : '')
                             . ' provided',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1306,7 +1306,7 @@ final class ArgumentAnalyzer
             self::verifyExplicitParam(
                 $statements_analyzer,
                 $param_type,
-                $arg_location,
+                $arg_at,
                 $input_expr,
                 $context,
             );
@@ -1335,7 +1335,7 @@ final class ArgumentAnalyzer
                     new NullArgument(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' cannot be null, ' .
                             'null value provided to parameter with type ' . $param_type->getId(),
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1349,7 +1349,7 @@ final class ArgumentAnalyzer
                     new PossiblyNullArgument(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' cannot be null, possibly ' .
                             'null value provided',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1368,7 +1368,7 @@ final class ArgumentAnalyzer
                     new InvalidArgument(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' cannot be false, ' .
                         $param_type->getId() . ' value expected',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1382,7 +1382,7 @@ final class ArgumentAnalyzer
                     new PossiblyFalseArgument(
                         'Argument ' . ($argument_offset + 1) . $method_identifier . ' cannot be false, possibly ' .
                         $param_type->getId() . ' value expected',
-                        $arg_location,
+                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                         $cased_method_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
@@ -1501,7 +1501,7 @@ final class ArgumentAnalyzer
     private static function verifyExplicitParam(
         StatementsAnalyzer $statements_analyzer,
         Union $param_type,
-        CodeLocation $arg_location,
+        CodeLocation|PhpParser\Node $arg_at,
         PhpParser\Node\Expr $input_expr,
         Context $context,
     ): void {
@@ -1515,7 +1515,7 @@ final class ArgumentAnalyzer
                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                     $statements_analyzer,
                     $input_expr->value,
-                    $arg_location,
+                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                     $context,
                     $statements_analyzer->getSuppressedIssues(),
                     new ClassLikeNameOptions(true),
@@ -1533,7 +1533,7 @@ final class ArgumentAnalyzer
                                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                                     $statements_analyzer,
                                     $item->value->value,
-                                    $arg_location,
+                                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                     $context,
                                     $statements_analyzer->getSuppressedIssues(),
                                     new ClassLikeNameOptions(true),
@@ -1596,7 +1596,7 @@ final class ArgumentAnalyzer
                                                     new ParentNotFound(
                                                         'Cannot call method on parent'
                                                         . ' as this class does not extend another',
-                                                        $arg_location,
+                                                        CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                                     ),
                                                     $statements_analyzer->getSuppressedIssues(),
                                                 );
@@ -1613,7 +1613,7 @@ final class ArgumentAnalyzer
                                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                                     $statements_analyzer,
                                     $callable_fq_class_name,
-                                    $arg_location,
+                                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                     $context,
                                     $statements_analyzer->getSuppressedIssues(),
                                     new ClassLikeNameOptions(true),
@@ -1651,7 +1651,7 @@ final class ArgumentAnalyzer
                                 if (MethodAnalyzer::checkMethodExists(
                                     $codebase,
                                     $non_existent_method_ids[0],
-                                    $arg_location,
+                                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                     $statements_analyzer->getSuppressedIssues(),
                                 ) === false
                                 ) {
@@ -1665,7 +1665,7 @@ final class ArgumentAnalyzer
                                 && CallAnalyzer::checkFunctionExists(
                                     $statements_analyzer,
                                     $function_id,
-                                    $arg_location,
+                                    CodeLocation::of($statements_analyzer->getSource(), $arg_at),
                                     false,
                                 ) === false
                             ) {
@@ -1812,7 +1812,7 @@ final class ArgumentAnalyzer
         string $cased_method_id,
         ?MethodIdentifier $method_id,
         int $argument_offset,
-        CodeLocation $arg_location,
+        CodeLocation|PhpParser\Node $arg_at,
         CodeLocation $function_call_location,
         ?FunctionLikeStorage $function_storage,
         FunctionLikeParameter $function_param,
@@ -1974,10 +1974,9 @@ final class ArgumentAnalyzer
             );
         }
 
-        $argument_value_node = DataFlowNode::getForAssignment(
-            'call to ' . $cased_method_id,
-            $arg_location,
-        );
+        $argument_value_node = $arg_at instanceof CodeLocation
+            ? DataFlowNode::getForAssignment('call to ' . $cased_method_id, $arg_at)
+            : DataFlowNode::getForAssignmentAt('call to ' . $cased_method_id, $statements_analyzer->getSource(), $arg_at);
 
         $graph->addNode($argument_value_node);
 
