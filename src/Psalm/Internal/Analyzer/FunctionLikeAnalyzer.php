@@ -2446,6 +2446,18 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($method_id);
 
+            // pzoom resolves method names case-sensitively: an ancestor's method spelled otherwise is another
+            // method, which this one does not override
+            foreach ($overridden_method_ids as $overridden_key => $overridden_method_id) {
+                $overridden_cased_name = $codebase->methods->getStorageOrNull($overridden_method_id)?->cased_name;
+                if ($overridden_cased_name !== null
+                    && $storage->cased_name !== null
+                    && $overridden_cased_name !== $storage->cased_name
+                ) {
+                    unset($overridden_method_ids[$overridden_key]);
+                }
+            }
+
             $codeLocation = new CodeLocation(
                 $this,
                 $this->function,

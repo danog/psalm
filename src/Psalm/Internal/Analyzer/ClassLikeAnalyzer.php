@@ -384,7 +384,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         // pzoom resolves names case-sensitively: a reference spelled differently from the declaration is
         // undefined, reported with the declared spelling (Psalm reported InvalidClass and carried on)
         $incorrect_casing_of = null;
-        if (!$options->inferred
+        if ((!$options->inferred || $options->spelled)
             && (($class_exists && !$codebase->classHasCorrectCasing($fq_class_name))
                 || ($interface_exists && !$codebase->interfaceHasCorrectCasing($fq_class_name))
                 || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name)))

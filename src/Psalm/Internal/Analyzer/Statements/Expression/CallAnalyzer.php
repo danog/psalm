@@ -16,6 +16,7 @@ use Psalm\Internal\Algebra\FormulaGenerator;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\NamedFunctionCallHandler;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
@@ -75,6 +76,7 @@ use function str_replace;
 use function str_starts_with;
 use function strtolower;
 use function substr;
+use function strlen;
 use function strrpos;
 
 use const PATHINFO_EXTENSION;
@@ -593,6 +595,54 @@ abstract class CallAnalyzer
     }
 
     /**
+     * pzoom resolves function names case-sensitively, natives included: a call spelled differently from the
+     * declaration is undefined, reported with the declared spelling. True when it was reported.
+     *
+     * @param lowercase-string $function_id the resolved id (the root function's when the call fell back to it)
+     */
+    public static function reportIncorrectFunctionCasing(
+        StatementsAnalyzer $statements_analyzer,
+        string $written_id,
+        string $function_id,
+        ?string $declared,
+        CodeLocation $code_location,
+    ): bool {
+        if ($declared === null || $declared === '') {
+            return false;
+        }
+        if ($written_id !== '' && $written_id[0] === '\\') {
+            $written_id = substr($written_id, 1);
+        }
+        if ($written_id === $declared) {
+            return false;
+        }
+        // a namespaced call that fell back to the root function compares the written name only
+        $written = $written_id;
+        if (strlen($written) !== strlen($function_id)) {
+            $written = ($pos = strrpos($written, '\\')) === false ? $written : substr($written, $pos + 1);
+            if ($written === $declared) {
+                return false;
+            }
+        }
+        if (strtolower($written) !== $function_id || strtolower($declared) !== $function_id) {
+            return false;
+        }
+
+        NamedFunctionCallHandler::reportForbiddenFunction($statements_analyzer, $function_id, $code_location);
+
+        IssueBuffer::maybeAdd(
+            new UndefinedFunction(
+                'Function ' . $written_id . ' does not exist (incorrect casing of ' . $declared . ')',
+                $code_location,
+                $function_id,
+            ),
+            $statements_analyzer->getSuppressedIssues(),
+        );
+
+        return true;
+    }
+
+    /**
      * @param  non-empty-string     $function_id
      * @param  bool                 $can_be_in_root_scope if true, the function can be shortened to the root version
      * @param  bool                 $case_sensitive a call written in code must spell the name as declared
@@ -646,26 +696,16 @@ abstract class CallAnalyzer
             return true;
         }
 
-        if ($case_sensitive) {
-            // pzoom resolves function names case-sensitively: a call spelled differently from the declaration is
-            // undefined, reported with the declared spelling
-            $declared = $function_storage->cased_name;
-            if ($declared !== null && $declared !== '') {
-                $written_short = ($pos = strrpos($cased_function_id, '\\')) === false ? $cased_function_id : substr($cased_function_id, $pos + 1);
-                $declared_short = ($pos = strrpos($declared, '\\')) === false ? $declared : substr($declared, $pos + 1);
-                if ($written_short !== $declared_short && strtolower($written_short) === strtolower($declared_short)) {
-                    IssueBuffer::maybeAdd(
-                        new UndefinedFunction(
-                            'Function ' . $cased_function_id . ' does not exist (incorrect casing of ' . $declared . ')',
-                            $code_location,
-                            $function_id,
-                        ),
-                        $statements_analyzer->getSuppressedIssues(),
-                    );
-
-                    return false;
-                }
-            }
+        if ($case_sensitive
+            && self::reportIncorrectFunctionCasing(
+                $statements_analyzer,
+                $cased_function_id,
+                $function_id,
+                $function_storage->cased_name,
+                $code_location,
+            )
+        ) {
+            return false;
         }
 
         $since_php_version_id = $function_storage->since_php_version_id;

@@ -27,6 +27,11 @@ final class ClassLikeNameOptions
          * Codebase::getGuardedPhpVersionId()) can make a newer native class available.
          */
         public ?Context $context = null,
+        /**
+         * The name is spelled in the source (a catch type) although its reference is otherwise treated as
+         * inferred: like pzoom, its casing is still checked.
+         */
+        public bool $spelled = false,
     ) {
     }
 }

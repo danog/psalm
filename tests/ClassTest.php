@@ -962,6 +962,13 @@ final class ClassTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            // pzoom resolves method names case-sensitively: an implementation spelled otherwise is another method
+            'abstractMethodImplementedWithOtherCasing' => [
+                'code' => '<?php
+                    abstract class P { abstract public function doIt(): int; }
+                    final class C extends P { public function DOIT(): int { return 1; } }',
+                'error_message' => 'UnimplementedAbstractMethod - src/somefile.php:3:33 - Method doIt is not defined on class C, defined abstract in P',
+            ],
             'undefinedClass' => [
                 'code' => '<?php
                     (new Foo());',

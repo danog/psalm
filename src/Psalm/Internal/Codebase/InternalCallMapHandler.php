@@ -94,6 +94,11 @@ final class InternalCallMapHandler
     private static ?array $first_callmap_versions = null;
 
     /**
+     * @var array<lowercase-string, non-empty-string>|null
+     */
+    private static ?array $function_casing = null;
+
+    /**
      * @param  list<PhpParser\Node\Arg>   $args
      */
     public static function getCallableFromCallMapById(
@@ -544,6 +549,24 @@ final class InternalCallMapHandler
             85 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_85.php'),
             default => null,
         };
+    }
+
+    /**
+     * The declared spelling of a native function (pzoom resolves natives case-sensitively, by the name its
+     * stubs declare). The call maps key functions in lowercase; the few natives declared otherwise are listed
+     * in FunctionCasing.php.
+     *
+     * @param lowercase-string $function_id
+     * @return non-empty-string
+     */
+    public static function getDeclaredFunctionName(string $function_id): string
+    {
+        if (self::$function_casing === null) {
+            /** @var array<lowercase-string, non-empty-string> */
+            self::$function_casing = require(dirname(__DIR__, 4) . '/dictionaries/FunctionCasing.php');
+        }
+
+        return self::$function_casing[$function_id] ?? ($function_id !== '' ? $function_id : throw new UnexpectedValueException('Empty function id'));
     }
 
     /**

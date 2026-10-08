@@ -505,6 +505,12 @@ final class TryCatchTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            // pzoom resolves names case-sensitively, in a catch too
+            'catchClassWithOtherCasing' => [
+                'code' => '<?php
+                    try {} catch (exception $e) {}',
+                'error_message' => 'UndefinedClass - src/somefile.php:2:35 - Class, interface or enum named exception does not exist (incorrect casing of Exception',
+            ],
             'invalidCatchClass' => [
                 'code' => '<?php
                     class A {}

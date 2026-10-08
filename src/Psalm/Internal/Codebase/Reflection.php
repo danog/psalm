@@ -438,7 +438,7 @@ final class Reflection
                 }
             }
 
-            $storage->cased_name = $reflection_function->getName();
+            $storage->cased_name = InternalCallMapHandler::getDeclaredFunctionName(strtolower($function_id));
         } catch (ReflectionException) {
             return false;
         }
@@ -485,7 +485,7 @@ final class Reflection
             }
         }
 
-        $storage->cased_name = $function_id;
+        $storage->cased_name = InternalCallMapHandler::getDeclaredFunctionName(strtolower($function_id));
 
         return null;
     }

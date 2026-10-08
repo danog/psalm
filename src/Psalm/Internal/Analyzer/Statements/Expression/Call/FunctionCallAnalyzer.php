@@ -582,12 +582,51 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         );
                     }
 
+                    // undefined (also when only its casing differs, as in pzoom): analyzed no further
+                    $function_call_info->function_exists = false;
+
                     return $function_call_info;
                 }
 
                 $function_call_info->function_exists = true;
             }
         } else {
+            // a native: resolved case-sensitively by its declared name, as pzoom does (a callable string
+            // analyzed as a call is a runtime truth: it resolves as PHP does)
+            if ($context->check_functions && !$stmt instanceof VirtualFuncCall) {
+                $function_id_lc = strtolower($function_call_info->function_id);
+                if ($function_call_info->is_stubbed) {
+                    $declared = $codebase_functions->getStorage($statements_analyzer, $function_id_lc)->cased_name;
+                } else {
+                    $declared = InternalCallMapHandler::getDeclaredFunctionName($function_id_lc);
+                }
+                if ($declared !== $function_call_info->function_id
+                    && CallAnalyzer::reportIncorrectFunctionCasing(
+                        $statements_analyzer,
+                        $function_call_info->function_id,
+                        $function_id_lc,
+                        $declared,
+                        $code_location,
+                    )
+                ) {
+                    if ($args) {
+                        ArgumentsAnalyzer::analyze(
+                            $statements_analyzer,
+                            $args,
+                            null,
+                            null,
+                            true,
+                            $context,
+                        );
+                    }
+
+                    // undefined (also when only its casing differs, as in pzoom): analyzed no further
+                    $function_call_info->function_exists = false;
+
+                    return $function_call_info;
+                }
+            }
+
             $function_call_info->function_exists = true;
         }
 
