@@ -1319,6 +1319,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $method_context->collect_initializations = true;
             $method_context->collect_nonprivate_initializations = !$uninitialized_private_properties;
             $method_context->self = $fq_class_name;
+            $method_context->reference_source_node = null;
 
             // the initialisation pass has to see `$this` exactly as the normal
             // method pass does (@see FunctionLikeAnalyzer::getFunctionInformation),
@@ -1350,6 +1351,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $method_context->vars_in_scope['$this'] = new Union([$this_atomic_object_type]);
             $method_context->vars_possibly_in_scope['$this'] = true;
             $method_context->calling_method_id = strtolower($fq_class_name) . '::__construct';
+            $method_context->reference_source_node = null;
 
             $constructor_analyzer->analyze(
                 $method_context,

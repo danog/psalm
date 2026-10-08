@@ -932,6 +932,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
             } else {
                 $this_type = Type::parseString($scope_fqcn);
                 $context->self = $scope_fqcn;
+                $context->reference_source_node = null;
                 $context->vars_in_scope['$this'] = $this_type;
                 $this->setFQCLN($scope_fqcn);
             }

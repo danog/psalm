@@ -248,6 +248,7 @@ abstract class CallAnalyzer
 
                     $old_self = $context->self;
                     $context->self = $declaring_fq_class_name;
+                    $context->reference_source_node = null;
                     $project_analyzer->getMethodMutations(
                         $declaring_method_id,
                         $context,
@@ -255,9 +256,11 @@ abstract class CallAnalyzer
                         $source->getRootFileName(),
                     );
                     $context->self = $old_self;
+                    $context->reference_source_node = null;
                 }
 
                 $context->calling_method_id = $old_calling_method_id;
+                $context->reference_source_node = null;
 
                 foreach ($local_vars_in_scope as $var => $type) {
                     $context->vars_in_scope[$var] = $type;

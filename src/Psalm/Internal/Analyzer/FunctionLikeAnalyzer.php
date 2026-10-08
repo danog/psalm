@@ -2574,12 +2574,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             if (!$context->calling_method_id || !$context->collect_initializations) {
                 $context->calling_method_id = strtolower((string)$method_id);
+                $context->reference_source_node = null;
             }
         } elseif ($this instanceof FunctionAnalyzer) {
             $function_name = $this->function->name->name;
             $namespace_prefix = $this->getNamespace();
             $cased_method_id = ($namespace_prefix !== null ? $namespace_prefix . '\\' : '') . $function_name;
             $context->calling_function_id = strtolower($cased_method_id);
+            $context->reference_source_node = null;
         } elseif ($this instanceof ClosureAnalyzer) {
             if ($storage->return_type) {
                 $closure_return_type = TypeExpander::expandUnion(

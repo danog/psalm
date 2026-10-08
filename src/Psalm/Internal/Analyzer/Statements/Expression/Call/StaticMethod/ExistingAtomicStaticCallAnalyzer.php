@@ -110,6 +110,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 $old_self = $context->self;
                 $context->include_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
                 $context->self = $appearing_method_class_name;
+                $context->reference_source_node = null;
 
                 $file_analyzer = $statements_analyzer->getFileAnalyzer();
 
@@ -149,6 +150,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
                 $context->include_location = $old_context_include_location;
                 $context->self = $old_self;
+                $context->reference_source_node = null;
             }
         }
 

@@ -659,15 +659,48 @@ final class CodeUseGraph
         int $type = self::EDGE_USE,
         ?string $file_path = null,
     ): void {
-        $this->addReferenceFrom(
-            $target_node,
-            $context?->calling_method_id,
-            $context?->calling_function_id,
-            $context?->self,
-            $location,
-            $type,
-            $file_path,
+        if ($context === null) {
+            $this->addReferenceFrom($target_node, null, null, null, $location, $type, $file_path);
+            return;
+        }
+
+        $source_node = $context->reference_source_node ??= self::scopeNode(
+            $context->calling_method_id,
+            $context->calling_function_id,
+            $context->self,
         );
+
+        $file_path = $location?->file_path ?? $file_path;
+
+        if ($source_node === 0) {
+            if ($file_path === null) {
+                return;
+            }
+            $source_node = self::fileNode($file_path);
+        }
+
+        $this->addReferenceFromNode($source_node, $target_node, $location, $type, $file_path);
+    }
+
+    /**
+     * The node references from a scope come from: its method's or function's, else its class's; 0 for none.
+     *
+     * @param lowercase-string|null $calling_method_id
+     * @param lowercase-string|null $calling_function_id
+     * @psalm-external-mutation-free
+     */
+    private static function scopeNode(?string $calling_method_id, ?string $calling_function_id, ?string $self): int
+    {
+        if ($calling_method_id !== null) {
+            return self::functionLikeNode($calling_method_id);
+        }
+        if ($calling_function_id !== null) {
+            return self::functionLikeNode($calling_function_id);
+        }
+        if ($self !== null) {
+            return self::classNode(strtolower($self));
+        }
+        return 0;
     }
 
     /**
@@ -700,6 +733,17 @@ final class CodeUseGraph
             return;
         }
 
+        $this->addReferenceFromNode($source_node, $target_node, $location, $type, $file_path);
+    }
+
+    /** @psalm-external-mutation-free */
+    private function addReferenceFromNode(
+        int $source_node,
+        int $target_node,
+        ?CodeLocation $location,
+        int $type,
+        ?string $file_path,
+    ): void {
         $this->addEdge($source_node, $target_node, $type);
 
         if ($file_path !== null && !isset($this->node_files[$source_node])) {

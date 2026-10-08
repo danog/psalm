@@ -200,6 +200,7 @@ final class Methods
         if ($calling_method_id !== null || $calling_class_name !== null) {
             $calling_context = new Context($calling_class_name);
             $calling_context->calling_method_id = $calling_method_id;
+            $calling_context->reference_source_node = null;
         }
 
         if ($source_file_path && $fq_class_name !== strtolower((string) $calling_class_name)) {

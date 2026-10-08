@@ -386,6 +386,7 @@ class FileAnalyzer extends SourceAnalyzer
         $call_context->initialized_methods = $this_context->initialized_methods;
         $call_context->include_location = $this_context->include_location;
         $call_context->calling_method_id = $this_context->calling_method_id;
+        $call_context->reference_source_node = null;
 
         foreach ($this_context->vars_possibly_in_scope as $var => $_) {
             if (str_starts_with($var, '$this->')) {

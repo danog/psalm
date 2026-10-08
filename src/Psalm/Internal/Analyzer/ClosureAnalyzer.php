@@ -314,6 +314,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
         $use_context->calling_method_id = $context->calling_method_id;
         $use_context->calling_function_id = $context->calling_function_id;
+        $use_context->reference_source_node = null;
         $use_context->phantom_classes = $context->phantom_classes;
 
         $byref_vars = [];

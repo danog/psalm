@@ -384,6 +384,15 @@ final class Context
      */
     public ?string $calling_method_id = null;
 
+    /**
+     * The code-use graph node the references made in this scope come from (pzoom's context keeps its
+     * function-like as ids): the calling method's or function's node, else the class's, 0 for none; null until
+     * the first reference. Whoever changes calling_method_id, calling_function_id or self resets it to null.
+     *
+     * @internal
+     */
+    public ?int $reference_source_node = null;
+
     public bool $inside_negation = false;
 
     public bool $ignore_variable_property = false;

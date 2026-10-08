@@ -1296,6 +1296,7 @@ final class ProjectAnalyzer
 
         if (!$this_context->self) {
             $this_context->self = $fq_class_name;
+            $this_context->reference_source_node = null;
             $this_context->vars_in_scope['$this'] = Type::parseString($fq_class_name);
         }
 
