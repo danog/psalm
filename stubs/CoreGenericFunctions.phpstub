@@ -816,7 +816,7 @@ function rtrim(string $string, string $characters = " \t\n\r\0\x0B") : string {}
  * )
  *
  * @psalm-flow ($separator) -> return
- * @psalm-flow ($array) -(array-fetch)-> return
+ * @psalm-flow ($array) -(arrayvalue-fetch)-> return
  */
 function implode($separator, array $array = []) : string {}
 
@@ -849,7 +849,7 @@ function implode($separator, array $array = []) : string {}
  * )
  *
  * @psalm-flow ($separator) -> return
- * @psalm-flow ($array) -(array-fetch)-> return
+ * @psalm-flow ($array) -(arrayvalue-fetch)-> return
  */
 function join($separator, array $array = []): string
 {
