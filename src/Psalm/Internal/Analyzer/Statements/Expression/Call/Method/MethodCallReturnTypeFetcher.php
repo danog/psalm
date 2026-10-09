@@ -372,7 +372,6 @@ final class MethodCallReturnTypeFetcher
 
         $node_location = new CodeLocation($statements_analyzer, $name_expr);
 
-
         // the nodes of the body of the method are keyed by the class it is analyzed as one of, which for a method
         // of a trait is the class using it
         $body_method_id = FunctionLikeAnalyzer::getBodyMethodId($codebase, $method_id);
