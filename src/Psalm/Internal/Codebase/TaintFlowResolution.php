@@ -19,13 +19,16 @@ use function array_map;
 use function array_merge;
 use function array_pop;
 use function array_slice;
+use function array_unique;
 use function count;
 use function explode;
 use function implode;
+use function in_array;
 use function is_string;
 use function ksort;
 use function max;
 use function min;
+use function sort;
 use function str_ends_with;
 use function str_starts_with;
 use function strlen;
@@ -120,6 +123,14 @@ final class TaintFlowResolution
      * no open array assignment (what may be an array may also be a string) can be the taint itself.
      */
     private const CONVERSION_KEY = '#';
+
+    /**
+     * The prefix of the type of an edge from an array to the array it becomes once its value under a key is replaced
+     * (see ArrayAssignmentAnalyzer::getOverwritePathType()), and of the open array assignment of a flow anywhere in
+     * an array but under the keys it went through the overwrites of (see getNextOpenAssignments()): its class is
+     * those keys, prefixed with '!' (see getClass()).
+     */
+    private const OVERWRITE_PREFIX = 'arrayvalue-overwrite-';
 
     /**
      * How many of its innermost open assignments of each expression type a flow outside of any context keeps
@@ -1295,8 +1306,8 @@ final class TaintFlowResolution
             $foreach_marker = substr($path_type, (int) strpos($path_type, '@') + 1);
         }
 
-        if (str_starts_with($path_type, 'arrayvalue-overwrite-')) {
-            return [-1, '!' . substr($path_type, 21), -1, -1, null, false];
+        if (str_starts_with($path_type, self::OVERWRITE_PREFIX)) {
+            return [-1, '!' . substr($path_type, strlen(self::OVERWRITE_PREFIX)), -1, -1, null, false];
         }
 
         if (str_ends_with($path_type, TaintFlowGraph::ARRAY_CONVERSION_SUFFIX)) {
@@ -1459,19 +1470,35 @@ final class TaintFlowResolution
 
         if ($observed_family === -1 && $observed_key !== null) {
             // The replacement of the value under a key (see getPathTypeEffects()) stops a flow of what was
-            // assigned under that key, where the flow knows that's its innermost open array assignment. Any other
-            // goes on, also one that doesn't know it: deciding that for each call entering its context, in
-            // filters, would lose the precision of the fetches in them (see getAssignmentClass()) for no flow
-            // they would take otherwise. Nor is it an observation keeping the open assignments of the flows
-            // reaching it (see computeObservableDepths()): where no fetch past it can observe the one it would
-            // stop, the flow goes on as it did through the plain edge it replaces.
-            $next = $innermost_array_assignment >= 0
-                && !self::classPassesFetch(
-                    $this->getClass($innermost_array_assignment, self::ARRAY_FAMILY),
-                    $observed_key,
-                )
-                ? self::IGNORED
-                : $open_assignments;
+            // assigned under that key, where the flow knows that's its innermost open array assignment. A flow
+            // anywhere in the array, knowing it has no open array assignment or being already anywhere in it but
+            // under some overwritten keys, is anywhere in it but under that key too: it gets (or adds that key to)
+            // the open array assignment of an overwrite, which a fetch of one of those keys ignores (see
+            // classPassesFetch()), and any other fetch closes. Any other flow goes on, also one that doesn't know
+            // its innermost open array assignment: deciding that for each call entering its context, in filters,
+            // would lose the precision of the fetches in them (see getAssignmentClass()) for no flow they would
+            // take otherwise. Nor is it an observation keeping the open assignments of the flows reaching it (see
+            // computeObservableDepths()): where no fetch past it can observe the one it would stop, the flow goes
+            // on as it did through the plain edge it replaces.
+            if ($innermost_array_assignment >= 0
+                && str_starts_with($this->path_types[$innermost_array_assignment], self::OVERWRITE_PREFIX)
+            ) {
+                $next = $this->addOverwrittenKey(
+                    $open_assignments,
+                    self::getOverwrittenKeys($this->getClass($innermost_array_assignment, self::ARRAY_FAMILY)),
+                    substr($observed_key, 1),
+                );
+            } elseif (!$array_assignments && ($closed[self::ARRAY_FAMILY] ?? self::NO_CALL) === self::NO_CALL) {
+                $next = $this->addOverwrittenKey($open_assignments, [], substr($observed_key, 1));
+            } else {
+                $next = $innermost_array_assignment >= 0
+                    && !self::classPassesFetch(
+                        $this->getClass($innermost_array_assignment, self::ARRAY_FAMILY),
+                        $observed_key,
+                    )
+                    ? self::IGNORED
+                    : $open_assignments;
+            }
         } elseif ($innermost_array_assignment >= 0
             && $this->path_types[$innermost_array_assignment] === 'arraykey-assignment'
             && ($this->path_types[$path_type] === 'arrayvalue-fetch'
@@ -1505,6 +1532,54 @@ final class TaintFlowResolution
         $this->open_assignment_transitions[$open_assignments][$path_type] = $next;
 
         return $next;
+    }
+
+    /**
+     * The open assignments $open_assignments of a flow anywhere in an array but under the overwritten keys $keys
+     * (see getNextOpenAssignments()) once it is anywhere in it but under $key too: one open array assignment of
+     * the overwrites of all of them, replacing the innermost one if $keys aren't none, so that one fetch closes it.
+     *
+     * @param list<string> $keys
+     * @psalm-external-mutation-free
+     */
+    private function addOverwrittenKey(int $open_assignments, array $keys, string $key): int
+    {
+        [$made, $closed] = $this->open_assignments[$open_assignments];
+
+        if ($keys !== []) {
+            array_pop($made[self::ARRAY_FAMILY]);
+        }
+
+        $keys[] = $key;
+        $keys = array_unique($keys);
+        sort($keys, SORT_STRING);
+
+        $made[self::ARRAY_FAMILY][] = $this->getPathTypeId(self::OVERWRITE_PREFIX . implode('|', $keys));
+
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $this->open_assignment_guards[$open_assignments],
+            $this->open_assignment_calls[$open_assignments],
+        );
+    }
+
+    /**
+     * The keys whose overwrites the open array assignment of class $class (see getClass()) holds
+     *
+     * @return list<string>
+     * @psalm-pure
+     */
+    private static function getOverwrittenKeys(string $class): array
+    {
+        $keys = [];
+
+        foreach (explode("'|'", substr($class, 2, -1)) as $key) {
+            $keys[] = "'" . $key . "'";
+        }
+
+        return $keys;
     }
 
     /**
@@ -2920,8 +2995,9 @@ final class TaintFlowResolution
     /**
      * The class of an open assignment of type $family: what decides whether a fetch ignores it (see
      * shouldIgnoreFetch()). That's its key, prefixed with ':' (see DataFlowGraph::keysMayBeEqual()), KEY_CLASS
-     * for an array key, UNKNOWN_KEY_CLASS for an unknown key, or '' for a serialization (see
-     * DataFlowGraph::SERIALIZATION_PATH_TYPE).
+     * for an array key, UNKNOWN_KEY_CLASS for an unknown key, '' for a serialization (see
+     * DataFlowGraph::SERIALIZATION_PATH_TYPE), or the overwritten keys prefixed with '!' for the overwrites a flow
+     * anywhere in an array went through (see getNextOpenAssignments()).
      *
      * @psalm-mutation-free
      */
@@ -2936,6 +3012,10 @@ final class TaintFlowResolution
 
         if ($assignment_type === TaintFlowGraph::SERIALIZATION_PATH_TYPE) {
             return '';
+        }
+
+        if (str_starts_with($assignment_type, self::OVERWRITE_PREFIX)) {
+            return '!' . substr($assignment_type, strlen(self::OVERWRITE_PREFIX));
         }
 
         return $assignment_type !== $expression_type . '-assignment'
@@ -3074,6 +3154,13 @@ final class TaintFlowResolution
      */
     private static function classPassesFetch(string $class, string $fetched_key): bool
     {
+        if (str_starts_with($class, '!')) {
+            // a flow anywhere in an array but under the keys overwritten (see getNextOpenAssignments()): a fetch of
+            // one of them takes nothing of it, any other fetch and a conversion take it all
+            return !self::isExactKey($fetched_key)
+                || !in_array($fetched_key, self::getOverwrittenKeys($class), true);
+        }
+
         if ($fetched_key === self::CONVERSION_KEY) {
             return $class === '';
         }
