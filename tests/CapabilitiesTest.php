@@ -30,6 +30,20 @@ final class CapabilitiesTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            'phpredisCommandsRequireIo' => [
+                'code' => '<?php
+                    /** @psalm-capabilities write-props|io */
+                    function cached(Redis $redis, RedisCluster $cluster, string $key): array {
+                        return [$redis->getEx($key, ["EX" => 5]), $cluster->get($key)];
+                    }
+
+                    /** @psalm-capabilities write-props|io */
+                    function listen(Redis $redis): void {
+                        $redis->subscribe(["news"], static function (Redis $redis, string $channel, string $message): void {
+                            echo $message;
+                        });
+                    }',
+            ],
             'igbinarySerializeOfScalarsIsPure' => [
                 'code' => '<?php
                     /**
@@ -1864,6 +1878,16 @@ final class CapabilitiesTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            'phpredisSubscribeChargesTheCallback' => [
+                'code' => '<?php
+                    /** @psalm-capabilities write-props|io */
+                    function listen(Redis $redis): void {
+                        $redis->subscribe(["news"], static function (Redis $redis, string $channel, string $message): void {
+                            $GLOBALS["last"] = $message;
+                        });
+                    }',
+                'error_message' => 'ImpureMethodCall',
+            ],
             'igbinaryUnserializeIsImpure' => [
                 'code' => '<?php
                     /** @psalm-pure */
