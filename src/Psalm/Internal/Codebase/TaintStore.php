@@ -46,6 +46,7 @@ use function array_filter;
 use function array_values;
 use function count;
 use function in_array;
+use function ltrim;
 use function preg_match;
 use function preg_split;
 use function str_ends_with;
@@ -73,7 +74,7 @@ use function trim;
  */
 final class TaintStore
 {
-    private const STORE_REGEX = '/^\\\\?([A-Za-z_\\\\][\w\\\\]*)::\$(\w+)\[(\*|\$\w+(?:\[\*\])?)\](?:\[[^\]]*\])*$/';
+    private const STORE_REGEX = '/^([A-Za-z_\\\\][\w\\\\]*)::\$(\w+)\[(\*|\$\w+(?:\[\*\])?)\](?:\[[^\]]*\])*$/';
 
     /**
      * Records a flow into a keyed store (`($value, $other) -> Store::$data[$key]`) or out of it
@@ -107,7 +108,10 @@ final class TaintStore
         if ($self_class !== null && in_array(strtolower($class_name), ['self', 'static'], true)) {
             $class_name = $self_class;
         } elseif ($aliases !== null) {
+            // a leading backslash makes the class fully qualified
             $class_name = Type::getFQCLNFromString($class_name, $aliases);
+        } else {
+            $class_name = ltrim($class_name, '\\');
         }
 
         $store = $class_name . '::$' . ($store_matches[2] ?? '');
