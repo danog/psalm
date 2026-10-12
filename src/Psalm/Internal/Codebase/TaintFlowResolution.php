@@ -2297,12 +2297,24 @@ final class TaintFlowResolution
             }
 
             $removed_taints = $path->removed_taints;
+            $edge_kept = $kept & ~$removed_taints;
+            $edge_added = ($added | $path->added_taints) & ~$removed_taints;
+
+            // what a builtin decodes from a string (json_decode(), unserialize(), parse_str(), ...) can be an array
+            // or an object again, whatever the string's type took away: decoded user input can be a NoSQL query.
+            // Whether the taints the calls entering the context bring are user input isn't known here: any input
+            // taint they may keep counts (it only adds flows).
+            if ($path->type === TaintFlowGraph::UNSERIALIZATION_PATH_TYPE
+                && (($edge_kept | $edge_added) & $this->codebase->getInputTaints()) !== 0
+            ) {
+                $edge_added |= TaintKind::ARRAY_ONLY;
+            }
 
             $this->takeEdge(
                 $context,
                 $edge_open_assignments,
-                $kept & ~$removed_taints,
-                ($added | $path->added_taints) & ~$removed_taints,
+                $edge_kept,
+                $edge_added,
                 $state,
                 0,
                 $from_id,
