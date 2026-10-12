@@ -270,7 +270,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public function isMutationFree(): bool
     {
-        return Capabilities::allows(Capabilities::MUTATION_FREE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::MUTATION_FREE, $this->capabilities);
     }
 
     /**
@@ -278,7 +278,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public function isExternalMutationFree(): bool
     {
-        return Capabilities::allows(Capabilities::EXTERNAL_MUTATION_FREE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::EXTERNAL_MUTATION_FREE, $this->capabilities);
     }
 
     /**
@@ -367,7 +367,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public function isPure(): bool
     {
-        return Capabilities::allows(Capabilities::NONE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::NONE, $this->capabilities);
     }
 
     /**
