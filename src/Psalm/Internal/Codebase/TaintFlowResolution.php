@@ -2414,29 +2414,31 @@ final class TaintFlowResolution
                 $next_open_assignments = self::classPassesFetch($fact[0], self::CONVERSION_KEY)
                     ? $overwritten
                     : $open_assignments;
+            } elseif (($fact === null || $fact[0] === null)
+                && $this->entry_kinds[$context] === self::ENTRY_CALL
+                && $this->tracksClasses($context)
+            ) {
+                // it goes on in the filter of each class of the calls entering the context (see dependOnClass()),
+                // which knows it: telling the calls apart by the overwritten key instead (in filters, see
+                // getFilter()) would make a walk for each set of keys overwritten and fetched
+                $this->dependOnClass(
+                    $context,
+                    self::getPosition(self::ARRAY_FAMILY, $depth),
+                    $predecessor,
+                    self::CONVERGENCE_LEVELS,
+                );
+
+                return;
             } else {
-                $other_key = self::OTHER_KEY_PREFIX . $key;
-
-                if ($fact === null || $fact[0] !== self::EXACT_KEY_CLASS) {
-                    $this->reachThroughEdge(
-                        $fact !== null && self::passesKnownKeys($fact[1], self::CONVERSION_KEY)
-                            ? $context
-                            : $this->getFilter($context, self::ARRAY_FAMILY, $depth, self::CONVERSION_KEY),
-                        $overwritten,
-                        $kept,
-                        $added,
-                        $predecessor,
-                        $link,
-                        $from_id,
-                        $to_id,
-                        $path_type,
-                    );
+                if ($fact !== null && $fact[0] === self::EXACT_KEY_CLASS && !self::hasOtherKey($fact[1])) {
+                    // the calls of the class of another key known exactly go on, those of the class of that key
+                    // stop: a fetch past it knows the one class passing it (see getExactKeyClass()). Only at the
+                    // first overwrite: a filter per set of keys overwritten would make a walk for each.
+                    $context = $this->getFilter($context, self::ARRAY_FAMILY, $depth, self::OTHER_KEY_PREFIX . $key);
                 }
 
-                if ($fact === null || !self::passesKnownKeys($fact[1], $other_key)) {
-                    $context = $this->getFilter($context, self::ARRAY_FAMILY, $depth, $other_key);
-                }
-
+                // (the calls that don't know their class, or past the first overwrite, go on as through the plain
+                // edge)
                 $next_open_assignments = $open_assignments;
             }
         }
@@ -3034,6 +3036,13 @@ final class TaintFlowResolution
         }
 
         if (!$this->tracksClasses($context) || ($fact !== null && self::isDeferredClass($fact[0]))) {
+            if (str_starts_with($fetched_key, self::OTHER_KEY_PREFIX) && !$is_exact_key_class) {
+                // only the calls of the class of a key known exactly are told apart by the key overwritten (see
+                // takeEdge()): a filter per overwritten key in the walks of the calls entering theirs would make a
+                // walk for each set of keys overwritten and fetched there
+                return true;
+            }
+
             // (the calls of a convergence with the class of a key known exactly know it: asking them per key goes
             // no further than them)
             if (!$is_convergence || $is_exact_key_class) {
@@ -3181,6 +3190,23 @@ final class TaintFlowResolution
     {
         return 1 << (($position >> self::DEPTH_BITS) * (self::MAX_CALL_OPEN_ASSIGNMENT_DEPTH + 1)
             + ($position & self::DEPTH_MASK));
+    }
+
+    /**
+     * Whether $passed_keys hold the key of an overwrite (see OTHER_KEY_PREFIX)
+     *
+     * @param array<string, true> $passed_keys
+     * @psalm-pure
+     */
+    private static function hasOtherKey(array $passed_keys): bool
+    {
+        foreach ($passed_keys as $key => $_) {
+            if (str_starts_with($key, self::OTHER_KEY_PREFIX)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
