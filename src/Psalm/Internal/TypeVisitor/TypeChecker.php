@@ -28,6 +28,7 @@ use Psalm\Issue\UndefinedConstant;
 use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
 use Psalm\Storage\Capabilities;
+use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\MethodStorage;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TClassConstant;
@@ -56,6 +57,13 @@ use function strtolower;
 final class TypeChecker extends TypeVisitor
 {
     private bool $has_errors = false;
+
+    /**
+     * Whether the node being visited is in a callable's parameter types an odd number of times: the variance
+     * position flips there, so a covariant template can be what a callable parameter receives
+     * (`Closure(T): void` hands T out, like a return type)
+     */
+    private bool $in_flipped_position = false;
 
     /**
      * @param array<string>    $suppressed_issues
@@ -134,6 +142,23 @@ final class TypeChecker extends TypeVisitor
         $type->checked = true;
 
         return null;
+    }
+
+    /**
+     * @psalm-external-mutation-free
+     */
+    #[Override]
+    public function traverse(TypeNode $node): bool
+    {
+        if (!$node instanceof FunctionLikeParameter) {
+            return parent::traverse($node);
+        }
+
+        $this->in_flipped_position = !$this->in_flipped_position;
+        $result = parent::traverse($node);
+        $this->in_flipped_position = !$this->in_flipped_position;
+
+        return $result;
     }
 
     public function hasErrors(): bool
@@ -429,6 +454,7 @@ final class TypeChecker extends TypeVisitor
     public function checkTemplateParam(TTemplateParam $atomic): void
     {
         if ($this->prevent_template_covariance
+            && !$this->in_flipped_position
             && !str_starts_with($atomic->defining_class, 'fn-')
             && $atomic->defining_class !== 'class-string-map'
         ) {
