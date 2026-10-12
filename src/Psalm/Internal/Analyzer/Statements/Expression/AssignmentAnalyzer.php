@@ -389,10 +389,13 @@ final class AssignmentAnalyzer
             }
 
             if ($assign_value_type) {
+                // the value is copied: a variable holding a reference (`foreach (... as &$v)`) doesn't make the one
+                // it is assigned to a reference
                 $assign_value_type = $assign_value_type->setProperties([
                     'from_property' => false,
                     'from_static_property' => false,
                     'ignore_isset' => false,
+                    'by_ref' => false,
                 ]);
             } else {
                 $assign_value_type = Type::getMixed();

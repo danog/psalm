@@ -39,6 +39,25 @@ final class CapabilitiesTest extends TestCase
                     function encode(array $values): mixed {
                         return igbinary_serialize($values);
                     }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
+            ],
+            'copyOfAForeachReferenceIsNoReference' => [
+                'code' => '<?php
+                    /**
+                     * @param list<string> $values
+                     * @psalm-pure
+                     */
+                    function hasEmpty(array $values): bool {
+                        $found = false;
+                        foreach ($values as &$value) {
+                            $copy = $value;
+                            $found = $found || $copy === "";
+                        }
+                        unset($value);
+                        return $found;
+                    }',
             ],
             'classImplementsOfAnObjectDoesNotAutoload' => [
                 'code' => '<?php
@@ -285,6 +304,9 @@ final class CapabilitiesTest extends TestCase
                     function readTime(): int {
                         return read(fn(): int => time());
                     }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
             ],
             'datesOfAGivenTimestampArePure' => [
                 'code' => '<?php
@@ -1342,6 +1364,8 @@ final class CapabilitiesTest extends TestCase
                         return igbinary_unserialize($data);
                     }',
                 'error_message' => 'ImpureFunctionCall',
+                'error_levels' => [],
+                'php_version' => '8.0',
             ],
             'igbinarySerializeOfAnObjectRequiresIo' => [
                 'code' => '<?php
@@ -1350,6 +1374,8 @@ final class CapabilitiesTest extends TestCase
                         return igbinary_serialize($value);
                     }',
                 'error_message' => 'ImpureFunctionCall',
+                'error_levels' => [],
+                'php_version' => '8.0',
             ],
             'classUsesOfAClassNameMayAutoload' => [
                 'code' => '<?php
@@ -1431,6 +1457,8 @@ final class CapabilitiesTest extends TestCase
                         return getdate($ts)["year"];
                     }',
                 'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on getdate requires time',
+                'error_levels' => [],
+                'php_version' => '8.0',
             ],
             'mktimeWithNullArgumentReadsTheClock' => [
                 'code' => '<?php
@@ -1439,6 +1467,8 @@ final class CapabilitiesTest extends TestCase
                         return (string) mktime(0, 0, 0, 1, $day, 2000);
                     }',
                 'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:41 - The context is pure but function call on mktime requires time',
+                'error_levels' => [],
+                'php_version' => '8.0',
             ],
             'vprintfRequiresIo' => [
                 'code' => '<?php
