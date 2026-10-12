@@ -451,6 +451,21 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'dontTaintAPathResolvedFromAGlobalNothingWrites' => [
+                'code' => '<?php
+                    function path(string $name): string {
+                        return isset($GLOBALS[$name]) && is_string($GLOBALS[$name]) ? $GLOBALS[$name] : "";
+                    }
+
+                    function args(): array {
+                        global $argv;
+                        return (array) $argv;
+                    }
+
+                    // the call reads $GLOBALS["dir"], which nothing writes, not $GLOBALS["argv"]
+                    echo count(args());
+                    echo strlen((string) file_get_contents(path("dir")));',
+            ],
             'dontTaintAPathResolvedFromGlobalsTheOperatorChose' => [
                 // like IncludeAnalyzer::getPathTo(), which resolves $GLOBALS["name"] with the value it has in Psalm
                 'code' => '<?php
@@ -4880,8 +4895,9 @@ final class TaintTest extends TestCase
                         return (array) $argv;
                     }
 
+                    // the key a call passes is the key of the global it reads (see the call key bindings)
                     echo count(args());
-                    echo strlen((string) file_get_contents(path("dir")));',
+                    echo strlen((string) file_get_contents(path("argv")));',
                 'error_message' => 'TaintedFile',
             ],
             'taintSinkWithoutParameter' => [
