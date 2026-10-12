@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\NullsafeChainState;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\Codebase\TaintStore;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
@@ -521,6 +522,18 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $method_source,
                 $method_storage->removed_taints | $removed_taints,
                 $added_taints,
+            );
+
+            $return_type_candidate = TaintStore::taintCall(
+                $statements_analyzer,
+                $taint_flow_graph,
+                $method_storage,
+                $stmt->getArgs(),
+                $node_location,
+                $return_type_candidate,
+                $cased_method_id,
+                $method_id,
+                $specialization_location,
             );
         }
     }
