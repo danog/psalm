@@ -125,6 +125,15 @@ final class TaintFlowResolution
     private const CONVERSION_KEY = '#';
 
     /**
+     * The prefix of the key the replacement of the value under a key (see getPathTypeEffects()) observes of the open
+     * array assignment of the calls entering a context, for the calls it lets go on unchanged (see takeEdge()): only
+     * the class of another key, or of a key the flows don't know exactly, passes it (see classPassesFetch()). The
+     * classes of none and of an overwrite pass a conversion instead (see CONVERSION_KEY), and the class of the
+     * overwritten key neither.
+     */
+    private const OTHER_KEY_PREFIX = '%';
+
+    /**
      * The prefix of the type of an edge from an array to the array it becomes once its value under a key is replaced
      * (see ArrayAssignmentAnalyzer::getOverwritePathType()), and of the open array assignment of a flow anywhere in
      * an array but under the keys it went through the overwrites of (see getNextOpenAssignments()): its class is
@@ -177,6 +186,13 @@ final class TaintFlowResolution
      */
     private const IGNORED = -1;
     private const OBSERVES_CALL = -2;
+
+    /**
+     * What getNextOpenAssignments() returns for the replacement of the value under a key (see
+     * getPathTypeEffects()) of an array whose innermost open array assignment is one of the call entering the
+     * flow's context: what the flow becomes depends on its class (see takeEdge())
+     */
+    private const OVERWRITES_CALL = -3;
 
     /**
      * How many states a node must have for the flows reaching it in more states to be walked from it once,
@@ -1474,12 +1490,13 @@ final class TaintFlowResolution
             // anywhere in the array, knowing it has no open array assignment or being already anywhere in it but
             // under some overwritten keys, is anywhere in it but under that key too: it gets (or adds that key to)
             // the open array assignment of an overwrite, which a fetch of one of those keys ignores (see
-            // classPassesFetch()), and any other fetch closes. Any other flow goes on, also one that doesn't know
-            // its innermost open array assignment: deciding that for each call entering its context, in filters,
-            // would lose the precision of the fetches in them (see getAssignmentClass()) for no flow they would
-            // take otherwise. Nor is it an observation keeping the open assignments of the flows reaching it (see
-            // computeObservableDepths()): where no fetch past it can observe the one it would stop, the flow goes
-            // on as it did through the plain edge it replaces.
+            // classPassesFetch()), and any other fetch closes. A flow whose innermost open array assignment is
+            // the one of the call entering its context it would close next does the same, or stops, or goes on, by
+            // its class for each call (see takeEdge()). Any other flow goes on, also one that doesn't know its
+            // innermost open array assignment (put back by the call, or forgotten). Nor is it an observation
+            // keeping the open assignments of the flows reaching it (see computeObservableDepths()): where no
+            // fetch past it can observe the one it would stop, the flow goes on as it did through the plain edge
+            // it replaces.
             if ($innermost_array_assignment >= 0
                 && str_starts_with($this->path_types[$innermost_array_assignment], self::OVERWRITE_PREFIX)
             ) {
@@ -1490,6 +1507,11 @@ final class TaintFlowResolution
                 );
             } elseif (!$array_assignments && ($closed[self::ARRAY_FAMILY] ?? self::NO_CALL) === self::NO_CALL) {
                 $next = $this->addOverwrittenKey($open_assignments, [], substr($observed_key, 1));
+            } elseif (!$array_assignments
+                && ($closed[self::ARRAY_FAMILY] ?? self::NO_CALL) !== self::NO_CALL
+                && $closed[self::ARRAY_FAMILY] < self::MAX_CALL_OPEN_ASSIGNMENT_DEPTH
+            ) {
+                $next = self::OVERWRITES_CALL;
             } else {
                 $next = $innermost_array_assignment >= 0
                     && !self::classPassesFetch(
@@ -2332,6 +2354,61 @@ final class TaintFlowResolution
             $next_open_assignments = $this->bindCall($next_open_assignments, $from_id);
         }
 
+        if ($next_open_assignments === self::OVERWRITES_CALL) {
+            // As outside of any call (see getNextOpenAssignments()): what the calls with no open array assignment
+            // there, or with that of an overwrite, passed is anywhere in the array but under the overwritten key
+            // (an open assignment of the overwrite in place of theirs, which it closes: a fetch of another key
+            // closes both, and the next one observes the open assignment of the calls below); what they assigned
+            // under that key stops; what they assigned under another key goes on.
+            $key = substr((string) $this->path_type_effects[$path_type][1], 1);
+            $depth = $this->getObservedCallDepth($open_assignments, self::ARRAY_FAMILY);
+            $fact = $this->entry_facts[$context][self::getPosition(self::ARRAY_FAMILY, $depth)] ?? null;
+            [$made, $closed] = $this->open_assignments[$open_assignments];
+            $closed[self::ARRAY_FAMILY]++;
+            $made[self::ARRAY_FAMILY][] = $this->getPathTypeId(self::OVERWRITE_PREFIX . $key);
+            $overwritten = $this->internOpenAssignments(
+                $made,
+                $closed,
+                $this->open_assignment_slots[$open_assignments],
+                $this->open_assignment_guards[$open_assignments],
+                $this->open_assignment_calls[$open_assignments],
+            );
+
+            if ($fact !== null && $fact[0] !== null && !self::isDeferredClass($fact[0])) {
+                if ($fact[0] === ':' . $key) {
+                    return;
+                }
+
+                $next_open_assignments = self::classPassesFetch($fact[0], self::CONVERSION_KEY)
+                    ? $overwritten
+                    : $open_assignments;
+            } else {
+                $other_key = self::OTHER_KEY_PREFIX . $key;
+
+                if ($fact === null || $fact[0] !== self::EXACT_KEY_CLASS) {
+                    $this->reachThroughEdge(
+                        $fact !== null && self::passesKnownKeys($fact[1], self::CONVERSION_KEY)
+                            ? $context
+                            : $this->getFilter($context, self::ARRAY_FAMILY, $depth, self::CONVERSION_KEY),
+                        $overwritten,
+                        $kept,
+                        $added,
+                        $predecessor,
+                        $link,
+                        $from_id,
+                        $to_id,
+                        $path_type,
+                    );
+                }
+
+                if ($fact === null || !self::passesKnownKeys($fact[1], $other_key)) {
+                    $context = $this->getFilter($context, self::ARRAY_FAMILY, $depth, $other_key);
+                }
+
+                $next_open_assignments = $open_assignments;
+            }
+        }
+
         if ($next_open_assignments === self::OBSERVES_CALL) {
             // it goes on for the calls whose open assignment it doesn't ignore
             [$observed_family, $observed_key] = $this->path_type_effects[$path_type];
@@ -2355,6 +2432,34 @@ final class TaintFlowResolution
             $next_open_assignments = $this->applyPathType($open_assignments, $path_type);
         }
 
+        $this->reachThroughEdge(
+            $context,
+            $next_open_assignments,
+            $kept,
+            $added,
+            $predecessor,
+            $link,
+            $from_id,
+            $to_id,
+            $path_type,
+        );
+    }
+
+    /**
+     * Makes the flows taking the edge from $from_id to $to_id of type $path_type (see takeEdge()) reach $to_id in
+     * context $context with open assignments $open_assignments, reporting them if it is a sink of their taints.
+     */
+    private function reachThroughEdge(
+        int $context,
+        int $open_assignments,
+        int $kept,
+        int $added,
+        int $predecessor,
+        int $link,
+        string $from_id,
+        string $to_id,
+        int $path_type,
+    ): void {
         if (isset($this->sinks[$to_id])
             && ($this->getNode($from_id)?->code_location !== null || $this->sinks[$to_id]->code_location !== null)
         ) {
@@ -2371,7 +2476,7 @@ final class TaintFlowResolution
             }
         }
 
-        $this->reach($to_id, $context, $next_open_assignments, $kept, $added, $predecessor, $link, $path_type);
+        $this->reach($to_id, $context, $open_assignments, $kept, $added, $predecessor, $link, $path_type);
     }
 
     /**
@@ -2863,8 +2968,8 @@ final class TaintFlowResolution
         if (($index < 0 && ($closed[$family] === self::NO_CALL || $closed[$family] === self::FORGOTTEN))
             || $call_depth > self::MAX_CALL_OPEN_ASSIGNMENT_DEPTH
         ) {
-            // there is none, or the flows don't know it
-            return true;
+            // there is none, or the flows don't know it (see getAssignmentClass())
+            return self::classPassesFetch('', $fetched_key);
         }
 
         $context = $this->state_contexts[$state];
@@ -3056,7 +3161,10 @@ final class TaintFlowResolution
     private static function passesKnownKeys(array $passed_keys, string $fetched_key): bool
     {
         return isset($passed_keys[$fetched_key])
-            || (isset($passed_keys[self::ANY_KEY]) && $fetched_key !== '' && $fetched_key !== self::CONVERSION_KEY);
+            || (isset($passed_keys[self::ANY_KEY])
+                && $fetched_key !== ''
+                && $fetched_key !== self::CONVERSION_KEY
+                && !str_starts_with($fetched_key, self::OTHER_KEY_PREFIX));
     }
 
     /**
@@ -3069,7 +3177,11 @@ final class TaintFlowResolution
     private static function areSingleKeys(array $keys): bool
     {
         foreach ($keys as $key => $_) {
-            if (str_contains($key, "'|'") || (str_starts_with($key, "'") && str_ends_with($key, "'*"))) {
+            if (str_contains($key, "'|'")
+                || (str_starts_with($key, "'") && str_ends_with($key, "'*"))
+                || str_starts_with($key, self::OTHER_KEY_PREFIX)
+            ) {
+                // (the class of none doesn't pass a key of OTHER_KEY_PREFIX)
                 return false;
             }
         }
@@ -3099,6 +3211,7 @@ final class TaintFlowResolution
         return $key !== ''
             && $key !== self::CONVERSION_KEY
             && !str_starts_with($key, '!')
+            && !str_starts_with($key, self::OTHER_KEY_PREFIX)
             && !str_contains($key, "'|'")
             && !(strlen($key) > 3 && str_starts_with($key, "'") && str_ends_with($key, "'*"));
     }
@@ -3154,6 +3267,12 @@ final class TaintFlowResolution
      */
     private static function classPassesFetch(string $class, string $fetched_key): bool
     {
+        if (str_starts_with($fetched_key, self::OTHER_KEY_PREFIX)) {
+            return $class !== ''
+                && !str_starts_with($class, '!')
+                && $class !== ':' . substr($fetched_key, strlen(self::OTHER_KEY_PREFIX));
+        }
+
         if (str_starts_with($class, '!')) {
             // a flow anywhere in an array but under the keys overwritten (see getNextOpenAssignments()): a fetch of
             // one of them takes nothing of it, any other fetch and a conversion take it all
