@@ -1831,7 +1831,7 @@ final class ArgumentAnalyzer
         }
         $taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed();
 
-        $type_removed_taints = $taint_flow_graph ? $input_type->getTaintsToRemove() : 0;
+        $type_removed_taints = $taint_flow_graph ? $input_type->getTaintsToRemove($codebase->getInputTaints()) : 0;
 
         // the array key the parameter is in this call, if it is one (see TaintFlowGraph::addParamKey())
         if ($input_type->isSingleStringLiteral()) {

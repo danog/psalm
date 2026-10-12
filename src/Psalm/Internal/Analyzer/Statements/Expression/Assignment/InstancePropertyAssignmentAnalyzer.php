@@ -599,7 +599,8 @@ final class InstancePropertyAssignmentAnalyzer
 
                 if ($assignment_value_type->parent_nodes) {
                     // what the assigned value cannot hold, given its type, which the property's may not tell
-                    $value_removed_taints = $removed_taints | $assignment_value_type->getTaintsToRemove();
+                    $value_removed_taints = $removed_taints
+                        | $assignment_value_type->getTaintsToRemove($codebase->getInputTaints());
 
                     foreach ($assignment_value_type->parent_nodes as $parent_node) {
                         $data_flow_graph->addPath(
@@ -700,7 +701,8 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($assignment_value_type->parent_nodes) {
             // what the assigned value cannot hold, given its type, which the property's may not tell
-            $value_removed_taints = $removed_taints | $assignment_value_type->getTaintsToRemove();
+            $value_removed_taints = $removed_taints
+                | $assignment_value_type->getTaintsToRemove($codebase->getInputTaints());
 
             foreach ($assignment_value_type->parent_nodes as $parent_node) {
                 $graph->addPath(

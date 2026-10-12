@@ -614,7 +614,9 @@ final class ArrayAssignmentAnalyzer
             }
 
             // what the assigned value cannot hold, given its type
-            $removed_taints = $graph instanceof VariableUseGraph ? 0 : $child_stmt_type->getTaintsToRemove();
+            $removed_taints = $graph instanceof VariableUseGraph
+                ? 0
+                : $child_stmt_type->getTaintsToRemove($statements_analyzer->getCodebase()->getInputTaints());
 
             $value_graph = $graph;
 
