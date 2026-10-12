@@ -377,10 +377,11 @@ final class AssignmentAnalyzer
 
             $parent_nodes = $temp_assign_value_type->parent_nodes ?? [];
 
-            // whether the value is a fresh object or was reached from global state is a property of
-            // the value, not of its declared type
+            // whether the value is a fresh object, state of the closure or was reached from global
+            // state is a property of the value, not of its declared type
             $assign_value_type = $comment_type->setParentNodes($parent_nodes)->setProperties([
                 'reference_free' => $temp_assign_value_type->reference_free ?? false,
+                'closure_state' => $temp_assign_value_type->closure_state ?? false,
                 'from_global_state' => $temp_assign_value_type->from_global_state ?? false,
             ]);
         } elseif (!$assign_value_type) {
@@ -409,6 +410,12 @@ final class AssignmentAnalyzer
                 $assign_value_type,
                 $context,
             );
+        }
+
+        // copying a reference into a variable gives a value, not a reference: only a variable that is a
+        // reference itself stays one (below)
+        if ($assign_var instanceof PhpParser\Node\Expr\Variable && $assign_value_type->by_ref) {
+            $assign_value_type = $assign_value_type->setByRef(false);
         }
 
         if ($extended_var_id && isset($context->vars_in_scope[$extended_var_id])) {
@@ -1964,8 +1971,16 @@ final class AssignmentAnalyzer
         $pureCompat = $statements_analyzer->node_data->isPureCompatible($assign_var->var);
 
         $isThis = MethodCallPurityAnalyzer::isReceiverThis($assign_var->var);
-        
-        $mutations = $isThis ? Capabilities::WRITE_THIS_PROPS : Capabilities::WRITE_PROPS;
+
+        $var_type = $statements_analyzer->node_data->getType($assign_var->var);
+
+        // an object a closure captured from the scope that created it is the closure's own state
+        $mutations = $isThis || ($var_type !== null && $var_type->closure_state)
+            ? Capabilities::WRITE_THIS_PROPS
+            : Capabilities::WRITE_PROPS;
+
+        // a fresh object, that nothing else holds, is not state of the function-like either
+        $isFresh = !$isThis && $var_type !== null && $var_type->reference_free && $var_type->allow_mutations;
 
         // prevents writing to any properties in a mutation-free context
         $statements_analyzer->signalMutation(
@@ -1974,7 +1989,7 @@ final class AssignmentAnalyzer
             'property assignment',
             ImpurePropertyAssignment::class,
             $assign_var,
-            $mutations,
+            $isFresh ? Capabilities::NONE : $mutations,
         );
     }
 

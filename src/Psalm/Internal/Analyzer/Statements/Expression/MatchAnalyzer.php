@@ -210,21 +210,21 @@ final class MatchAnalyzer
 
         $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-        if (!in_array('RedundantCondition', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['RedundantCondition'])) {
             $statements_analyzer->addSuppressedIssues(['RedundantCondition']);
         }
 
-        if (!in_array('RedundantConditionGivenDocblockType', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['RedundantConditionGivenDocblockType'])) {
             $statements_analyzer->addSuppressedIssues(['RedundantConditionGivenDocblockType']);
         }
 
         $v = ExpressionAnalyzer::analyze($statements_analyzer, $ternary, $context);
 
-        if (!in_array('RedundantCondition', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['RedundantCondition'])) {
             $statements_analyzer->removeSuppressedIssues(['RedundantCondition']);
         }
 
-        if (!in_array('RedundantConditionGivenDocblockType', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['RedundantConditionGivenDocblockType'])) {
             $statements_analyzer->removeSuppressedIssues(['RedundantConditionGivenDocblockType']);
         }
 

@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\MethodCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\Expression\NullsafeChainState;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
+use Psalm\Internal\Analyzer\Statements\GlobalAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\CombinedFlowGraph;
@@ -590,6 +591,21 @@ final class ArrayFetchAnalyzer
                 $graph->addNode($array_key_node);
             }
 
+            $parent_nodes = $stmt_var_type->parent_nodes;
+
+            // a global read by its name gets what is written to that name, not all of them
+            if ($dim_value !== null
+                && $var instanceof PhpParser\Node\Expr\Variable
+                && $var->name === 'GLOBALS'
+                && ($taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
+            ) {
+                unset($parent_nodes[DataFlowNode::getForGlobals()->id]);
+
+                foreach (GlobalAnalyzer::getGlobalReadNodes($taint_flow_graph, (string) $dim_value) as $global_node) {
+                    $taint_flow_graph->addPath($global_node, $new_parent_node, '=', $added_taints, $removed_taints);
+                }
+            }
+
             $key_path_suffix = $dim_value !== null
                 ? '-\'' . $dim_value . '\''
                 : $key_prefix_path_suffix ?? '';
@@ -605,7 +621,7 @@ final class ArrayFetchAnalyzer
                 ? self::getFetchedKeys($offset_type)
                 : null;
 
-            foreach ($stmt_var_type->parent_nodes as $parent_node) {
+            foreach ($parent_nodes as $parent_node) {
                 if ($fetched_keys !== null && $taint_graph instanceof TaintFlowGraph) {
                     $taint_graph->addPath(
                         $parent_node,
@@ -2183,11 +2199,11 @@ final class ArrayFetchAnalyzer
 
             $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['MixedMethodCall']);
             }
 
@@ -2197,11 +2213,11 @@ final class ArrayFetchAnalyzer
                 $context,
             );
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['MixedMethodCall']);
             }
 
@@ -2211,15 +2227,15 @@ final class ArrayFetchAnalyzer
         } else {
             $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['MixedMethodCall']);
             }
 
-            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+            if (!isset($suppressed_issues['PossiblyNullReference'])
                 && ($context->inside_isset || $context->inside_unset)
             ) {
                 // a null receiver is what isset() and unset() are for
@@ -2354,17 +2370,17 @@ final class ArrayFetchAnalyzer
 
             $has_array_access = true;
 
-            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+            if (!isset($suppressed_issues['PossiblyNullReference'])
                 && ($context->inside_isset || $context->inside_unset)
             ) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyNullReference']);
             }
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['MixedMethodCall']);
             }
         }

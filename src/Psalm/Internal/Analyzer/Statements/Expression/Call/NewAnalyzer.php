@@ -377,7 +377,7 @@ final class NewAnalyzer extends CallAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif ($storage->template_types
+            } elseif (self::hasTemplatesInferredByConstructor($codebase, $storage)
                 && !$storage->enforce_template_inheritance
             ) {
                 $source = $statements_analyzer->getSource();
@@ -789,7 +789,10 @@ final class NewAnalyzer extends CallAnalyzer
         $stmt_type = $statements_analyzer->node_data->getType($stmt);
 
         if (!$statements_analyzer->taint_flow_graph
-            || in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+            || $statements_analyzer->getCodebase()->config->suppressesIssueType(
+                $statements_analyzer->getSuppressedIssues(),
+                'TaintedInput',
+            )
             || !$stmt_type
         ) {
             return;
@@ -1125,7 +1128,10 @@ final class NewAnalyzer extends CallAnalyzer
         } else {
             if ($statements_analyzer->taint_flow_graph
                 && $stmt_class_type->parent_nodes
-                && !in_array('TaintedInput', $statements_analyzer->getSuppressedIssues())
+                && !$statements_analyzer->getCodebase()->config->suppressesIssueType(
+                    $statements_analyzer->getSuppressedIssues(),
+                    'TaintedInput',
+                )
             ) {
                 $arg_location = new CodeLocation($statements_analyzer->getSource(), $stmt_class);
 
@@ -1699,6 +1705,26 @@ final class NewAnalyzer extends CallAnalyzer
         }
 
         return $templates;
+    }
+
+    /**
+     * Whether `new static()` may infer a template of the class differently from what a child class
+     * binds it to: a type template, or a purity template the constructor's parameters take (a
+     * `Closure[C]` argument), as the others are only bound by the classes extending it.
+     *
+     * @psalm-mutation-free
+     */
+    private static function hasTemplatesInferredByConstructor(Codebase $codebase, ClassLikeStorage $storage): bool
+    {
+        // every purity template the class declares has a default (its upper bound without one),
+        // which tells it apart from a type template bounded by a type alias or a purity template
+        foreach ($storage->template_types ?? [] as $template_name => $_) {
+            if (!isset($storage->template_defaults[$template_name])) {
+                return true;
+            }
+        }
+
+        return self::getConstructorParamTemplates($codebase, $storage) !== [];
     }
 
     /**

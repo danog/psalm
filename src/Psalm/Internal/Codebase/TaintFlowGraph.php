@@ -129,6 +129,14 @@ final class TaintFlowGraph extends DataFlowGraph
     private array $output_streams = [];
 
     /**
+     * The ids of the nodes holding what all the calls share, such as static properties: what one call leaves in them,
+     * any other call may read (see addSharedState())
+     *
+     * @var array<string, true>
+     */
+    private array $shared_state = [];
+
+    /**
      * The ids of the nodes of variables assigned a string the analysis knows the start of => that start, for the names
      * of the keyed stores (see TaintStore). Only used while analysing the function-like they are in, so never merged by
      * addGraph().
@@ -682,6 +690,17 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
+     * Records that $node holds what all the calls share: a flow reaching it in a specialized call leaves the call
+     * there (see TaintFlowResolution::walk()), as any other call may read it, then return it.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addSharedState(DataFlowNode $node): void
+    {
+        $this->shared_state[$node->id] = true;
+    }
+
+    /**
      * Records that the variable whose node $node is was assigned a string starting with $start
      *
      * @psalm-external-mutation-free
@@ -727,6 +746,7 @@ final class TaintFlowGraph extends DataFlowGraph
         $this->nodes += $other->nodes;
         $this->specialized_calls += $other->specialized_calls;
         $this->generator_sent_nodes += $other->generator_sent_nodes;
+        $this->shared_state += $other->shared_state;
 
         foreach ($other->generator_sends as $key => $map) {
             $this->generator_sends[$key] = ($this->generator_sends[$key] ?? []) + $map;
@@ -921,6 +941,7 @@ final class TaintFlowGraph extends DataFlowGraph
             $this->recursive_calls,
             $call_results,
             $call_result_sources,
+            $this->shared_state,
             Config::getInstance(),
             $project_analyzer,
             $codebase,

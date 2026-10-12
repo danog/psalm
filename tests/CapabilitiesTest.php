@@ -30,6 +30,32 @@ final class CapabilitiesTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            'serializeOfScalarsIsPure' => [
+                'code' => '<?php
+                    /**
+                     * @psalm-pure
+                     * @param array<string, list<int|string>> $values
+                     */
+                    function encode(array $values): string {
+                        return serialize($values);
+                    }',
+            ],
+            'copyingAReferenceGivesAValue' => [
+                'code' => '<?php
+                    /**
+                     * @param list<int> $values
+                     * @psalm-pure
+                     */
+                    function anyChanged(array $values): bool {
+                        $changed = false;
+                        foreach ($values as &$value) {
+                            $original = $value;
+                            $changed = $changed || $original !== $value;
+                        }
+                        unset($value);
+                        return $changed;
+                    }',
+            ],
             'mongodbDriverCapabilities' => [
                 'code' => '<?php
                     use MongoDB\BSON\ObjectId;
@@ -85,6 +111,7 @@ final class CapabilitiesTest extends TestCase
                     function encode(array $values): mixed {
                         return igbinary_serialize($values);
                     }',
+                'php_version' => '8.0',
             ],
             'unserializeAllowingNoClassIsPure' => [
                 'code' => '<?php
@@ -404,6 +431,10 @@ final class CapabilitiesTest extends TestCase
                             $this->items = [];
                         }
 
+                        public function reset(): void {
+                            $this->clear();
+                        }
+
                         /** @psalm-capabilities read-props|write-this-props */
                         public function pop(): void {
                             array_pop($this->items);
@@ -427,6 +458,16 @@ final class CapabilitiesTest extends TestCase
                         $box->pop();
                         if ($box->isEmpty()) {
                             echo "popped";
+                        }
+                    }
+
+                    function resetBox(Box $box): void {
+                        if ($box->isEmpty()) {
+                            return;
+                        }
+                        $box->reset();
+                        if ($box->isEmpty()) {
+                            echo "reset";
                         }
                     }
 
@@ -769,6 +810,11 @@ final class CapabilitiesTest extends TestCase
                     }
 
                     /** @psalm-capabilities time */
+                    function resourceUsageCount(): int {
+                        return count(getrusage());
+                    }
+
+                    /** @psalm-capabilities time */
                     function today(): DateTimeImmutable|false {
                         return date_create_immutable("today");
                     }
@@ -790,6 +836,7 @@ final class CapabilitiesTest extends TestCase
                     function readTime(): int {
                         return read(fn(): int => time());
                     }',
+                'php_version' => '8.0',
             ],
             'datesOfAGivenTimestampArePure' => [
                 'code' => '<?php
@@ -1051,6 +1098,112 @@ final class CapabilitiesTest extends TestCase
                             $b->items[] = 5;
                             return $b;
                         };
+                    }',
+            ],
+            'closureMayWriteTheObjectsItCreates' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+                        /** @var list<int> */
+                        public array $items = [];
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Box {
+                        $f = static function (): Box {
+                            $b = new Box();
+                            $b->n = 5;
+                            $b->n += 1;
+                            $b->items[] = 5;
+                            $b->setN(6);
+                            return $b;
+                        };
+                        return $f();
+                    }
+
+                    /** @psalm-pure */
+                    function makeAnnotated(): Box {
+                        $f = /** @psalm-pure */ static function (): Box {
+                            $b = new Box();
+                            $b->n = 5;
+                            return $b;
+                        };
+                        return $f();
+                    }',
+            ],
+            'closureMayWriteTheObjectsItCapturedFromTheScopeCreatingThem' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function counter(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props|write-this-props */ static function () use ($b): int {
+                            $b->n += 1;
+                            return $b->setN($b->n);
+                        };
+                    }
+
+                    /** @psalm-pure */
+                    function arrowCounter(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props|write-this-props */ static fn(): int
+                            => $b->setN($b->n + 1);
+                    }
+
+                    /** @psalm-pure */
+                    function byReference(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props|write-this-props */ static function () use (&$b): int {
+                            $b->n = 5;
+                            return $b->setN(6);
+                        };
+                    }
+
+                    /** @psalm-pure */
+                    function inAnArray(): Closure {
+                        $boxes = [new Box()];
+                        return /** @psalm-capabilities read-props|write-this-props */ static function () use ($boxes): int {
+                            $boxes[0]->n = 1;
+                            $box = $boxes[0];
+                            $box->n = 2;
+                            return $boxes[0]->setN(5);
+                        };
+                    }
+
+                    /** @psalm-pure */
+                    function nested(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props|write-this-props */ static function () use ($b): Closure {
+                            return /** @psalm-capabilities read-props|write-this-props */ static function () use ($b): int {
+                                return $b->setN(5);
+                            };
+                        };
+                    }
+
+                    /** @psalm-pure */
+                    function countTwice(): int {
+                        $b = new Box();
+                        $f = static function () use ($b): int {
+                            $b->n = $b->n + 1;
+                            return $b->n;
+                        };
+                        $f();
+                        return $f();
                     }',
             ],
             'classMayWriteItsOwnAndFreshInstances' => [
@@ -2030,6 +2183,39 @@ final class CapabilitiesTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            'serializeOfAnArrayOfObjectsRequiresIo' => [
+                'code' => '<?php
+                    /**
+                     * @param list<array{name: string, value: object}> $values
+                     * @psalm-pure
+                     */
+                    function encode(array $values): string {
+                        return serialize($values);
+                    }',
+                'error_message' => 'ImpureFunctionCall',
+            ],
+            'serializeOfAnIterableRequiresIo' => [
+                'code' => '<?php
+                    /**
+                     * @param iterable<int> $values
+                     * @psalm-pure
+                     */
+                    function encode(iterable $values): string {
+                        return serialize($values);
+                    }',
+                'error_message' => 'ImpureFunctionCall',
+            ],
+            'writingAReferenceParameterAfterCopyingItStillWritesTheReference' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function overwrite(int &$ref): int {
+                        $copy = $ref;
+                        $copy = 1;
+                        $ref = 2;
+                        return $copy;
+                    }',
+                'error_message' => 'ImpureByReferenceAssignment - src' . DIRECTORY_SEPARATOR . 'somefile.php:6:25 - The context is pure but variable $ref passed by reference requires write-refs',
+            ],
             'mongodbObjectIdWithoutAnIdIsGenerated' => [
                 'code' => '<?php
                     /** @psalm-pure */
@@ -2063,6 +2249,7 @@ final class CapabilitiesTest extends TestCase
                         return igbinary_unserialize($data);
                     }',
                 'error_message' => 'ImpureFunctionCall',
+                'php_version' => '8.0',
             ],
             'igbinarySerializeOfAnObjectRequiresIo' => [
                 'code' => '<?php
@@ -2071,6 +2258,7 @@ final class CapabilitiesTest extends TestCase
                         return igbinary_serialize($value);
                     }',
                 'error_message' => 'ImpureFunctionCall',
+                'php_version' => '8.0',
             ],
             'unserializeAllowingClassesIsImpure' => [
                 'code' => '<?php
@@ -2328,6 +2516,24 @@ final class CapabilitiesTest extends TestCase
                         return getdate()["year"];
                     }',
                 'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on getdate requires time',
+            ],
+            'getdateWithNullTimestampReadsTheClock' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function year(?int $ts): int {
+                        return getdate($ts)["year"];
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on getdate requires time',
+                'php_version' => '8.0',
+            ],
+            'mktimeWithNullArgumentReadsTheClock' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function midnight(?int $day): string {
+                        return (string) mktime(0, 0, 0, 1, $day, 2000);
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:41 - The context is pure but function call on mktime requires time',
+                'php_version' => '8.0',
             ],
             'debugBacktraceRequiresReadGlobals' => [
                 'code' => '<?php
@@ -2748,6 +2954,171 @@ final class CapabilitiesTest extends TestCase
                         return $b->n;
                     }',
                 'error_message' => 'ImpurePropertyAssignment - src' . DIRECTORY_SEPARATOR . 'somefile.php:17:25 - The context is read-globals but property assignment to Box::$n on an object reached from global state requires write-props|write-globals',
+            ],
+            'pureClosureCannotWriteAPropertyOfAnObjectCapturedByValue' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-pure */ static function () use ($b): int {
+                            $b->n = 5;
+                            return $b->n;
+                        };
+                    }',
+                'error_message' => 'ImpurePropertyAssignment - src' . DIRECTORY_SEPARATOR . 'somefile.php:16:29 - The context is pure but property assignment to Box::$n requires write-this-props',
+            ],
+            'pureClosureCannotMutateAnObjectCapturedByValue' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-pure */ static function () use ($b): int {
+                            return $b->setN(5);
+                        };
+                    }',
+                'error_message' => 'ImpureMethodCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:16:36 - The context is pure but method Box::setN requires write-this-props',
+            ],
+            'closureCannotWriteAParameterItCaptured' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+                    }
+
+                    /** @psalm-pure */
+                    function make(Box $b): Closure {
+                        return /** @psalm-capabilities read-props|write-this-props */ static function () use ($b): int {
+                            $b->n = 5;
+                            return $b->n;
+                        };
+                    }',
+                'error_message' => 'ImpurePropertyAssignment - src' . DIRECTORY_SEPARATOR . 'somefile.php:10:29 - The context is read-props|write-this-props but property assignment to Box::$n requires write-props',
+            ],
+            'readPropsClosureCannotWriteAPropertyOfAnObjectCapturedByReference' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props */ static function () use (&$b): int {
+                            $b->n = 5;
+                            return $b->n;
+                        };
+                    }',
+                'error_message' => 'ImpurePropertyAssignment - src' . DIRECTORY_SEPARATOR . 'somefile.php:16:29 - The context is read-props but property assignment to Box::$n requires write-this-props',
+            ],
+            'readPropsClosureCannotMutateAnObjectCapturedByReference' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-capabilities read-props */ static function () use (&$b): int {
+                            return $b->setN(5);
+                        };
+                    }',
+                'error_message' => 'ImpureMethodCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:16:36 - The context is read-props but method Box::setN requires write-this-props',
+            ],
+            'pureArrowFunctionCannotMutateACapturedObject' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-pure */ static fn(): int => $b->setN(5);
+                    }',
+                'error_message' => 'ImpureMethodCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:15:71 - The context is pure but method Box::setN requires write-this-props',
+            ],
+            'pureNestedClosureCannotMutateACapturedObject' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $b = new Box();
+                        return /** @psalm-pure */ static function () use ($b): Closure {
+                            return /** @psalm-pure */ static function () use ($b): int {
+                                return $b->setN(5);
+                            };
+                        };
+                    }',
+                'error_message' => 'ImpureMethodCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:17:40 - The context is pure but method Box::setN requires write-this-props',
+            ],
+            'pureClosureCannotMutateAnObjectInACapturedArray' => [
+                'code' => '<?php
+                    /** @psalm-external-mutation-free */
+                    final class Box {
+                        public int $n = 0;
+
+                        public function setN(int $n): int {
+                            $this->n = $n;
+                            return $n;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function make(): Closure {
+                        $boxes = [new Box()];
+                        return /** @psalm-pure */ static function () use ($boxes): int {
+                            return $boxes[0]->setN(5);
+                        };
+                    }',
+                'error_message' => 'ImpureMethodCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:16:36 - The context is pure but method Box::setN requires write-this-props',
             ],
             'staticVariableNeedsWriteGlobals' => [
                 'code' => '<?php

@@ -668,6 +668,18 @@ final class MethodCallReturnTypeFetcher
             }
         }
 
+        $dispatch_node = self::getReturnDispatchNode(
+            $codebase,
+            $taint_flow_graph,
+            $method_id,
+            $method_storage,
+            $node_location,
+        );
+
+        if ($dispatch_node) {
+            $return_type_candidate = $return_type_candidate->addParentNodes([$dispatch_node->id => $dispatch_node]);
+        }
+
         FunctionCallReturnTypeFetcher::taintUsingFlows(
             $method_storage,
             $taint_flow_graph,
@@ -777,7 +789,7 @@ final class MethodCallReturnTypeFetcher
 
                 // the body of a method of a trait is analyzed as one of each class using it
                 $return_node = DataFlowNode::getForMethodReturn(
-                    $dependent_appearing_method_id->fq_class_name . '::' . (string) $dependent_storage->cased_name,
+                    FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $dependent_method_id),
                     $dependent_storage,
                     $specialization_location,
                 );

@@ -813,6 +813,8 @@ final class TaintFlowResolution
      *     of the call site
      * @param array<string, true> $call_result_sources the return nodes those result nodes are past, and the return
      *     nodes of the declarations of their methods
+     * @param array<string, true> $shared_state the nodes holding what all the calls share, such as static properties
+     *     (see TaintFlowGraph::addSharedState())
      * @psalm-capabilities read-props
      */
     public function __construct(
@@ -830,6 +832,7 @@ final class TaintFlowResolution
         private readonly array $recursive_calls,
         private readonly array $call_results,
         private readonly array $call_result_sources,
+        private readonly array $shared_state,
         private readonly Config $config,
         private readonly ProjectAnalyzer $project_analyzer,
         private readonly Codebase $codebase,
@@ -2108,6 +2111,23 @@ final class TaintFlowResolution
 
         if (isset($this->forward_edges[$id])) {
             $context = $this->state_contexts[$state];
+
+            if (isset($this->shared_state[$id]) && !$this->isOutsideOfCalls($context)) {
+                // What a specialized call leaves in shared state, any other call may read: the flow leaves the call
+                // there, as an exit of its entry (see exitThroughCaller()), rather than staying in it until it
+                // reaches an exit of the call, which would then only lead back to the call site.
+                $this->addEntryExit(
+                    $context,
+                    $id,
+                    $this->state_open_assignments[$state],
+                    $state,
+                    0,
+                    $this->state_kept[$state],
+                    $this->state_added[$state],
+                );
+
+                return;
+            }
 
             // A flow at the node of the convergence whose walk it is in (copied into a filter of it, see
             // copyToFilter()) doesn't converge: it would enter that convergence again.
@@ -4028,7 +4048,8 @@ final class TaintFlowResolution
      * the exit there would (see walk()).
      *
      * A convergence of flows in specialized calls is left like its node would be left in the context of the
-     * call (see walk()): as an exit of the entry it is in.
+     * call (see walk()): as an exit of the entry it is in. Shared state (see TaintFlowGraph::addSharedState()) is
+     * left the same way, outside of any specialized call: from there, it reaches every call reading it.
      *
      * @psalm-capabilities read-props|write-this-props|write-refs
      */
@@ -4050,7 +4071,13 @@ final class TaintFlowResolution
         $caller_kept = $this->state_kept[$caller] & $kept;
         $caller_added = ($this->state_added[$caller] & $kept) | $added;
 
-        if ($specialization_key !== null && isset($this->specializations[$exit_id][$specialization_key])) {
+        // shared state is left as an exit of another function-like, whichever call reached it
+        $is_shared = isset($this->shared_state[$exit_id]);
+
+        if (!$is_shared
+            && $specialization_key !== null
+            && isset($this->specializations[$exit_id][$specialization_key])
+        ) {
             $this->reach(
                 $this->specializations[$exit_id][$specialization_key],
                 $context,
@@ -4062,7 +4089,8 @@ final class TaintFlowResolution
                 -1,
                 $caller,
             );
-        } elseif ($specialization_key !== null
+        } elseif (!$is_shared
+            && $specialization_key !== null
             && (isset($this->nodes[$exit_id . TaintFlowGraph::SPECIALIZATION_SEPARATOR . $specialization_key])
                 || $this->isExitOfEntered($exit_id, $caller))
         ) {

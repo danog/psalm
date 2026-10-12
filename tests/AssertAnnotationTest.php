@@ -172,11 +172,11 @@ final class AssertAnnotationTest extends TestCase
                         }
                     }
 
-                    function getType(): string {
+                    function getOwnerType(): string {
                         return "";
                     }
 
-                    $type = getType();
+                    $type = getOwnerType();
                     assertOwnerType($type);',
                 'assertions' => [
                     '$type===' => "'organization'|'prof'",
@@ -202,6 +202,28 @@ final class AssertAnnotationTest extends TestCase
                 'assertions' => [
                     '$actual===' => "'a'|'b'",
                 ],
+            ],
+            'assertKeyOfAClassConstantOnAPropertyNotFetchedYetNarrowsToItsKeys' => [
+                'code' => '<?php
+                    final class OwnerTypes {
+                        public const ALLOWED = ["organization" => true, "prof" => true];
+                    }
+
+                    final class Owner {
+                        public function __construct(public string $type) {}
+
+                        /** @psalm-assert key-of<OwnerTypes::ALLOWED> $this->type */
+                        public function assertKnownType(): void {
+                            if (!array_key_exists($this->type, OwnerTypes::ALLOWED)) {
+                                throw new InvalidArgumentException("unknown owner type");
+                            }
+                        }
+                    }
+
+                    function ownerType(Owner $owner): void {
+                        $owner->assertKnownType();
+                        /** @psalm-check-type-exact $owner->type = \'organization\'|\'prof\' */;
+                    }',
             ],
             'implicitAssertInstanceOfB' => [
                 'code' => '<?php
