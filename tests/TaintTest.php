@@ -1711,6 +1711,57 @@ final class TaintTest extends TestCase
                     // PHP enforces the native return type: the result is never an array
                     query(["name" => first((array) $_GET["names"])]);',
             ],
+            'flowFromThisOnlyFromItsOwnReceiver' => [
+                'code' => '<?php
+                    interface Message {
+                        /**
+                         * @psalm-taint-specialize
+                         * @psalm-flow ($this) -> return
+                         */
+                        public function getBody(): string;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    function build(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    $fetched = fetch();
+                    $built = build();
+                    $fetched->getBody();
+                    echo $built->getBody();',
+            ],
+            'noFlowFromThisWithoutAnnotation' => [
+                'code' => '<?php
+                    interface Message {
+                        public function getBody(): string;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    echo fetch()->getBody();',
+            ],
+            'flowFromThisKeepsWhatTheReturnTypeHolds' => [
+                'code' => '<?php
+                    interface Message {
+                        /** @psalm-flow ($this) -> return */
+                        public function getStatusCode(): int;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    echo fetch()->getStatusCode();',
+            ],
             'nosqlSinkNotTaintedByFlowIntoStringReturn' => [
                 'code' => '<?php
                     /** @psalm-taint-sink nosql $filter */
@@ -1738,41 +1789,15 @@ final class TaintTest extends TestCase
 
                     forward($_GET["name"] ?? null);',
             ],
-            'dontTaintTheReturnOfABodylessMethodByAParamNotTypedWithItsTemplate' => [
-                'code' => '<?php
-                    interface Values {
-                        /**
-                         * @template T
-                         * @param T $value
-                         * @return T
-                         */
-                        public function pick(mixed $value, string $other): mixed;
-                    }
-
-                    function show(Values $values): void {
-                        echo $values->pick("safe", (string) $_GET["x"]);
-                    }',
-            ],
-            'dontTaintTheReturnOfAnAnalyzedFunctionByItsTemplateBinding' => [
-                'code' => '<?php
-                    /**
-                     * @template T
-                     * @param T $value
-                     * @return T
-                     */
-                    function ignore(mixed $value): mixed {
-                        return "safe";
-                    }
-
-                    echo ignore((string) $_GET["x"]);',
-            ],
-            'dontTaintTheOtherCallsOfABodylessMethodByATemplateBinding' => [
+            'flowFromCallableResultOnlyIntoItsOwnCall' => [
                 'code' => '<?php
                     interface Cache {
                         /**
                          * @template T
                          * @param callable(): T $compute
                          * @return T
+                         * @psalm-taint-specialize
+                         * @psalm-flow ($compute()) -> return
                          */
                         public function get(callable $compute): mixed;
                     }
@@ -1783,6 +1808,34 @@ final class TaintTest extends TestCase
 
                     function show(Cache $cache): void {
                         echo $cache->get(fn(): string => "safe");
+                    }',
+            ],
+            'noFlowFromTheResultOfACallableNotInTheFlow' => [
+                'code' => '<?php
+                    interface Cache {
+                        /**
+                         * @psalm-flow ($compute()) -> return
+                         */
+                        public function get(callable $compute, callable $onMiss): string;
+                    }
+
+                    function show(Cache $cache): void {
+                        echo $cache->get(fn(): string => "safe", fn(): string => (string) $_GET["x"]);
+                    }',
+            ],
+            'noFlowFromCallableResultWithoutAnnotation' => [
+                'code' => '<?php
+                    interface Cache {
+                        /**
+                         * @template T
+                         * @param callable(): T $compute
+                         * @return T
+                         */
+                        public function get(callable $compute): mixed;
+                    }
+
+                    function show(Cache $cache): void {
+                        echo $cache->get(fn(): string => (string) $_GET["x"]);
                     }',
             ],
             'htmlSinkNotTaintedBySourceReturningInt' => [
@@ -7121,21 +7174,14 @@ final class TaintTest extends TestCase
                     echo (new Caller())->call(fn(string $x): string => $x, (string) $_GET["x"]);',
                 'error_message' => 'TaintedHtml',
             ],
-            'complementListingAComplementIsInvalid' => [
-                'code' => '<?php // --taint-analysis
-                    /** @psalm-taint-source ~(sql|~html) */
-                    function externalInput(): string { return "x"; }
-
-                    echo externalInput();',
-                'error_message' => 'InvalidDocblock',
-            ],
-            'taintWhatABodylessMethodReturnsFromTheCallableBindingItsTemplate' => [
+            'flowFromTheClosureResultOfAnInterfaceMethod' => [
                 'code' => '<?php
                     interface Cache {
                         /**
                          * @template T
                          * @param callable(): T $compute
                          * @return T
+                         * @psalm-flow ($compute()) -> return
                          */
                         public function get(string $key, callable $compute): mixed;
                     }
@@ -7145,15 +7191,14 @@ final class TaintTest extends TestCase
                     }',
                 'error_message' => 'TaintedHtml',
             ],
-            'taintWhatABodylessStaticMethodReturnsFromTheClosureBindingItsTemplate' => [
+            'flowFromTheClosureResultOfAnAbstractStaticMethod' => [
                 'code' => '<?php
                     abstract class Computer {
                         /**
-                         * @template T
-                         * @param callable(): T $compute
-                         * @return T
+                         * @param callable(): string $compute
+                         * @psalm-flow ($compute()) -> return
                          */
-                        abstract public static function compute(callable $compute): mixed;
+                        abstract public static function compute(callable $compute): string;
 
                         public static function show(): void {
                             echo static::compute(function (): string {
@@ -7163,54 +7208,27 @@ final class TaintTest extends TestCase
                     }',
                 'error_message' => 'TaintedHtml',
             ],
-            'taintWhatABodylessMethodReturnsFromTheArgumentBindingItsTemplate' => [
+            'flowFromTheResultOfANamedFunctionGivenAsCallable' => [
                 'code' => '<?php
-                    interface Values {
-                        /**
-                         * @template T
-                         * @param T $value
-                         * @return T
-                         */
-                        public function identity(mixed $value): mixed;
+                    /** @psalm-flow ($key, $compute()) -> return */
+                    function remember(string $key, callable $compute): string {
+                        return $key;
                     }
 
-                    function show(Values $values): void {
-                        echo $values->identity((string) $_GET["x"]);
-                    }',
+                    function compute(): string {
+                        return (string) $_GET["x"];
+                    }
+
+                    echo remember("key", compute(...));',
                 'error_message' => 'TaintedHtml',
             ],
-            'taintWhatABodylessMethodReturnsFromTheArrayBindingItsTemplate' => [
-                'code' => '<?php
-                    interface Values {
-                        /**
-                         * @template T
-                         * @param array<T> $values
-                         * @return T
-                         */
-                        public function first(array $values): mixed;
-                    }
+            'complementListingAComplementIsInvalid' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-source ~(sql|~html) */
+                    function externalInput(): string { return "x"; }
 
-                    function show(Values $values): void {
-                        echo $values->first([(string) $_GET["x"]]);
-                    }',
-                'error_message' => 'TaintedHtml',
-            ],
-            'taintWhatABodylessMethodReturnsFromTheCallableBindingTheBoundOfItsTemplate' => [
-                'code' => '<?php
-                    interface Cache {
-                        /**
-                         * @template TValue
-                         * @template TCompute as null|(callable(): TValue)
-                         * @param TCompute $compute
-                         * @return (TCompute is null ? false : TValue)
-                         */
-                        public function get(?callable $compute = null): mixed;
-                    }
-
-                    function show(Cache $cache): void {
-                        echo $cache->get(fn(): string => (string) $_GET["x"]);
-                    }',
-                'error_message' => 'TaintedHtml',
+                    echo externalInput();',
+                'error_message' => 'InvalidDocblock',
             ],
             'taintYieldedByATraitGenerator' => [
                 'code' => '<?php // --taint-analysis
@@ -8903,6 +8921,67 @@ final class TaintTest extends TestCase
                 'code' => '<?php
                     $f = fgets(...);
                     echo $f(STDIN);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'flowFromThisToReturn' => [
+                'code' => '<?php
+                    interface Message {
+                        /** @psalm-flow ($this) -> return */
+                        public function getBody(): string;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    $message = fetch();
+                    echo $message->getBody();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'flowFromThisToReturnOfSpecializedCall' => [
+                'code' => '<?php
+                    interface Message {
+                        /**
+                         * @psalm-taint-specialize
+                         * @psalm-flow ($this) -> return
+                         */
+                        public function getBody(): string;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    echo fetch()->getBody();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'flowFromThisThroughChainedCalls' => [
+                'code' => '<?php
+                    interface Stream {
+                        /**
+                         * @psalm-taint-specialize
+                         * @psalm-flow ($this) -> return
+                         */
+                        public function getContents(): string;
+                    }
+
+                    interface Message {
+                        /**
+                         * @psalm-taint-specialize
+                         * @psalm-flow ($this) -> return
+                         */
+                        public function getBody(): Stream;
+                    }
+
+                    /** @psalm-taint-source input */
+                    function fetch(): Message {
+                        throw new RuntimeException();
+                    }
+
+                    $message = fetch();
+                    echo $message->getBody()->getContents();',
                 'error_message' => 'TaintedHtml',
             ],
             'taintedInputFromFirstClassCallableExplicitSource' => [

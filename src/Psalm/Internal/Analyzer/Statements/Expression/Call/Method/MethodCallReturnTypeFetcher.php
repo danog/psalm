@@ -392,6 +392,13 @@ final class MethodCallReturnTypeFetcher
             $node_location,
         );
 
+        // what the object holds before the call, which a specialized call may replace in the context below
+        $receiver_parent_nodes = $method_storage->return_source_this === null
+            ? []
+            : (($var_id !== null && isset($context->vars_in_scope[$var_id])
+                ? $context->vars_in_scope[$var_id]
+                : $statements_analyzer->node_data->getType($var_expr))?->parent_nodes ?? []);
+
         if ($specialize_call && $taint_flow_graph) {
             // the receiver is only tracked through calls explicitly specialized: see FunctionLikeAnalyzer
             // a receiver without a variable, like `(new A())->m()`, enters the body through its own type
@@ -642,6 +649,21 @@ final class MethodCallReturnTypeFetcher
             $return_type_candidate = $return_type_candidate->addParentNodes([$dispatch_node->id => $dispatch_node]);
         }
 
+        // `@psalm-flow ($this) -> return`: what the method returns holds what the object it is called on holds
+        if ($method_storage->return_source_this !== null) {
+            foreach ($receiver_parent_nodes as $parent_node) {
+                $taint_flow_graph->addPath(
+                    $parent_node,
+                    $method_call_node,
+                    $method_storage->return_source_this,
+                    $added_taints | $method_storage->added_taints,
+                    // what the native return type cannot hold, since PHP enforces it
+                    $removed_taints | $method_storage->removed_taints
+                        | ($method_storage->signature_return_type?->getTaintsToRemove() ?? 0),
+                );
+            }
+        }
+
         FunctionCallReturnTypeFetcher::taintUsingFlows(
             $method_storage,
             $taint_flow_graph,
@@ -652,21 +674,21 @@ final class MethodCallReturnTypeFetcher
             $method_storage->removed_taints,
         );
 
+        FunctionCallReturnTypeFetcher::taintUsingCallableFlows(
+            $codebase,
+            $method_storage,
+            $taint_flow_graph,
+            $cased_method_id,
+            $method_id,
+            $specialize_call ? $node_location : null,
+            $method_call_node,
+            $method_storage->removed_taints,
+        );
+
         FunctionCallReturnTypeFetcher::taintUsingStorage(
             $method_storage,
             $taint_flow_graph,
             $method_call_node,
-        );
-
-        FunctionCallReturnTypeFetcher::taintUsingTemplateBindings(
-            $statements_analyzer,
-            $taint_flow_graph,
-            $method_storage,
-            $method_id,
-            $cased_method_id,
-            $args,
-            $node_location,
-            $return_type_candidate,
         );
     }
 

@@ -212,6 +212,20 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public array $return_source_params = [];
 
+    /**
+     * The path type of the flow from the object a method is called on to what it returns:
+     * `@psalm-flow ($this) -> return`
+     */
+    public ?string $return_source_this = null;
+
+    /**
+     * The path types of the flows from what the callables given to these parameters return to what the function-like
+     * returns, by parameter offset: `@psalm-flow ($compute()) -> return`
+     *
+     * @var array<int, string>
+     */
+    public array $return_source_callable_params = [];
+
     public bool $allow_named_arg_calls = true;
 
     /**
