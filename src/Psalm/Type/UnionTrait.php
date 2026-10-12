@@ -1683,10 +1683,13 @@ trait UnionTrait
     /**
      * The taints of user input a value of this type can't hold
      *
-     * @param int $input_taints the taints of user input (see Codebase::getInputTaints())
+     * @param ?int $input_taints the taints of user input (see Codebase::getInputTaints()), by default the built-in
+     *                         kinds (TaintKind::ALL_INPUT), for the plugins calling it without
      */
-    public function getTaintsToRemove(int $input_taints): int
+    public function getTaintsToRemove(?int $input_taints = null): int
     {
+        $input_taints ??= TaintKind::ALL_INPUT;
+
         // a value has a taint only if every type it can have holds it
         $taints_to_remove = $input_taints;
         foreach ($this->types as $atomic) {
