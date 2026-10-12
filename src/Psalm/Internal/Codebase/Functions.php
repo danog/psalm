@@ -489,6 +489,14 @@ final class Functions
             return $listed_capabilities;
         }
 
+        // one whose stub declares what it does (see stubs/extensions/mongodb.phpstub), not only that it's pure
+        if ($stub_storage !== null
+            && $stub_storage->has_mutations_annotation
+            && $stub_storage->capabilities !== Capabilities::NONE
+        ) {
+            return $stub_storage->capabilities;
+        }
+
         // they call the __serialize()/__sleep() of the objects they are given
         if (($function_id === 'serialize' || $function_id === 'igbinary_serialize')
             && isset($args[0])
