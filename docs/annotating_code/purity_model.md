@@ -288,7 +288,6 @@ function bump(Counter $counter): int {
 }
 ```
 
-<<<<<<< HEAD
 Reading or unsetting a property gets the same waiver: it is free on an object the caller created
 with `new`, from a class whose contract needs at most `read-props|write-this-props|write-refs`, as
 nobody else can change it. Reading a property of any other mutable object, including `$this`, a
@@ -319,10 +318,6 @@ function currentTally(Tally $tally): int {
 }
 ```
 
-The waiver for new objects needs the class-level contract. If `Counter` had no
-`@psalm-capabilities` on the class, `new Counter()` followed by `->inc()` would cost
-`write-props`, because a subclass could do more.
-=======
 Without the class-level contract, the waiver for new objects needs a constructor that can't keep
 a reference to the new object: one that needs none of `write-props`, `write-globals` and
 `write-refs`, as only writing another object, global state or a by-reference parameter can hand
@@ -331,7 +326,6 @@ a reference to the new object: one that needs none of `write-props`, `write-glob
 `new Counter()` followed by `->inc()` would cost `write-props`. `new static()` and
 `new $className()` get no waiver without the contract when the class may be extended, as the
 constructor of a subclass may run instead.
->>>>>>> fresh-new-objects
 
 The `write-this-props` that a class purity template of the receiver is bound to
 (`Doer[write-this-props]`, see [Purity templates](#purity-templates)) is charged the same way,
