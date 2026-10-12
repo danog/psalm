@@ -124,6 +124,13 @@ final class CapabilitiesTest extends TestCase
                         ];
                     }',
             ],
+            'theLastErrorFunctionsOnlyReadGlobals' => [
+                'code' => '<?php
+                    /** @psalm-capabilities read-globals */
+                    function lastErrors(): string {
+                        return preg_last_error() . preg_last_error_msg() . json_last_error() . json_last_error_msg();
+                    }',
+            ],
             'splContainersOnlyRequireWritingTheirOwnContents' => [
                 'code' => '<?php
                     /** @psalm-pure */
@@ -2567,6 +2574,14 @@ final class CapabilitiesTest extends TestCase
                     /** @extends SplObjectStorage<object, mixed> */
                     final class Storage extends SplObjectStorage {}',
                 'error_message' => 'ImmutableDependency - src' . DIRECTORY_SEPARATOR . 'somefile.php:3:49 - SplObjectStorage is marked with @psalm-capabilities read-props|write-this-props, but Storage is not',
+            ],
+            'theLastPcreErrorIsNotPure' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function lastError(): string {
+                        return preg_last_error_msg();
+                    }',
+                'error_message' => 'ImpureFunctionCall - src' . DIRECTORY_SEPARATOR . 'somefile.php:4:32 - The context is pure but function call on preg_last_error_msg requires read-globals',
             ],
             'writingACallersSplQueueRequiresWriteProps' => [
                 'code' => '<?php
