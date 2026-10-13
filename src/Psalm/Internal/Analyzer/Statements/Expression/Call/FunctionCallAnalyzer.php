@@ -1314,6 +1314,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $function_call_info->function_storage,
                         $function_call_info->function_storage->capabilities,
                         $template_result,
+                        args: $stmt->isFirstClassCallable() ? [] : $stmt->getArgs(),
                     )
                     : null);
 
