@@ -59,11 +59,17 @@ final class TypeChecker extends TypeVisitor
     private bool $has_errors = false;
 
     /**
-     * Whether the node being visited is in a callable's parameter types an odd number of times: the variance
-     * position flips there, so a covariant template can be what a callable parameter receives
-     * (`Closure(T): void` hands T out, like a return type)
+     * Whether the node being visited is in an invariant type param of a generic object, where entering a
+     * callable's parameter types doesn't change the position
      */
-    private bool $in_flipped_position = false;
+    private bool $in_invariant_position = false;
+
+    /**
+     * Whether entering a callable's parameter types turned an input position into an output one: a covariant
+     * template may be what a callable parameter receives (a method's `Closure(T): void` parameter hands T out),
+     * and the parameter types of a callable in there are an input position again
+     */
+    private bool $flipped_from_input = false;
 
     /**
      * @param array<string>    $suppressed_issues
@@ -113,6 +119,7 @@ final class TypeChecker extends TypeVisitor
                 $prevents_covariance = $this->type_param_prevents_covariance;
                 $this->type_param_prevents_covariance = null;
                 $outer_prevents_covariance = $this->prevent_template_covariance;
+                $outer_in_invariant_position = $this->in_invariant_position;
 
                 foreach ($type->extra_types as $extra_type) {
                     $this->traverse($extra_type);
@@ -120,10 +127,12 @@ final class TypeChecker extends TypeVisitor
 
                 foreach ($type->type_params as $i => $type_param) {
                     $this->prevent_template_covariance = $prevents_covariance[$i] ?? $outer_prevents_covariance;
+                    $this->in_invariant_position = $outer_in_invariant_position || ($prevents_covariance[$i] ?? false);
                     $this->traverse($type_param);
                 }
 
                 $this->prevent_template_covariance = $outer_prevents_covariance;
+                $this->in_invariant_position = $outer_in_invariant_position;
 
                 /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
                 $type->checked = true;
@@ -154,9 +163,25 @@ final class TypeChecker extends TypeVisitor
             return parent::traverse($node);
         }
 
-        $this->in_flipped_position = !$this->in_flipped_position;
+        // a callable's parameter types are in the opposite position. Output positions that aren't reached from
+        // an input one (return types, constructor parameters) stay unchecked
+        $outer_prevents_covariance = $this->prevent_template_covariance;
+        $outer_flipped_from_input = $this->flipped_from_input;
+
+        if (!$this->in_invariant_position) {
+            if ($outer_prevents_covariance) {
+                $this->prevent_template_covariance = false;
+                $this->flipped_from_input = true;
+            } elseif ($outer_flipped_from_input) {
+                $this->prevent_template_covariance = true;
+                $this->flipped_from_input = false;
+            }
+        }
+
         $result = parent::traverse($node);
-        $this->in_flipped_position = !$this->in_flipped_position;
+
+        $this->prevent_template_covariance = $outer_prevents_covariance;
+        $this->flipped_from_input = $outer_flipped_from_input;
 
         return $result;
     }
@@ -454,7 +479,6 @@ final class TypeChecker extends TypeVisitor
     public function checkTemplateParam(TTemplateParam $atomic): void
     {
         if ($this->prevent_template_covariance
-            && !$this->in_flipped_position
             && !str_starts_with($atomic->defining_class, 'fn-')
             && $atomic->defining_class !== 'class-string-map'
         ) {

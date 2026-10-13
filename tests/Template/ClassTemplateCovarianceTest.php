@@ -831,6 +831,18 @@ final class ClassTemplateCovarianceTest extends TestCase
                     }',
                 'error_message' => 'InvalidTemplateParam',
             ],
+            'preventCovariantTemplateInCallableParamOfInvariantTypeParam' => [
+                'code' => '<?php
+                    /** @template T */
+                    final class Inv {}
+
+                    /** @template-covariant T */
+                    final class C {
+                        /** @param Inv<Closure(T): void> $f */
+                        public function f(Inv $f): void {}
+                    }',
+                'error_message' => 'InvalidTemplateParam',
+            ],
             'preventCovariantTemplateInCallableReturnOfParam' => [
                 'code' => '<?php
                     /** @template-covariant T */
