@@ -476,9 +476,33 @@ final class ArrayAccessTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
+            'destructureArrayAccessObjectThatIsNotTraversable' => [
+                'code' => '<?php
+                    /** @implements ArrayAccess<int, string> */
+                    final class Bag implements ArrayAccess {
+                        /** @param int $offset */
+                        public function offsetExists($offset): bool { return true; }
+                        /** @param int $offset */
+                        public function offsetGet($offset): string { return ""; }
+                        /**
+                         * @param ?int $offset
+                         * @param string $value
+                         */
+                        public function offsetSet($offset, $value): void {}
+                        /** @param int $offset */
+                        public function offsetUnset($offset): void {}
+                    }
+
+                    [$first, $second] = new Bag();',
+                'assertions' => [
+                    '$first===' => 'string',
+                    '$second===' => 'string',
+                ],
+                'ignored_issues' => ['MissingPureAnnotation', 'MissingImmutableAnnotation', 'MissingOverrideAttribute'],
+            ],
             'allowEmptyList' => [
                 'code' => '<?php
                     function test(): void {
@@ -1289,8 +1313,16 @@ final class ArrayAccessTest extends TestCase
                 // ArrayAccess::offsetSet(mixed $offset, mixed $value) : void;
                 // and yet ArrayObject implements ArrayAccess
 
-                /** @extends ArrayObject<int, int> */
+                /**
+                 * @psalm-purity-template TStorage(write-props) <= write-props
+                 * @extends ArrayObject[TStorage]<int, int>
+                 * @psalm-capabilities read-props|write-this-props
+                 */
                 class C extends ArrayObject {
+                    /**
+                     * @psalm-capabilities read-props|write-this-props
+                     * @psalm-purity-from-template TStorage
+                     */
                     public function offsetSet(mixed $key, mixed $value): void {
                         parent::offsetSet($key, $value);
                     }
@@ -1307,7 +1339,7 @@ final class ArrayAccessTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'invalidArrayAccess' => [
@@ -1363,7 +1395,7 @@ final class ArrayAccessTest extends TestCase
                     $a = [];
                     echo $a[0];',
                 'error_message' => 'MixedArrayAccess',
-                'ignored_issues' => ['MixedAssignment'],
+                'error_levels' => ['MixedAssignment'],
             ],
             'mixedArrayOffset' => [
                 'code' => '<?php
@@ -1371,7 +1403,7 @@ final class ArrayAccessTest extends TestCase
                     $a = 5;
                     echo [1, 2, 3, 4][$a];',
                 'error_message' => 'MixedArrayOffset',
-                'ignored_issues' => ['MixedAssignment'],
+                'error_levels' => ['MixedAssignment'],
             ],
             'nullArrayAccess' => [
                 'code' => '<?php

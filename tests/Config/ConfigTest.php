@@ -7,6 +7,10 @@ namespace Psalm\Tests\Config;
 use Composer\Autoload\ClassLoader;
 use ErrorException;
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresOperatingSystem;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use PHPUnit\Framework\Attributes\Test;
 use Psalm\CodeLocation\Raw;
 use Psalm\Config;
 use Psalm\Config\IssueHandler;
@@ -20,6 +24,7 @@ use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Issue\PossiblyNullReference;
 use Psalm\Issue\TooManyArguments;
 use Psalm\Issue\UndefinedFunction;
 use Psalm\Tests\Config\Plugin\FileTypeSelfRegisteringPlugin;
@@ -162,9 +167,7 @@ final class ConfigTest extends TestCase
         $this->assertFalse($config->isInProjectDirs((string) realpath('examples/TemplateScanner.php')));
     }
 
-    /**
-     * @requires OS ^(?!WIN)
-     */
+    #[RequiresOperatingSystem('^(?!WIN)')]
     public function testIgnoreSymlinkedProjectDirectory(): void
     {
         @unlink(dirname(__DIR__, 1) . '/fixtures/symlinktest/ignored/b');
@@ -210,7 +213,7 @@ final class ConfigTest extends TestCase
         $this->assertFalse($config->isInProjectDirs((string) realpath('tests/fixtures/symlinktest/a/ignoreme.php')));
         $this->assertFalse($config->isInProjectDirs((string) realpath('examples/TemplateScanner.php')));
 
-        $regex = '/^unlink\([^\)]+\): (?:Permission denied|No such file or directory)$/';
+        $regex = '/^unlink\([^\)]*\): (?:Permission denied|No such file or directory)$/';
         $last_error = error_get_last();
 
         $check_unlink_error =
@@ -1356,12 +1359,202 @@ final class ConfigTest extends TestCase
 
         parent::tearDown();
 
-        if ($this->getName() === 'testTemplatedFiles') {
+        if ($this->name() === 'testTemplatedFiles') {
             $project_root = dirname(__DIR__, 2);
             foreach (['1.xml', '2.xml', '3.xml', '4.xml', '5.xml', '6.xml', '7.xml', '8.xml'] as $file_name) {
                 @unlink($project_root . DIRECTORY_SEPARATOR . $file_name);
             }
         }
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string|null}>
+     * @psalm-pure
+     */
+    public static function providerCustomTaintsOfTheConfig(): array
+    {
+        $functions = '<?php
+            /** @psalm-taint-sink nosql_json $query */
+            function find(string $query): void {}
+
+            /** @psalm-taint-sink session_id $id */
+            function resume(string $id): void {}
+
+            /** @psalm-taint-sink tainted_only $value */
+            function keep(string $value): void {}
+
+            /** @psalm-taint-source tainted */
+            function readTainted(): string {
+                return "";
+            }
+
+            /** @psalm-taint-source input */
+            function read(): string {
+                return "";
+            }
+
+            /** @psalm-taint-source session_id */
+            function cookie(): string {
+                return "";
+            }
+
+            /** @psalm-taint-escape html */
+            function escapeHtml(string $text): string {
+                return $text;
+            }
+
+            /** @psalm-taint-escape input */
+            function validate(string $text): string {
+                return $text;
+            }
+
+            function param(): string {
+                $value = $_GET["q"] ?? "";
+                return is_string($value) ? $value : "";
+            }
+            ';
+
+        return [
+            'a taint added to input comes from the user input' => [
+                $functions . 'find(param());',
+                'TaintedCustom',
+            ],
+            'a taint added to input comes from the sources of input' => [
+                $functions . 'find(read());',
+                'TaintedCustom',
+            ],
+            'a taint added to input comes from STDIN' => [
+                $functions . 'find((string) fgets(STDIN));',
+                'TaintedCustom',
+            ],
+            'a taint added to input comes from the builtins reading the network' => [
+                $functions . '$handle = curl_init(); if ($handle !== false) { find((string) curl_exec($handle)); }',
+                'TaintedCustom',
+            ],
+            'a taint added to input comes from a caught exception' => [
+                $functions . 'try { param(); } catch (Exception $e) { find(print_r($e, true)); }',
+                'TaintedCustom',
+            ],
+            'a number holds no taint added to input' => [
+                $functions . 'find((string) (int) param());',
+                null,
+            ],
+            'a value formatted as a number holds no taint added to input' => [
+                $functions . 'find(sprintf("%d", param()));',
+                null,
+            ],
+            'a value formatted as a string holds a taint added to input' => [
+                $functions . 'find(sprintf("%s", param()));',
+                'TaintedCustom',
+            ],
+            'escaping another kind keeps a taint added to input' => [
+                $functions . 'find(escapeHtml(param()));',
+                'TaintedCustom',
+            ],
+            'escaping input escapes a taint added to it' => [
+                $functions . 'find(validate(param()));',
+                null,
+            ],
+            'a taint added to tainted comes from the sources of tainted' => [
+                $functions . 'keep(readTainted());',
+                'TaintedCustom',
+            ],
+            'a taint added to tainted only does not come from the user input' => [
+                $functions . 'keep(param());',
+                null,
+            ],
+            'a taint added to input only does not come from the sources of tainted' => [
+                $functions . 'find(readTainted());',
+                null,
+            ],
+            'a taint without alias comes from where it is named' => [
+                $functions . 'resume(cookie());',
+                'TaintedCustom',
+            ],
+            'a taint without alias does not come from the user input' => [
+                $functions . 'resume(param());',
+                null,
+            ],
+            'a taint without alias reaches only the sinks naming it' => [
+                $functions . 'echo cookie();',
+                null,
+            ],
+        ];
+    }
+
+    #[DataProvider('providerCustomTaintsOfTheConfig')]
+    public function testCustomTaintsOfTheConfig(string $code, ?string $error): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__, 2),
+                '<?xml version="1.0"?>
+                <psalm>
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+                    <taintAnalysis>
+                        <taints>
+                            <taint name="nosql_json">
+                                <alias name="input" />
+                            </taint>
+                            <taint name="session_id" />
+                            <taint name="tainted_only">
+                                <alias name="tainted" />
+                            </taint>
+                        </taints>
+                    </taintAnalysis>
+                </psalm>',
+            ),
+        );
+        $this->project_analyzer->trackTaintedInputs();
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+        $this->addFile($file_path, $code);
+
+        if ($error !== null) {
+            $this->expectException(CodeException::class);
+            $this->expectExceptionMessageMatches('/\b' . $error . '\b/');
+        }
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     * @psalm-pure
+     */
+    public static function providerInvalidCustomTaintsOfTheConfig(): array
+    {
+        return [
+            'the name of a built-in taint' => ['<taint name="html" />', 'has the name of a built-in taint'],
+            'not a word' => ['<taint name="~html" />', 'Invalid custom taint name'],
+            'declared twice' => ['<taint name="a" /><taint name="a" />', 'is declared twice'],
+            'added to a built-in kind' => [
+                '<taint name="a"><alias name="html" /></taint>',
+                'can only be added to an alias of built-in taints',
+            ],
+        ];
+    }
+
+    #[DataProvider('providerInvalidCustomTaintsOfTheConfig')]
+    public function testInvalidCustomTaintsOfTheConfig(string $taints, string $error): void
+    {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage($error);
+
+        Config::loadFromXML(
+            dirname(__DIR__, 2),
+            '<?xml version="1.0"?>
+            <psalm>
+                <projectFiles>
+                    <directory name="src" />
+                </projectFiles>
+                <taintAnalysis>
+                    <taints>' . $taints . '</taints>
+                </taintAnalysis>
+            </psalm>',
+        );
     }
 
     public function testGlobals(): void
@@ -1635,6 +1828,13 @@ final class ConfigTest extends TestCase
         $this->assertSame('8.0', $cfg->getPhpVersion());
     }
 
+    public function testReadsThePhp64bitRequirementOfComposerJsonForPhpVersion(): void
+    {
+        $root = __DIR__ . '/../fixtures/ComposerPhp64bitVersion';
+        $cfg = Config::loadFromXML($root, "<?xml version=\"1.0\"?><psalm></psalm>");
+        $this->assertSame('8.1', $cfg->getPhpVersion());
+    }
+
     public function testSetsUsePhpStormMetaPath(): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -1679,7 +1879,7 @@ final class ConfigTest extends TestCase
      * @return array<string, array{0: int, 1: int|null}>
      * @psalm-pure
      */
-    public function pluginRegistersScannerAndAnalyzerDataProvider(): array
+    public static function pluginRegistersScannerAndAnalyzerDataProvider(): array
     {
         return [
             'regular' => [0, null], // flags, expected exception code
@@ -1690,13 +1890,12 @@ final class ConfigTest extends TestCase
         ];
     }
 
-    /**
-     * @test
-     * @dataProvider pluginRegistersScannerAndAnalyzerDataProvider
-     */
+    #[DataProvider('pluginRegistersScannerAndAnalyzerDataProvider')]
+    #[Test]
     public function pluginRegistersScannerAndAnalyzer(int $flags, ?int $expectedExceptionCode): void
     {
         $extension = uniqid('test');
+        /** @var array{scanner: class-string, analyzer: class-string, extension: string} $names */
         $names = [
             'scanner' => uniqid('PsalmTestFileTypeScanner'),
             'analyzer' => uniqid('PsalmTestFileTypeAnalyzer'),
@@ -1901,9 +2100,9 @@ final class ConfigTest extends TestCase
     }
 
     /**
-     * @requires extension apcu
      * @deprecated Remove in Psalm 6.
      */
+    #[RequiresPhpExtension('apcu')]
     public function testConfigWarnsAboutDeprecatedWayToLoadStubsButLoadsTheStub(): void
     {
         $config_xml = Config::loadFromXML(
@@ -1929,9 +2128,9 @@ final class ConfigTest extends TestCase
     }
 
     /**
-     * @requires extension apcu
      * @deprecated Remove deprecation warning part in Psalm 6.
      */
+    #[RequiresPhpExtension('apcu')]
     public function testConfigWithDisableExtensionsDoesNotLoadExtensionStubsAndHidesDeprecationWarning(): void
     {
         $config_xml = Config::loadFromXML(
@@ -2016,6 +2215,123 @@ final class ConfigTest extends TestCase
                     'foo\bar\baz',
                 ),
             ),
+        );
+    }
+
+    public function testUnsuppressibleIssuesIgnoreTheErrorLevelAndIssueHandlers(): void
+    {
+        $config = Config::loadFromXML(
+            (string) getcwd(),
+            <<<XML
+            <?xml version="1.0"?>
+            <psalm errorLevel="8">
+                <issueHandlers>
+                    <PossiblyNullReference errorLevel="suppress" />
+                </issueHandlers>
+                <unsuppressibleIssues>
+                    <issue name="PossiblyNullReference" />
+                </unsuppressibleIssues>
+            </psalm>
+            XML,
+        );
+
+        $this->assertSame(
+            Config::REPORT_ERROR,
+            $config->getReportingLevelForIssue(
+                new PossiblyNullReference(
+                    'Cannot call method on possibly null value',
+                    new Raw('aaa', 'aaa.php', 'aaa.php', 1, 2),
+                ),
+            ),
+        );
+        $this->assertFalse($config->isSuppressible('PossiblyNullReference'));
+        $this->assertTrue($config->isSuppressible('NullReference'));
+    }
+
+    public function testUnsuppressibleClassOfIssues(): void
+    {
+        $config = Config::loadFromXML(
+            (string) getcwd(),
+            <<<XML
+            <?xml version="1.0"?>
+            <psalm>
+                <unsuppressibleIssues>
+                    <issue name="TaintedInput" />
+                    <issue name="MixedIssue" />
+                </unsuppressibleIssues>
+            </psalm>
+            XML,
+        );
+
+        $this->assertFalse($config->isSuppressible('TaintedInput'));
+        $this->assertFalse($config->isSuppressible('TaintedHtml'));
+        $this->assertFalse($config->isSuppressible('TaintedSql'));
+        $this->assertFalse($config->isSuppressible('MixedArgument'));
+        $this->assertTrue($config->isSuppressible('InvalidArgument'));
+    }
+
+    public function testIssuesOfAClassCantAllBeSuppressedIfOneIsUnsuppressible(): void
+    {
+        $config = Config::loadFromXML(
+            (string) getcwd(),
+            <<<XML
+            <?xml version="1.0"?>
+            <psalm>
+                <unsuppressibleIssues>
+                    <issue name="TaintedHtml" />
+                </unsuppressibleIssues>
+            </psalm>
+            XML,
+        );
+
+        $this->assertFalse($config->isSuppressible('TaintedHtml'));
+        $this->assertFalse($config->isSuppressible('TaintedInput'));
+        $this->assertTrue($config->isSuppressible('TaintedSql'));
+    }
+
+    public function testUnsuppressiblePluginIssue(): void
+    {
+        foreach ([TestPluginIssue::class, 'PluginIssue'] as $name) {
+            $config = Config::loadFromXML(
+                (string) getcwd(),
+                <<<XML
+                <?xml version="1.0"?>
+                <psalm errorLevel="3">
+                    <unsuppressibleIssues>
+                        <issue name="$name" />
+                    </unsuppressibleIssues>
+                </psalm>
+                XML,
+            );
+
+            $this->assertSame(
+                Config::REPORT_ERROR,
+                $config->getReportingLevelForIssue(
+                    new TestPluginIssue(
+                        'test message',
+                        new Raw('aaa', 'aaa.php', 'aaa.php', 1, 2),
+                    ),
+                ),
+                $name,
+            );
+        }
+    }
+
+    public function testUnknownUnsuppressibleIssue(): void
+    {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('Unknown issue type NotAnIssue');
+
+        Config::loadFromXML(
+            (string) getcwd(),
+            <<<XML
+            <?xml version="1.0"?>
+            <psalm>
+                <unsuppressibleIssues>
+                    <issue name="NotAnIssue" />
+                </unsuppressibleIssues>
+            </psalm>
+            XML,
         );
     }
 

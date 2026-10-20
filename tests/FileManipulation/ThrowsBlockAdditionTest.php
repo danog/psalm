@@ -15,7 +15,7 @@ final class ThrowsBlockAdditionTest extends FileManipulationTestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): array
+    public static function providerValidCodeParse(): array
     {
         return [
             'addThrowsAnnotationToFunction' => [
@@ -223,6 +223,25 @@ final class ThrowsBlockAdditionTest extends FileManipulationTestCase
                     }
                     namespace Bar {
                         class BarException extends \DomainException {}
+                    }',
+                'php_version' => '7.4',
+                'issues_to_fix' => ['MissingThrowsDocblock'],
+                'safe_types' => true,
+            ],
+            'doesNotCrashOnBodylessMethodsWithReturnType' => [
+                'input' => '<?php
+                    interface Contract {
+                        public function name(): string;
+                    }
+                    abstract class Base {
+                        abstract protected function id(): int;
+                    }',
+                'output' => '<?php
+                    interface Contract {
+                        public function name(): string;
+                    }
+                    abstract class Base {
+                        abstract protected function id(): int;
                     }',
                 'php_version' => '7.4',
                 'issues_to_fix' => ['MissingThrowsDocblock'],

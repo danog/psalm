@@ -17,7 +17,7 @@ final class DeprecatedAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'deprecatedMethod' => [
@@ -131,7 +131,7 @@ final class DeprecatedAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'deprecatedMethodWithCall' => [
@@ -341,7 +341,7 @@ final class DeprecatedAnnotationTest extends TestCase
                     Foo::B;
                 ',
                 'error_message' => 'DeprecatedConstant',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.1',
             ],
             'deprecatedEnumCaseFetchAttr' => [
@@ -356,7 +356,7 @@ final class DeprecatedAnnotationTest extends TestCase
                     Foo::B;
                 ',
                 'error_message' => 'DeprecatedConstant',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.1',
             ],
             'deprecatedClassConstFetch' => [
@@ -389,7 +389,10 @@ final class DeprecatedAnnotationTest extends TestCase
                     /** @deprecated */
                     interface MyInterface {}
 
-                    /** @extends ArrayObject<array-key, MyInterface> */
+                    /**
+                     * @extends ArrayObject<array-key, MyInterface>
+                     * @psalm-capabilities read-props|write-this-props
+                     */
                     class MyClass extends ArrayObject {}
                 ',
                 'error_message' => 'DeprecatedInterface',

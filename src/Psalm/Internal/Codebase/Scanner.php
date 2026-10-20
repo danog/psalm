@@ -16,6 +16,7 @@ use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use Psalm\IssueBuffer;
 use Psalm\Progress\Progress;
 use Psalm\Storage\ClassLikeStorage;
@@ -73,6 +74,8 @@ use const PHP_EOL;
  *         array<string, bool>,
  *         array<lowercase-string, bool>,
  *         array<string, bool>,
+ *         array<string, bool>,
+ *         array<lowercase-string, string>,
  *         array<string, bool>
  *     },
  *     scanner_data: ThreadData,
@@ -86,6 +89,7 @@ use const PHP_EOL;
  *     file_storage:array<lowercase-string, FileStorage>,
  *     taint_data: ?TaintFlowGraph,
  *     global_constants: array<string, Union>,
+ *     unresolved_global_constants: array<string, UnresolvedConstantComponent>,
  *     global_functions: array<lowercase-string, FunctionStorage>
  * }
  */
@@ -131,6 +135,13 @@ final class Scanner
      * @var array<string, bool>
      */
     private array $scanned_files = [];
+
+    /**
+     * The deep-scanned files whose classes queueFilesOfInheritedMethods() went through => true
+     *
+     * @var array<string, true>
+     */
+    private array $inherited_method_files_checked = [];
 
     /**
      * @var array<string, bool>
@@ -328,6 +339,86 @@ final class Scanner
         return $has_changes;
     }
 
+    /**
+     * Queues for a deep scan the files declaring the methods the classes named by deep-scanned files inherit,
+     * and returns whether it queued any. A taint analysis analyzes the body of an inherited method again for
+     * the class of the object (see InheritedMethodTaints), which needs the classes that body names: a full run
+     * deep-scans every project file anyway, but a partial run only those it analyzes (and their dependencies).
+     *
+     * Only a project file declaring a method some such class inherits (not static, not abstract, not
+     * overridden on the way) is queued, and only once.
+     */
+    public function queueFilesOfInheritedMethods(): bool
+    {
+        $classlike_storage_provider = $this->codebase->classlike_storage_provider;
+        $queued = false;
+
+        foreach ($this->scanned_files as $file_path => $deep) {
+            if (!$deep || isset($this->inherited_method_files_checked[$file_path])) {
+                continue;
+            }
+
+            $this->inherited_method_files_checked[$file_path] = true;
+
+            if (!$this->file_storage_provider->has($file_path)) {
+                continue;
+            }
+
+            $file_storage = $this->file_storage_provider->get($file_path);
+
+            foreach ($file_storage->referenced_classlikes + $file_storage->classlikes_in_file as $class_lc => $_) {
+                if (!$classlike_storage_provider->has($class_lc)) {
+                    continue;
+                }
+
+                $class_storage = $classlike_storage_provider->get($class_lc);
+
+                if ($class_storage->is_trait || $class_storage->is_interface) {
+                    continue;
+                }
+
+                // the methods declared on the way from the class up, which it doesn't inherit from further up
+                $declared = $class_storage->methods;
+                $visited = [$class_lc => true];
+
+                while ($class_storage->parent_class !== null) {
+                    $parent_lc = strtolower($class_storage->parent_class);
+
+                    if (isset($visited[$parent_lc]) || !$classlike_storage_provider->has($parent_lc)) {
+                        break;
+                    }
+
+                    $visited[$parent_lc] = true;
+                    $class_storage = $classlike_storage_provider->get($parent_lc);
+                    $parent_file = $class_storage->location?->file_path;
+
+                    if ($parent_file !== null
+                        && $class_storage->user_defined
+                        && !($this->scanned_files[$parent_file] ?? false)
+                        && !isset($this->files_to_deep_scan[$parent_file])
+                        && $this->config->isInProjectDirs($parent_file)
+                    ) {
+                        foreach ($class_storage->methods as $method_name_lc => $method_storage) {
+                            if (!isset($declared[$method_name_lc])
+                                && !$method_storage->is_static
+                                && !$method_storage->abstract
+                            ) {
+                                $this->addFileToDeepScan($parent_file);
+                                $queued = true;
+
+                                break;
+                            }
+                        }
+                    }
+
+                    $declared += $class_storage->methods;
+                }
+            }
+        }
+
+        return $queued;
+    }
+
     private function shouldScan(string $file_path): bool
     {
         return $this->file_provider->fileExists($file_path)
@@ -413,6 +504,7 @@ final class Scanner
                 $this->addThreadData($pool_data['scanner_data']);
 
                 $this->codebase->addGlobalConstantTypes($pool_data['global_constants']);
+                $this->codebase->addUnresolvedGlobalConstants($pool_data['unresolved_global_constants']);
                 $this->codebase->functions->addGlobalFunctions($pool_data['global_functions']);
             }
         } else {
@@ -578,6 +670,10 @@ final class Scanner
             ) {
                 foreach ($file_storage->constants as $name => $type) {
                     $this->codebase->addGlobalConstantType($name, $type);
+                }
+
+                foreach ($file_storage->unresolved_constants as $name => $value) {
+                    $this->codebase->addUnresolvedGlobalConstant($name, $value);
                 }
             }
 
@@ -761,7 +857,10 @@ final class Scanner
             $deep_scanned_classlike_files,
             $this->deep_scanned_classlike_files,
         );
-        $this->scanned_files = array_merge($scanned_files, $this->scanned_files);
+        // a file scanned shallowly here and deep in a worker (or the other way round) was deep-scanned
+        foreach ($scanned_files as $file_path => $deep) {
+            $this->scanned_files[$file_path] = $deep || ($this->scanned_files[$file_path] ?? false);
+        }
         $this->reflected_classlikes_lc = array_merge($reflected_classlikes_lc, $this->reflected_classlikes_lc);
     }
 

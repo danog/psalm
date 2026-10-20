@@ -12,18 +12,23 @@ use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\DocComment;
+use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\UnresolvableConstantException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\CallPurityResolver;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\Expression\DestructorAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
+use Psalm\Internal\Codebase\TaintStore;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -33,6 +38,7 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\IterationPurity;
+use Psalm\Internal\Type\PurityWildcardPaths;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -96,6 +102,7 @@ use function krsort;
 use function mb_strpos;
 use function md5;
 use function microtime;
+use function preg_match;
 use function reset;
 use function str_ends_with;
 use function str_starts_with;
@@ -109,6 +116,7 @@ use const SORT_NUMERIC;
 /**
  * @internal
  * @template-covariant TFunction as Closure|Function_|ClassMethod|ArrowFunction
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 {
@@ -140,11 +148,30 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
     public bool $track_mutations = false;
 
+    /** @var CapabilitySet */
     public int $inferred_capabilities = Capabilities::NONE;
+
+    /**
+     * The part of $inferred_capabilities a closure needs for something other than reading and
+     * writing the variables it captured by reference: a closure literal passed as an argument
+     * reads and writes them in the scope calling with it, which already required what writing
+     * them needs where it created the closure.
+     *
+     * @var CapabilitySet
+     */
+    public int $inferred_capabilities_beyond_captures = Capabilities::NONE;
+
+    /**
+     * Whether the mutation being signalled is the closure's reading or writing of a variable it
+     * captured by reference.
+     */
+    public bool $signalling_by_ref_capture = false;
 
     /**
      * The mutations performed by this function-like itself, excluding those of
      * the unannotated callees in $deferred_callees.
+     *
+     * @var CapabilitySet
      */
     public int $intrinsic_capabilities = Capabilities::NONE;
 
@@ -165,6 +192,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
     /**
      * The mutations performed by the parameter default values themselves.
+     *
+     * @var CapabilitySet
      */
     public int $param_default_intrinsic_capabilities = Capabilities::NONE;
 
@@ -182,6 +211,48 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * @var array<string, TTemplateParam>
      */
     public array $used_purity_templates = [];
+
+    /**
+     * Where the parameters of this function-like would take the `_` purity (`Closure[_]`,
+     * `Traversable[_]`): what it does by calling the closures, iterating the iterables and calling
+     * the methods found there, which the `_` would charge to its callers instead. Its purity is
+     * inferred without those, and `--alter` adds the `_` (param name => paths =>
+     * true, {@see PurityWildcardPaths}).
+     *
+     * @var array<string, array<string, true>>
+     */
+    public array $purity_wildcard_candidates = [];
+
+    /**
+     * The purity templates standing for the purity arguments of receivers a parameter's `_` could
+     * take, while the purity of a call on them is inferred (marker name => param name and path,
+     * {@see PurityWildcardInference}).
+     *
+     * @var array<string, array{string, string}>
+     */
+    public array $purity_wildcard_markers = [];
+
+    /**
+     * The variables the body may assign, lazily computed (variable name => true), besides the
+     * value variables of foreach loops, which are in $foreach_values.
+     *
+     * @var array<string, true>|null
+     */
+    private ?array $reassigned_params = null;
+
+    /**
+     * What the value variables of the foreach loops of the body iterate over, lazily computed.
+     *
+     * @var array<string, list<PhpParser\Node\Expr>>|null
+     */
+    private ?array $foreach_values = null;
+
+    /**
+     * The docblock types of the parameters as written, or their native types, lazily computed.
+     *
+     * @var array<string, list<string>>|null
+     */
+    private ?array $param_type_strings = null;
 
     /**
      * Holds param nodes for functions with func_get_args calls
@@ -244,7 +315,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($codebase->track_unused_suppressions && !isset($storage->suppressed_issues[0])) {
             if (count($storage->suppressed_issues) === 1 // UnusedPsalmSuppress by itself should be marked as unused
-                || !in_array("UnusedPsalmSuppress", $storage->suppressed_issues)
+                || !$codebase->config->suppressesIssueType($storage->suppressed_issues, 'UnusedPsalmSuppress')
             ) {
                 foreach ($storage->suppressed_issues as $offset => $issue_name) {
                     IssueBuffer::addUnusedSuppression(
@@ -297,6 +368,15 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         $statements_analyzer = new StatementsAnalyzer($this, $type_provider, true);
 
+        // A method can be analyzed again to collect the properties it initializes or mutates, in the context of a
+        // class calling or inheriting it (see CallAnalyzer::collectSpecialInformation()): its parameters stay those of
+        // every call, so linking its nodes to those of that class there would make any call to it, on any object,
+        // reach the properties of that class. Its regular analysis adds its taint paths.
+        if ($context->collect_initializations || $context->collect_mutations) {
+            $statements_analyzer->taint_flow_graph = null;
+            $statements_analyzer->data_flow_graph = $statements_analyzer->variable_use_graph;
+        }
+
         $byref_uses = [];
         if ($this instanceof ClosureAnalyzer && $this->function instanceof Closure) {
             foreach ($this->function->uses as $use) {
@@ -317,6 +397,15 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     );
 
                     $statements_analyzer->data_flow_graph->addNode($use_assignment);
+
+                    if ($statements_analyzer->taint_flow_graph) {
+                        TaintStore::recordClosureUse(
+                            $statements_analyzer,
+                            $statements_analyzer->taint_flow_graph,
+                            $context->vars_in_scope[$use_var_id],
+                            $use_assignment,
+                        );
+                    }
 
                     $context->vars_in_scope[$use_var_id] =
                         $context->vars_in_scope[$use_var_id]->addParentNodes(
@@ -524,6 +613,32 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $check_stmts = false;
         }
 
+        // the type @psalm-self-out gives is checked like a @return type: its classes must exist, and its
+        // template and purity arguments must fit their bounds
+        if ($storage instanceof MethodStorage && $storage->self_out_type && $storage->self_out_type_location) {
+            $classlike_storage = $context->self ? $codebase->classlike_storage_provider->get($context->self) : null;
+
+            /** @psalm-suppress UnusedMethodCall This call actually has the side effect of creating issues */
+            TypeExpander::expandUnion(
+                $codebase,
+                $storage->self_out_type,
+                $classlike_storage->name ?? null,
+                $classlike_storage->name ?? null,
+                $classlike_storage->parent_class ?? null,
+                true,
+                true,
+            )->setFromDocblock()->check(
+                $this,
+                $storage->self_out_type_location,
+                $storage->suppressed_issues,
+                [],
+                false,
+                false,
+                false,
+                $context,
+            );
+        }
+
         if (!$check_stmts) {
             return false;
         }
@@ -602,7 +717,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         ) {
             if ($storage instanceof MethodStorage
                 && $storage->has_mutations_annotation
-                && !Capabilities::allows($storage->containing_class_capabilities, $storage->capabilities)
+                && !Capabilities::allowsAnyOf($storage->containing_class_capabilities, $storage->capabilities)
             ) {
                 IssueBuffer::maybeAdd(
                     new ImpureFunctionCall(
@@ -653,7 +768,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 // by-reference write, no IO) and returns nothing is useless: not pure by intent
                 $this->signalMutationOnlyInferred(Capabilities::MUTATION_FREE);
 
-                if (Capabilities::allows(Capabilities::READ_GLOBALS, $context->capabilities)) {
+                if (Capabilities::allowsAnyOf(Capabilities::READ_GLOBALS, $context->capabilities)) {
                     IssueBuffer::maybeAdd(
                         new ImpureFunctionCall(
                             'pure functions cannot have void return type'
@@ -682,11 +797,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $codebase->code_use_graph->addMutationInfo($node_id, [
                     // the calls of an unannotated overridden method may run any of its overrides,
                     // which could do anything: annotating it would restrict them
-                    'intrinsic' => $storage instanceof MethodStorage
+                    'intrinsic' => ($storage instanceof MethodStorage
                         && $storage->overridden_somewhere
                         && !$storage->has_mutations_annotation
                             ? Capabilities::ALL
-                            : $this->intrinsic_capabilities,
+                            : $this->intrinsic_capabilities)
+                        | $this->getPurityTemplateLowerBounds($codebase, $storage),
                     'allowed' => $storage->capabilities,
                     'callees' => $this->deferred_callees,
                     'default_intrinsic' => $this->param_default_intrinsic_capabilities,
@@ -706,6 +822,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         && !($storage->has_mutations_annotation
                             && ($storage->capabilities === Capabilities::ALL
                                 || ($storage instanceof MethodStorage && $storage->overridden_somewhere))),
+                    'wildcards' => array_map(
+                        static fn(array $paths): array => array_keys($paths),
+                        $this->purity_wildcard_candidates,
+                    ),
                 ]);
             }
         }
@@ -839,6 +959,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         ),
                     )->setProperties(['reference_free' => true]);
                 }
+
+                $this->function->setAttribute(
+                    CallPurityResolver::ARGUMENT_PURITY_ATTRIBUTE,
+                    self::getClosurePurity(
+                        $this->inferred_capabilities_beyond_captures,
+                        $this->used_purity_templates,
+                    ),
+                );
 
                 // a closure is a fresh object: its enclosing scope may call it freely
                 $statements_analyzer->node_data->setType(
@@ -1031,6 +1159,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $storage,
                 $codebase->taint_flow_graph,
                 $method_source,
+                $codebase->getInputTaints(),
             );
         }
 
@@ -1248,24 +1377,53 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * The method id of the out nodes of the by-reference parameters of a method called as $method_id
-     * (see DataFlowNode::getForMethodArgumentOut()): the body of a method of a trait is analyzed as one
-     * of each class using it.
+     * The id of the method whose body a call of $method_id runs, as the nodes of that body are keyed: the
+     * body of a method of a trait is analyzed as one of each class using it, by its name in the trait.
      *
      * @psalm-capabilities read-props
      */
-    public static function getByRefParamsOutMethodId(Codebase $codebase, MethodIdentifier $method_id): string
+    public static function getBodyMethodId(Codebase $codebase, MethodIdentifier $method_id): MethodIdentifier
     {
         $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id;
         $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id) ?? $declaring_method_id;
 
-        return $appearing_method_id->fq_class_name
+        $body_method_id = new MethodIdentifier(
+            $appearing_method_id->fq_class_name,
+            $declaring_method_id->method_name,
+        );
+
+        // a class using a trait method under an alias only, as it declares a method of the same name, doesn't
+        // analyze the body of the trait method (see ClassAnalyzer::analyzeClassMethod())
+        return (string) $codebase->methods->getDeclaringMethodId($body_method_id) === (string) $declaring_method_id
+            ? $body_method_id
+            : $declaring_method_id;
+    }
+
+    /**
+     * The cased id of the method whose body a call of $method_id runs (see getBodyMethodId()), which keys the
+     * nodes of its parameters, its by-reference parameters (see DataFlowNode::getForMethodArgumentOut()), its
+     * return and the `$this` it takes and leaves.
+     *
+     * @psalm-capabilities read-props
+     */
+    public static function getCasedBodyMethodId(Codebase $codebase, MethodIdentifier $method_id): string
+    {
+        $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id;
+
+        return self::getBodyMethodId($codebase, $method_id)->fq_class_name
             . '::' . $codebase->methods->getStorage($declaring_method_id)->cased_name;
     }
 
     /**
      * A call of a method a method overrides may run it: what it leaves in its by-reference parameters is
      * left to that call too.
+     *
+     * When the calls of the method are specialized, its by-reference parameter out nodes are the exits of
+     * its body, which only lead to its call sites through their specializations (see
+     * TaintFlowGraph::connectSinksAndSources()): an edge of their own would cut its calls off from them.
+     * The calls of the overridden method are then linked to as a call of its own, specialized at the
+     * location of the method, which the flows a specialized call of it brings into its body don't exit
+     * through.
      *
      * @param array<string, MethodIdentifier> $overridden_method_ids
      */
@@ -1283,7 +1441,11 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         $overridden_method_ids = array_map(strval(...), $overridden_method_ids);
         $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
-        // the classes a method overridden is called through (see getByRefParamsOutMethodId())
+        // specialized like the by-reference parameter out nodes of its calls (see
+        // ArgumentsAnalyzer::getByRefParamOutNode())
+        $specialization_location = $storage->specialize_call ? $storage->location : null;
+
+        // the classes a method overridden is called through (see getCasedBodyMethodId())
         foreach ($class_storage->parent_classes + $class_storage->class_implements as $ancestor) {
             $ancestor_method_id = new MethodIdentifier($ancestor, strtolower((string) $storage->cased_name));
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($ancestor_method_id);
@@ -1295,7 +1457,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
 
             $overridden_storage = $codebase->methods->getStorage($declaring_method_id);
-            $overridden_cased_method_id = self::getByRefParamsOutMethodId($codebase, $ancestor_method_id);
+            $overridden_cased_method_id = self::getCasedBodyMethodId($codebase, $ancestor_method_id);
 
             foreach ($storage->params as $offset => $param) {
                 if (!$param->by_ref
@@ -1305,7 +1467,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     continue;
                 }
 
-                $out_node = DataFlowNode::getForMethodArgumentOut($cased_method_id, $offset, $storage);
+                $out_node = DataFlowNode::getForMethodArgumentOut(
+                    $cased_method_id,
+                    $offset,
+                    $storage,
+                    $specialization_location,
+                );
                 $overridden_out_node = DataFlowNode::getForMethodArgumentOut(
                     $overridden_cased_method_id,
                     $offset,
@@ -1355,6 +1522,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * The capabilities the parameter default values of a function-like with $capabilities may use.
      *
+     * @param CapabilitySet $capabilities
+     * @return CapabilitySet
      * @psalm-pure
      */
     public static function getParamDefaultCapabilities(int $capabilities): int
@@ -1469,9 +1638,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                 $statements_analyzer->data_flow_graph->addNode($param_assignment);
 
-                if ($cased_method_id !== null) {
+                // the arguments a closure is called with through a variable flow into its parameters, see
+                // FunctionCallReturnTypeFetcher::taintCallableReturnType()
+                $param_method_id = $cased_method_id
+                    ?? ($this instanceof ClosureAnalyzer ? $this->getClosureId() : null);
+
+                if ($param_method_id !== null) {
                     $type_source = DataFlowNode::getForMethodArgument(
-                        $cased_method_id,
+                        $param_method_id,
                         $offset,
                         $storage,
                         null,
@@ -1482,7 +1656,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $param_assignment,
                         'param',
                         0,
-                        $function_param->signature_type?->getTaintsToRemove() ?? 0,
+                        $function_param->signature_type?->getTaintsToRemove($codebase->getInputTaints()) ?? 0,
                     );
                 }
 
@@ -2009,6 +2183,15 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $param_out_type = $param->out_type ?: $param->type;
 
                 if ($param_out_type && !$actual_type->hasMixed() && $param->location) {
+                    // as the parameter's own type, e.g. with the class constants of an int-mask resolved
+                    $param_out_type = TypeExpander::expandUnion(
+                        $codebase,
+                        $param_out_type,
+                        $context->self,
+                        $context->self,
+                        $this->getParentFQCLN(),
+                    );
+
                     if (!UnionTypeComparator::isContainedBy(
                         $codebase,
                         $actual_type,
@@ -2070,6 +2253,137 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
+     * Whether the body may give the parameter another value than the argument: by assigning or
+     * unsetting it, iterating into it, or capturing it by reference.
+     */
+    public function isParamReassigned(string $param_name): bool
+    {
+        $this->findAssignments();
+
+        return isset($this->reassigned_params[$param_name]) || isset($this->foreach_values[$param_name]);
+    }
+
+    /**
+     * What a variable of the body holds an element of, if it is only ever assigned as the value
+     * variable of one foreach loop (`foreach ($fs as $f)`).
+     */
+    public function getForeachSource(string $var_name): ?PhpParser\Node\Expr
+    {
+        $this->findAssignments();
+
+        $sources = $this->foreach_values[$var_name] ?? [];
+
+        return count($sources) === 1 && !isset($this->reassigned_params[$var_name]) ? $sources[0] : null;
+    }
+
+    /**
+     * The types of a parameter as written in the docblock (every `@param`, `@psalm-param` and
+     * `@phpstan-param` of it), or its native type if it has none there.
+     *
+     * @return list<string>
+     */
+    public function getParamTypeStrings(string $param_name): array
+    {
+        if ($this->param_type_strings === null) {
+            $this->param_type_strings = [];
+
+            $doc_comment = $this->function->getDocComment();
+
+            if ($doc_comment !== null) {
+                $parsed_docblock = DocComment::parsePreservingLength($doc_comment);
+
+                foreach (['psalm-param', 'phpstan-param', 'param'] as $tag) {
+                    foreach ($parsed_docblock->tags[$tag] ?? [] as $param_block) {
+                        try {
+                            $doc_parts = CommentAnalyzer::splitDocLine($param_block);
+                        } catch (DocblockParseException) {
+                            continue;
+                        }
+
+                        if (isset($doc_parts[1])
+                            && preg_match('/^(?:\.\.\.)?&?\$(\w+)/', $doc_parts[1], $matches)
+                            && isset($matches[1])
+                        ) {
+                            $this->param_type_strings[$matches[1]][] = $doc_parts[0];
+                        }
+                    }
+                }
+            }
+
+            foreach ($this->function->getParams() as $param) {
+                if ($param->var instanceof PhpParser\Node\Expr\Variable
+                    && is_string($param->var->name)
+                    && !isset($this->param_type_strings[$param->var->name])
+                    && $param->type !== null
+                    && ($native_type = PurityWildcardPaths::getNativeTypeString($param->type)) !== null
+                ) {
+                    $this->param_type_strings[$param->var->name] = [$native_type];
+                }
+            }
+        }
+
+        return $this->param_type_strings[$param_name] ?? [];
+    }
+
+    private function findAssignments(): void
+    {
+        if ($this->reassigned_params !== null) {
+            return;
+        }
+
+        $this->reassigned_params = [];
+        $this->foreach_values = [];
+
+        $finder = new NodeFinder();
+
+        $targets = [];
+
+        foreach ($finder->find(
+            $this->function->getStmts(),
+            static fn(PhpParser\Node $node): bool => $node instanceof PhpParser\Node\Expr\Assign
+                || $node instanceof PhpParser\Node\Expr\AssignRef
+                || $node instanceof PhpParser\Node\Expr\AssignOp
+                || $node instanceof PhpParser\Node\Stmt\Foreach_
+                || $node instanceof PhpParser\Node\Stmt\Unset_
+                || ($node instanceof PhpParser\Node\ClosureUse && $node->byRef),
+        ) as $node) {
+            if ($node instanceof PhpParser\Node\Stmt\Foreach_) {
+                if ($node->valueVar instanceof PhpParser\Node\Expr\Variable
+                    && is_string($node->valueVar->name)
+                    && !$node->byRef
+                ) {
+                    $this->foreach_values[$node->valueVar->name][] = $node->expr;
+                } else {
+                    // by reference, the loop may also change what it iterates over
+                    $targets[] = $node->valueVar;
+
+                    if ($node->byRef) {
+                        $targets[] = $node->expr;
+                    }
+                }
+
+                if ($node->keyVar !== null) {
+                    $targets[] = $node->keyVar;
+                }
+            } elseif ($node instanceof PhpParser\Node\Stmt\Unset_) {
+                $targets = [...$targets, ...$node->vars];
+            } elseif ($node instanceof PhpParser\Node\Expr\Assign
+                || $node instanceof PhpParser\Node\Expr\AssignRef
+                || $node instanceof PhpParser\Node\Expr\AssignOp
+                || $node instanceof PhpParser\Node\ClosureUse
+            ) {
+                $targets[] = $node->var;
+            }
+        }
+
+        foreach ($finder->findInstanceOf($targets, PhpParser\Node\Expr\Variable::class) as $variable) {
+            if (is_string($variable->name)) {
+                $this->reassigned_params[$variable->name] = true;
+            }
+        }
+    }
+
+    /**
      * The storage this analyzer was created with (the one of the function-like being analysed).
      *
      * @psalm-mutation-free
@@ -2083,6 +2397,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * A purity made of capabilities and purity templates, where no capabilities (`pure`) are left
      * out of a union with templates: `P|pure` is just `P`.
      *
+     * @param CapabilitySet $capabilities
      * @param array<string, TTemplateParam> $templates
      * @psalm-pure
      */
@@ -2178,6 +2493,35 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         }
 
         return [];
+    }
+
+    /**
+     * The lower bounds of the class purity templates the method inherits its purity from: it
+     * declares them as its own capabilities (see FunctionLikeDocblockScanner::applyPurityTemplateLowerBounds)
+     * and its callers pay them anyway, so no stricter annotation can be suggested without them.
+     *
+     * @return CapabilitySet
+     * @psalm-capabilities read-props
+     */
+    private function getPurityTemplateLowerBounds(Codebase $codebase, FunctionLikeStorage $storage): int
+    {
+        if (!$storage instanceof MethodStorage
+            || $storage->defining_fqcln === null
+            || $storage->purity_from_templates === []
+        ) {
+            return Capabilities::NONE;
+        }
+
+        $lower_bounds = $codebase->classlike_storage_provider->get($storage->defining_fqcln)->template_lower_bounds;
+        $capabilities = Capabilities::NONE;
+
+        foreach ($storage->purity_from_templates as $purity_template) {
+            if (isset($lower_bounds[$purity_template]) && !isset($storage->template_types[$purity_template])) {
+                $capabilities |= $lower_bounds[$purity_template];
+            }
+        }
+
+        return $capabilities;
     }
 
     /**
@@ -2331,7 +2675,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         return null;
                     }
                 }
-            } elseif ($context->self) {
+            } elseif ($context->self !== null) {
                 if ($appearing_class_storage->template_types) {
                     $template_params = [];
 

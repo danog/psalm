@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\NoDiscardAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\StaticCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\GlobalStateAnalyzer;
+use Psalm\Internal\Analyzer\Statements\GlobalAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
@@ -303,8 +304,10 @@ final class ExistingAtomicStaticCallAnalyzer
                 Capabilities::NONE,
                 $template_result,
                 $found_generic_params ?? [],
+                args: $stmt->isFirstClassCallable() ? [] : $stmt->getArgs(),
             );
-            $resolved_capabilities = $method_storage->capabilities | $template_capabilities;
+            $resolved_capabilities = $template_capabilities
+                | CallPurityResolver::getOwnCapabilities($codebase, $method_storage, $template_result);
 
             $call_capabilities = ByRefArgumentAnalyzer::adjustCapabilities(
                 $statements_analyzer,
@@ -504,6 +507,9 @@ final class ExistingAtomicStaticCallAnalyzer
 
         $return_type_candidate ??= Type::getMixed();
 
+        $method_storage ??= $declaring_method_id ? $codebase->methods->getStorage($declaring_method_id) : null;
+
+        // the storage of a builtin method holds the flows of its declaration (see InternalCallMapHandler)
         StaticCallAnalyzer::taintReturnType(
             $statements_analyzer,
             $stmt,
@@ -514,6 +520,10 @@ final class ExistingAtomicStaticCallAnalyzer
             $template_result,
             $context,
         );
+
+        if ($method_storage && !$stmt->isFirstClassCallable()) {
+            GlobalAnalyzer::readGlobalsWrittenBy($statements_analyzer, $context, $method_storage);
+        }
 
         if ($method_storage?->has_yield && !$stmt->isFirstClassCallable()) {
             // a generator method always returns a new generator: nothing else holds it
@@ -689,7 +699,7 @@ final class ExistingAtomicStaticCallAnalyzer
     /**
      * Dumb way to determine whether a type contains "static" somewhere inside.
      *
-     * @psalm-capabilities read-props|write-this-props|write-props|write-refs
+     * @psalm-pure
      */
     private static function hasStaticInType(Type\TypeNode $type): bool
     {

@@ -13,9 +13,13 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\MethodCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
+use Psalm\Internal\Analyzer\Statements\Expression\NullsafeChainState;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
+use Psalm\Internal\Analyzer\Statements\GlobalAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\CombinedFlowGraph;
+use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
@@ -87,7 +91,6 @@ use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeVariable;
 use Psalm\Type\MutableUnion;
-use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
@@ -102,6 +105,7 @@ use function is_int;
 use function spl_object_id;
 use function str_starts_with;
 use function strlen;
+use function strpbrk;
 use function strtolower;
 use function substr;
 
@@ -115,6 +119,8 @@ final class ArrayFetchAnalyzer
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
         Context $context,
     ): bool {
+        NullsafeChainState::None->markOn($stmt);
+
         $extended_var_id = ExpressionIdentifier::getExtendedVarId(
             $stmt->var,
             $statements_analyzer->getFQCLN(),
@@ -194,6 +200,7 @@ final class ArrayFetchAnalyzer
                 $stmt_type,
                 $used_key_type,
                 $context,
+                key_prefix_path_suffix: self::getKeyPrefixPathSuffix($statements_analyzer, $stmt->dim),
             );
 
             // what is written through a reference to the item doesn't flow through the array
@@ -214,6 +221,8 @@ final class ArrayFetchAnalyzer
         }
 
         $can_store_result = false;
+        $chain_state = NullsafeChainState::None;
+        $own_nullable = false;
 
         if ($stmt_var_type) {
             if ($stmt_var_type->isNull()) {
@@ -236,6 +245,15 @@ final class ArrayFetchAnalyzer
                 return true;
             }
 
+            $chain_state = $stmt_var_type->isNullable() ? NullsafeChainState::of($stmt->var) : NullsafeChainState::None;
+
+            if ($chain_state === NullsafeChainState::ShortCircuit) {
+                // the null of a `?->` short-circuit is not an array to fetch from, it is added to the result below
+                $non_null_var_type = $stmt_var_type->getBuilder();
+                $non_null_var_type->removeType('null');
+                $stmt_var_type = $non_null_var_type->freeze();
+            }
+
             $stmt_type = self::getArrayAccessTypeGivenOffset(
                 $statements_analyzer,
                 $stmt,
@@ -246,6 +264,8 @@ final class ArrayFetchAnalyzer
                 $context,
                 null,
             );
+
+            $own_nullable = $stmt_type->isNullable() || $stmt_type->possibly_undefined;
 
             if ($stmt->dim && $stmt_var_type->hasArray()) {
                 $array_type = $stmt_var_type->getArray();
@@ -353,6 +373,11 @@ final class ArrayFetchAnalyzer
             $stmt_type = $stmt_type->setPossiblyUndefined(false);
         }
 
+        if ($chain_state !== NullsafeChainState::None) {
+            $chain_state->afterLink($own_nullable)->markOn($stmt);
+            $stmt_type = Type::combineUnionTypes($stmt_type, Type::getNull());
+        }
+
         if ($context->inside_isset && $dim_var_id && $new_offset_type && !$new_offset_type->isUnionEmpty()) {
             $context->vars_in_scope[$dim_var_id] = $new_offset_type;
         }
@@ -364,6 +389,7 @@ final class ArrayFetchAnalyzer
             $stmt_type,
             $used_key_type,
             $context,
+            key_prefix_path_suffix: self::getKeyPrefixPathSuffix($statements_analyzer, $stmt->dim),
         );
 
         $statements_analyzer->node_data->setType($stmt, $stmt_type);
@@ -450,6 +476,9 @@ final class ArrayFetchAnalyzer
             && ($key === 'type' || $key === 'full_path')
         ) {
             $label = '$_FILES[][\'' . $key . '\']';
+        } elseif ($var instanceof PhpParser\Node\Expr\Variable && $var->name === 'GLOBALS' && $key === 'argv') {
+            // see VariableFetchAnalyzer::getArgvTaintSource()
+            $label = '$GLOBALS[\'argv\']';
         } else {
             return;
         }
@@ -457,7 +486,7 @@ final class ArrayFetchAnalyzer
         $taint_source = DataFlowNode::getForTaint(
             $label,
             new CodeLocation($statements_analyzer->getSource(), $var),
-            TaintKind::ALL_INPUT,
+            $statements_analyzer->getCodebase()->getInputTaints(),
         );
         $graph->addSource($taint_source);
 
@@ -465,10 +494,46 @@ final class ArrayFetchAnalyzer
     }
 
     /**
+     * The key of the path of a fetch whose key is one of a few literals (two to eight, as for assignments, see
+     * ArrayAssignmentAnalyzer::MAX_KEY_VALUES): each quoted, separated by '|' (see
+     * TaintFlowResolution::getFetchedKeys()). What it fetches is what is under one of them. Null if the key isn't
+     * one of a few literals, or if one of them has a quote or a '|', which would split it.
+     *
+     * @psalm-pure
+     */
+    private static function getFetchedKeys(Union $offset_type): ?string
+    {
+        $string_literals = $offset_type->getLiteralStrings();
+        $int_literals = $offset_type->getLiteralInts();
+        $count = count($string_literals) + count($int_literals);
+
+        if ($count < 2 || $count > 8 || $count !== count($offset_type->getAtomicTypes())) {
+            return null;
+        }
+
+        $keys = [];
+        foreach ($string_literals as $string_literal) {
+            if (strpbrk($string_literal->value, '\'|') !== false) {
+                return null;
+            }
+
+            $keys[] = '\'' . $string_literal->value . '\'';
+        }
+        foreach ($int_literals as $int_literal) {
+            $keys[] = '\'' . $int_literal->value . '\'';
+        }
+
+        return implode('|', $keys);
+    }
+
+    /**
      * Used to create a path between a variable $foo and $foo["a"]
      *
      * The array is $var, or what $var_type holds when it isn't what $var evaluates to (the item of an array a
      * foreach goes over, ...).
+     *
+     * @param ?string $key_prefix_path_suffix how the paths encode the key, if only its start is known (see
+     *                                        getKeyPrefixPathSuffix())
      */
     public static function taintArrayFetch(
         StatementsAnalyzer $statements_analyzer,
@@ -478,6 +543,8 @@ final class ArrayFetchAnalyzer
         Union &$offset_type,
         ?Context $context = null,
         ?Union $var_type = null,
+        ?string $key_prefix_path_suffix = null,
+        ?string $foreach_marker = null,
     ): void {
         if ($statements_analyzer->data_flow_graph
             && ($stmt_var_type = $var_type ?? $statements_analyzer->node_data->getType($var))
@@ -533,20 +600,86 @@ final class ArrayFetchAnalyzer
                 $graph->addNode($array_key_node);
             }
 
-            foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                $graph->addPath(
-                    $parent_node,
-                    $new_parent_node,
-                    'arrayvalue-fetch' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
-                    $added_taints,
-                    $removed_taints,
-                );
+            $key_path_suffix = $dim_value !== null
+                ? '-\'' . $dim_value . '\''
+                : $key_prefix_path_suffix ?? '';
+
+            // the taint flow graph tells the element values a foreach loop fetches (see ForeachAnalyzer)
+            $taint_graph = $graph instanceof CombinedFlowGraph ? $graph->taint_flow_graph : $graph;
+            $marks_elements = $foreach_marker !== null
+                && $key_path_suffix === ''
+                && $taint_graph instanceof TaintFlowGraph;
+
+            // a key that is one of a few literals fetches what is under one of them (see getFetchedKeys()): the
+            // variable use graph, and an assignment through a reference, only know the key is one of them
+            $fetched_keys = $dim_value === null && !$marks_elements ? self::getFetchedKeys($offset_type) : null;
+
+            $parent_nodes = $stmt_var_type->parent_nodes;
+
+            // a global read by its name gets what is written to that name, not all of them
+            if ($dim_value !== null
+                && $var instanceof PhpParser\Node\Expr\Variable
+                && $var->name === 'GLOBALS'
+                && ($taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
+            ) {
+                unset($parent_nodes[DataFlowNode::getForGlobals()->id]);
+
+                foreach (GlobalAnalyzer::getGlobalReadNodes($taint_flow_graph, (string) $dim_value) as $global_node) {
+                    $taint_flow_graph->addPath($global_node, $new_parent_node, '=', $added_taints, $removed_taints);
+                }
+            }
+
+            foreach ($parent_nodes as $parent_node) {
+                if ($marks_elements && $taint_graph instanceof TaintFlowGraph) {
+                    $taint_graph->addPath(
+                        $parent_node,
+                        $new_parent_node,
+                        'arrayvalue-fetch@' . $foreach_marker,
+                        $added_taints,
+                        $removed_taints,
+                    );
+
+                    if ($graph instanceof CombinedFlowGraph) {
+                        $graph->variable_use_graph->addPath(
+                            $parent_node,
+                            $new_parent_node,
+                            'arrayvalue-fetch',
+                            $added_taints,
+                            $removed_taints,
+                        );
+                    }
+                } elseif ($fetched_keys !== null && $graph instanceof CombinedFlowGraph) {
+                    $graph->taint_flow_graph->addPath(
+                        $parent_node,
+                        $new_parent_node,
+                        'arrayvalue-fetch-' . $fetched_keys,
+                        $added_taints,
+                        $removed_taints,
+                    );
+                    $graph->variable_use_graph->addPath(
+                        $parent_node,
+                        $new_parent_node,
+                        'arrayvalue-fetch' . $key_path_suffix,
+                        $added_taints,
+                        $removed_taints,
+                    );
+                } else {
+                    $graph->addPath(
+                        $parent_node,
+                        $new_parent_node,
+                        $fetched_keys !== null && !$graph instanceof VariableUseGraph
+                            ? 'arrayvalue-fetch-' . $fetched_keys
+                            : 'arrayvalue-fetch' . $key_path_suffix,
+                        $added_taints,
+                        $removed_taints,
+                    );
+                }
 
                 if ($stmt_type->by_ref) {
                     $graph->addPath(
                         $new_parent_node,
                         $parent_node,
-                        'arrayvalue-assignment' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
+                        'arrayvalue-assignment' . $key_path_suffix,
                         $added_taints,
                         $removed_taints,
                     );
@@ -571,6 +704,75 @@ final class ArrayFetchAnalyzer
         }
 
         self::taintSuperGlobalFetch($statements_analyzer, $var, $offset_type, $stmt_type);
+    }
+
+    /**
+     * How the paths of the fetches and assignments of the array key $dim encode it when only its start is
+     * known statically, as for "k{$x}" or 'k' . $x: quoted and followed by a star (see
+     * DataFlowGraph::keysMayBeEqual()). Null if not even its start is known, or if it is known exactly (the
+     * paths encode it quoted then).
+     *
+     * @psalm-capabilities read-props
+     */
+    public static function getKeyPrefixPathSuffix(
+        StatementsAnalyzer $statements_analyzer,
+        ?PhpParser\Node\Expr $dim,
+    ): ?string {
+        if ($dim === null) {
+            return null;
+        }
+
+        $dim_type = $statements_analyzer->node_data->getType($dim);
+
+        if ($dim_type !== null && ($dim_type->isSingleStringLiteral() || $dim_type->isSingleIntLiteral())) {
+            return null;
+        }
+
+        $prefix = self::getLiteralStart($statements_analyzer, $dim);
+
+        return $prefix === null || $prefix === '' ? null : '-\'' . $prefix . '\'*';
+    }
+
+    /**
+     * The literal string $expr starts with, as far as it is known statically
+     *
+     * @psalm-capabilities read-props
+     */
+    private static function getLiteralStart(StatementsAnalyzer $statements_analyzer, PhpParser\Node\Expr $expr): ?string
+    {
+        $type = $statements_analyzer->node_data->getType($expr);
+
+        if ($type !== null && $type->isSingleStringLiteral()) {
+            return $type->getSingleStringLiteral()->value;
+        }
+
+        if ($expr instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
+            $left_start = self::getLiteralStart($statements_analyzer, $expr->left);
+            $left_type = $statements_analyzer->node_data->getType($expr->left);
+
+            // all of the left side is known: the start of the right side follows it
+            if ($left_start !== null && $left_type !== null && $left_type->isSingleStringLiteral()) {
+                return $left_start . (self::getLiteralStart($statements_analyzer, $expr->right) ?? '');
+            }
+
+            return $left_start;
+        }
+
+        if ($expr instanceof PhpParser\Node\Scalar\InterpolatedString) {
+            $start = '';
+
+            foreach ($expr->parts as $part) {
+                if (!$part instanceof PhpParser\Node\InterpolatedStringPart) {
+                    break;
+                }
+
+                $start .= $part->value;
+            }
+
+            return $start;
+        }
+
+        return null;
     }
 
     /**
@@ -770,7 +972,7 @@ final class ArrayFetchAnalyzer
                         $array_access_type = new Union([new TNever]);
                     }
                 } else {
-                    if (!$context->inside_isset && !MethodCallAnalyzer::hasNullsafe($stmt->var)) {
+                    if (!$context->inside_isset) {
                         IssueBuffer::maybeAdd(
                             new PossiblyNullArrayAccess(
                                 'Cannot access array value on possibly null variable ' . $extended_var_id .
@@ -1840,10 +2042,25 @@ final class ArrayFetchAnalyzer
 
                     if (!$stmt->dim) {
                         if ($type->is_list) {
+                            // The item goes past the items the list surely has, which keep their values:
+                            // it may only be one of those it may not have yet, the first of which it now has.
+                            $properties = $type->properties;
+                            $is_first_possibly_undefined = true;
+                            foreach ($properties as $key => $property) {
+                                if ($property->possibly_undefined) {
+                                    $properties[$key] = Type::combineUnionTypes($property, $replacement_type)
+                                        ->setPossiblyUndefined(!$is_first_possibly_undefined);
+                                    $is_first_possibly_undefined = false;
+                                }
+                            }
+
                             $type = TKeyedArray::make(
-                                $type->properties,
+                                $properties,
                                 null,
-                                [$new_key_type, $generic_params],
+                                [
+                                    $new_key_type,
+                                    Type::combineUnionTypes($type->fallback_params[1] ?? null, $replacement_type),
+                                ],
                                 true,
                             );
                         } else {
@@ -1952,11 +2169,11 @@ final class ArrayFetchAnalyzer
 
             $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['MixedMethodCall']);
             }
 
@@ -1966,11 +2183,11 @@ final class ArrayFetchAnalyzer
                 $context,
             );
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['MixedMethodCall']);
             }
 
@@ -1980,15 +2197,15 @@ final class ArrayFetchAnalyzer
         } else {
             $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->addSuppressedIssues(['MixedMethodCall']);
             }
 
-            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+            if (!isset($suppressed_issues['PossiblyNullReference'])
                 && ($context->inside_isset || $context->inside_unset)
             ) {
                 // a null receiver is what isset() and unset() are for
@@ -2123,17 +2340,17 @@ final class ArrayFetchAnalyzer
 
             $has_array_access = true;
 
-            if (!in_array('PossiblyNullReference', $suppressed_issues, true)
+            if (!isset($suppressed_issues['PossiblyNullReference'])
                 && ($context->inside_isset || $context->inside_unset)
             ) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyNullReference']);
             }
 
-            if (!in_array('PossiblyInvalidMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['PossiblyInvalidMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['PossiblyInvalidMethodCall']);
             }
 
-            if (!in_array('MixedMethodCall', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['MixedMethodCall'])) {
                 $statements_analyzer->removeSuppressedIssues(['MixedMethodCall']);
             }
         }

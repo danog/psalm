@@ -25,6 +25,7 @@ use function is_string;
  * along property, array and method chains.
  *
  * @internal
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class GlobalStateAnalyzer
 {
@@ -107,6 +108,7 @@ final class GlobalStateAnalyzer
      * reached from global state lets it mutate global state.
      *
      * @param array<Arg|PhpParser\Node\VariadicPlaceholder> $args
+     * @param CapabilitySet $callee_capabilities
      * @param class-string<CodeIssue> $issue_class
      */
     public static function checkArguments(
@@ -119,7 +121,7 @@ final class GlobalStateAnalyzer
     ): void {
         if (($callee_capabilities & Capabilities::WRITE_PROPS) === 0
             // the call itself is reported when it is not allowed
-            || !Capabilities::allows($context->capabilities, $callee_capabilities)
+            || !Capabilities::allowsAnyOf($context->capabilities, $callee_capabilities)
         ) {
             return;
         }

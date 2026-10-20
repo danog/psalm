@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -648,9 +650,7 @@ final class StubTest extends TestCase
         $this->analyzeFile($file_path, new Context());
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testPolyfilledFunction(): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -680,9 +680,7 @@ final class StubTest extends TestCase
         $this->analyzeFile($file_path, new Context());
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testConditionalConstantDefined(): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -712,9 +710,7 @@ final class StubTest extends TestCase
         $this->analyzeFile($file_path, new Context());
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testStubbedConstantVarCommentType(): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -754,9 +750,47 @@ final class StubTest extends TestCase
         $this->analyzeFile($file_path, new Context());
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
+    public function testStubDocblocksWithUnknownPsalmTagsDoNotCrash(): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/unknown_psalm_annotation.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+        $this->project_analyzer->setPhpVersion('8.1', 'tests');
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                $stub = new StubWithTypoedAnnotations();
+                $name = (string) $stub->name;
+                echo StubWithTypoedAnnotations::LIMIT;
+                echo StubEnumWithTypoedAnnotation::Foo->name;',
+        );
+
+        // reported like the other docblock issues of stubs, instead of crashing the scan
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessageMatches('/InvalidDocblock.*Unrecognised annotation @psalm-supress/');
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    #[RunInSeparateProcess]
     public function testClassAlias(): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -1061,7 +1095,7 @@ final class StubTest extends TestCase
      * @return iterable<string, array{string,string}>
      * @psalm-mutation-free
      */
-    public function versionDependentStubsProvider(): iterable
+    public static function versionDependentStubsProvider(): iterable
     {
         yield '7.0' => [
             '7.0',
@@ -1077,7 +1111,7 @@ final class StubTest extends TestCase
         ];
     }
 
-    /** @dataProvider versionDependentStubsProvider */
+    #[DataProvider('versionDependentStubsProvider')]
     public function testVersionDependentStubs(string $php_version, string $code): void
     {
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -1151,6 +1185,62 @@ final class StubTest extends TestCase
 
                 (new PartiallyStubbedClass())->foo(A::class);
                 (new PartiallyStubbedClass())->bar(5);',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    public function testStubbedMethodWithConditionalReturnOverridingSource(): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/conditional_return_method.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+
+        // stubs only override classes declared outside the project directories
+        $file_path = (string) getcwd() . '/vendor/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                namespace Foo;
+
+                interface ConditionallyReturning
+                {
+                    /**
+                     * @param mixed $x
+                     * @return ($x is string ? StringResult : OtherResult)
+                     */
+                    public function m($x = null);
+                }
+
+                final class StringResult {}
+                final class OtherResult {}
+
+                function stringArg(ConditionallyReturning $c): StringResult {
+                    return $c->m("a");
+                }
+
+                function intArg(ConditionallyReturning $c): OtherResult {
+                    return $c->m(1);
+                }
+
+                function defaultArg(ConditionallyReturning $c): OtherResult {
+                    return $c->m();
+                }',
         );
 
         $this->analyzeFile($file_path, new Context());
@@ -1503,6 +1593,80 @@ final class StubTest extends TestCase
         );
 
         $this->expectExceptionMessage('TaintedHtml - src/somefile.php');
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * Stubs aren't analyzed, so their docblock issues are reported once they are scanned
+     */
+    public function testDocblockIssueOfAStubMethod(): void
+    {
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessage(
+            'No generic params provided for type in docblock for StubbedWithInvalidDocblock::get',
+        );
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/invalid_docblocks.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                (new StubbedWithInvalidDocblock())->get();',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    /**
+     * Stubs aren't analyzed, so the docblock issues of their taint annotations are reported once they are scanned
+     */
+    public function testInvalidTaintAnnotationOfAStub(): void
+    {
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessage('@psalm-taint-sink expects 2 arguments in docblock for invalid_taint_sink');
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__),
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+
+                    <stubs>
+                        <file name="tests/fixtures/stubs/invalid_taint_annotations.phpstub" />
+                    </stubs>
+                </psalm>',
+            ),
+        );
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                invalid_taint_sink("text");',
+        );
+
         $this->analyzeFile($file_path, new Context());
     }
 }

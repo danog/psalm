@@ -23,6 +23,7 @@ use function is_string;
  * property is write-props (write-this-props on `$this`), global state is write-globals.
  *
  * @internal
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class ByRefArgumentAnalyzer
 {
@@ -30,8 +31,10 @@ final class ByRefArgumentAnalyzer
      * The capabilities a call needs, with the callee's write-refs replaced by the cost of the
      * arguments actually passed by reference.
      *
+     * @param CapabilitySet $capabilities
      * @param array<int, FunctionLikeParameter>|null $params the callee's parameters, null when unknown
      * @param list<Arg|PhpParser\Node\VariadicPlaceholder> $args
+     * @return CapabilitySet
      */
     public static function adjustCapabilities(
         StatementsAnalyzer $statements_analyzer,
@@ -63,6 +66,49 @@ final class ByRefArgumentAnalyzer
             }
 
             $capabilities |= self::getWriteCapabilities($statements_analyzer, $context, $arg->value);
+        }
+
+        return $capabilities;
+    }
+
+    /**
+     * The capabilities a call of a callee whose parameters aren't known (a method called by a name
+     * Psalm doesn't know) needs, with the callee's write-refs replaced by the cost of the arguments
+     * that may be passed by reference: any variable, element or property may, a temporary can't.
+     *
+     * @param CapabilitySet $capabilities
+     * @param list<Arg|PhpParser\Node\VariadicPlaceholder> $args
+     * @return CapabilitySet
+     */
+    public static function adjustUnknownParamsCapabilities(
+        StatementsAnalyzer $statements_analyzer,
+        Context $context,
+        int $capabilities,
+        array $args,
+    ): int {
+        if (($capabilities & Capabilities::WRITE_REFS) === 0 || $capabilities === Capabilities::ALL) {
+            return $capabilities;
+        }
+
+        $capabilities &= ~Capabilities::WRITE_REFS;
+
+        foreach ($args as $arg) {
+            if (!$arg instanceof Arg) {
+                continue;
+            }
+
+            $root = $arg->value;
+
+            while ($root instanceof Expr\ArrayDimFetch) {
+                $root = $root->var;
+            }
+
+            if ($root instanceof Expr\Variable
+                || $root instanceof Expr\PropertyFetch
+                || $root instanceof Expr\StaticPropertyFetch
+            ) {
+                $capabilities |= self::getWriteCapabilities($statements_analyzer, $context, $arg->value);
+            }
         }
 
         return $capabilities;
@@ -101,6 +147,8 @@ final class ByRefArgumentAnalyzer
 
     /**
      * What writing the given expression through a reference costs the current scope.
+     *
+     * @return CapabilitySet
      */
     private static function getWriteCapabilities(
         StatementsAnalyzer $statements_analyzer,

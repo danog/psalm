@@ -16,6 +16,7 @@ use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
 use function getcwd;
+use function glob;
 use function is_dir;
 use function is_string;
 use function mkdir;
@@ -85,6 +86,12 @@ final class PsalmEndToEndTest extends TestCase
     public function tearDown(): void
     {
         @unlink(self::$tmpDir . '/psalm.xml');
+
+        $baseline_files = glob(self::$tmpDir . '/*baseline*.xml');
+        assert($baseline_files !== false);
+        foreach ($baseline_files as $baseline_file) {
+            unlink($baseline_file);
+        }
 
         if (file_exists(self::$tmpDir . '/cache')) {
             self::recursiveRemoveDirectory(self::$tmpDir . '/cache');
@@ -217,6 +224,30 @@ final class PsalmEndToEndTest extends TestCase
         $this->assertSame(2, $result['CODE']);
     }
 
+    /**
+     * A partial taint analysis deep-scans the file declaring a method a class named by the files it analyzes
+     * inherits, whose body it analyzes again for that class: the classes the body names, like Other here, are
+     * scanned, and what the body passes from its argument to its result is found.
+     */
+    public function testPartialTaintAnalysisOfACallOfAnInheritedMethod(): void
+    {
+        foreach (['Base', 'Other', 'Child', 'Use'] as $name) {
+            copy(
+                __DIR__ . '/../fixtures/PartialRunOfAnInheritedMethod/src/' . $name . '.php',
+                self::$tmpDir . '/src/' . $name . '.php',
+            );
+        }
+
+        $this->runPsalmInit(1);
+
+        $result = $this->runPartialTaintAnalysis(['src/Use.php']);
+        $this->assertStringNotContainsString('Could not get class storage', $result);
+        $this->assertStringContainsString('TaintedHtml', $result);
+
+        $result = $this->runPartialTaintAnalysis(['src/Use.php', 'src/Child.php']);
+        $this->assertStringContainsString('TaintedHtml', $result);
+    }
+
     public function testPsalmSetBaseline(): void
     {
         $this->runPsalmInit(1);
@@ -231,6 +262,69 @@ final class PsalmEndToEndTest extends TestCase
         $this->runPsalm(['--set-baseline=psalm-custom-baseline.xml'], self::$tmpDir, true);
 
         $this->assertSame(0, $this->runPsalm([], self::$tmpDir)['CODE']);
+    }
+
+    public function testBaselineDoesntHideUnsuppressibleIssues(): void
+    {
+        // another test can leave its baseline, which --set-baseline would apply
+        @unlink(self::$tmpDir . '/psalm-baseline.xml');
+
+        $this->runPsalmInit(1);
+
+        // with taint analysis, Psalm doesn't exit with an error code on GitHub
+        $psalmXml = (string) file_get_contents(self::$tmpDir . '/psalm.xml');
+        file_put_contents(
+            self::$tmpDir . '/psalm.xml',
+            str_replace('<psalm', '<psalm runTaintAnalysis="false"', $psalmXml),
+        );
+
+        $this->runPsalm(['--set-baseline'], self::$tmpDir, true);
+
+        $psalmXml = (string) file_get_contents(self::$tmpDir . '/psalm.xml');
+        file_put_contents(
+            self::$tmpDir . '/psalm.xml',
+            str_replace(
+                '</psalm>',
+                '<unsuppressibleIssues><issue name="InvalidReturnType" /></unsuppressibleIssues></psalm>',
+                $psalmXml,
+            ),
+        );
+
+        $result = $this->runPsalm([], self::$tmpDir, true);
+        $this->assertMatchesRegularExpression('/ERROR\S*: InvalidReturnType/', $result['STDOUT']);
+        $this->assertDoesNotMatchRegularExpression('/ERROR\S*: InvalidReturnStatement/', $result['STDOUT']);
+
+        $this->runPsalm(['--update-baseline'], self::$tmpDir, true);
+        $baseline = (string) file_get_contents(self::$tmpDir . '/psalm-baseline.xml');
+        $this->assertStringNotContainsString('<InvalidReturnType', $baseline);
+        $this->assertStringContainsString('<InvalidReturnStatement', $baseline);
+
+        unlink(self::$tmpDir . '/psalm-baseline.xml');
+    }
+
+    public function testPsalmSetBaselineWithUseBaselineKeepsConfig(): void
+    {
+        $this->runPsalmInit(1);
+        $this->runPsalm(['--set-baseline'], self::$tmpDir, true);
+        $config_before = file_get_contents(self::$tmpDir . '/psalm.xml');
+        $other_baseline = self::$tmpDir . '/psalm-other-baseline.xml';
+
+        $this->runPsalm(['--use-baseline=' . $other_baseline, '--set-baseline=' . $other_baseline], self::$tmpDir);
+
+        $this->assertFileExists($other_baseline);
+        $this->assertSame($config_before, file_get_contents(self::$tmpDir . '/psalm.xml'));
+    }
+
+    public function testPsalmSetBaselineWithoutArgumentWritesUseBaselineFile(): void
+    {
+        $this->runPsalmInit(1);
+        $config_before = file_get_contents(self::$tmpDir . '/psalm.xml');
+        $run_baseline = self::$tmpDir . '/psalm-run-baseline.xml';
+
+        $this->runPsalm(['--use-baseline=' . $run_baseline, '--set-baseline'], self::$tmpDir);
+
+        $this->assertFileExists($run_baseline);
+        $this->assertSame($config_before, file_get_contents(self::$tmpDir . '/psalm.xml'));
     }
 
     public function testTaintingWithoutInit(): void
@@ -309,6 +403,32 @@ final class PsalmEndToEndTest extends TestCase
 
         $this->assertSame(0, $process->getExitCode(), $process->getErrorOutput());
         $this->assertSame('', $process->getErrorOutput());
+    }
+
+    /**
+     * What a taint analysis of the files $files of the project prints
+     *
+     * @param list<string> $files
+     */
+    private function runPartialTaintAnalysis(array $files): string
+    {
+        $process = new Process(
+            [
+                PHP_BINARY,
+                $this->psalm,
+                '--output-format=console',
+                '--monochrome',
+                '--no-progress',
+                '--no-cache',
+                '--taint-analysis',
+                ...$files,
+            ],
+            self::$tmpDir,
+            self::agentEnvVarsToUnset(),
+        );
+        $process->run();
+
+        return $process->getOutput() . $process->getErrorOutput();
     }
 
     /**

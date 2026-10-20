@@ -17,9 +17,53 @@ final class MatchTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
+            'subjectIsOneOfTheArmValuesAfterAMatchWithoutDefault' => [
+                'code' => '<?php
+                    function f(string $type): int {
+                        $id = match ($type) {
+                            "organization" => 1,
+                            "prof", "masterprice" => 2,
+                        };
+
+                        return $id;
+                    }
+
+                    function g(string $type): string {
+                        $id = match ($type) {
+                            "organization" => 1,
+                            "prof" => 2,
+                        };
+
+                        return $type;
+                    }
+
+                    function getOwnerType(): string {
+                        return "";
+                    }
+
+                    $type = getOwnerType();
+                    match ($type) {
+                        "organization" => 1,
+                        "prof", "masterprice" => 2,
+                    };
+                    $kept = $type;
+
+                    $other = getOwnerType();
+                    match ($other) {
+                        "organization" => 1,
+                        default => 2,
+                    };
+                    $unchanged = $other;',
+                'assertions' => [
+                    '$kept===' => "'masterprice'|'organization'|'prof'",
+                    '$unchanged===' => 'string',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
+            ],
             'switchTruthy' => [
                 'code' => '<?php
                     class A {
@@ -196,7 +240,7 @@ final class MatchTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'getClassArgWrongClass' => [
@@ -211,7 +255,7 @@ final class MatchTest extends TestCase
                         A::class => $a->barBar(),
                     };',
                 'error_message' => 'UndefinedMethod',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'getClassMissingClass' => [
@@ -225,7 +269,7 @@ final class MatchTest extends TestCase
                         C::class => 5,
                     };',
                 'error_message' => 'UndefinedClass',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'allMatchedDefaultImpossible' => [
@@ -239,7 +283,7 @@ final class MatchTest extends TestCase
                         };
                     }',
                 'error_message' => 'TypeDoesNotContainType',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'allMatchedAnotherImpossible' => [
@@ -253,7 +297,7 @@ final class MatchTest extends TestCase
                         };
                     }',
                 'error_message' => 'TypeDoesNotContainType',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'notAllEnumsMet' => [
@@ -267,7 +311,7 @@ final class MatchTest extends TestCase
                         };
                     }',
                 'error_message' => 'UnhandledMatchCondition',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'notAllConstEnumsMet' => [
@@ -288,7 +332,7 @@ final class MatchTest extends TestCase
                         }
                     }',
                 'error_message' => 'UnhandledMatchCondition',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'paradoxWithDuplicateValue' => [
@@ -300,7 +344,7 @@ final class MatchTest extends TestCase
                         };
                     };',
                 'error_message' => 'ParadoxicalCondition',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'noCrashWithEmptyMatch' => [
@@ -311,7 +355,7 @@ final class MatchTest extends TestCase
                         };
                     }',
                 'error_message' => 'UnhandledMatchCondition',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'exitIsLikeThrow' => [
@@ -327,7 +371,7 @@ final class MatchTest extends TestCase
                         $a === "aaa";
                     }',
                 'error_message' => 'DocblockTypeContradiction',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'matchTrueImpossible' => [
@@ -338,7 +382,7 @@ final class MatchTest extends TestCase
                         $foo instanceof \Exception => 1,
                     };',
                 'error_message' => 'TypeDoesNotContainType',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
             'multipleInstanceOfConditionsNotMetInOneArm' => [
@@ -360,7 +404,7 @@ final class MatchTest extends TestCase
                         };
                     }',
                 'error_message' => 'InvalidArgument',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.0',
             ],
         ];

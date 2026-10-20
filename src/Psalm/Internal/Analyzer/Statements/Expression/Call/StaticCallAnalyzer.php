@@ -9,12 +9,15 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
+use Psalm\Internal\Analyzer\InheritedMethodTaints;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod\AtomicStaticCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\NullsafeChainState;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\TaintFlowGraph;
-use Psalm\Internal\Codebase\VariableUseGraph;
+use Psalm\Internal\Codebase\TaintStore;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -32,6 +35,7 @@ use Psalm\Type\Union;
 
 use function count;
 use function in_array;
+use function is_string;
 use function strtolower;
 
 /**
@@ -45,11 +49,50 @@ final class StaticCallAnalyzer extends CallAnalyzer
         Context $context,
         ?TemplateResult $template_result = null,
     ): bool {
+        NullsafeChainState::None->markOn($stmt);
+
         $method_id = null;
 
         $lhs_type = null;
 
         $codebase = $statements_analyzer->getCodebase();
+
+        // unlike static::, a class it names (parent::, self::, A::) has the call run that method, and no override
+        if ($stmt->class instanceof PhpParser\Node\Name
+            && $stmt->class->toLowerString() !== 'static'
+            && !$stmt->isFirstClassCallable()
+        ) {
+            foreach ($stmt->getArgs() as $arg) {
+                $arg->value->setAttribute(ArgumentAnalyzer::NON_VIRTUAL_CALL_ATTRIBUTE, true);
+            }
+        }
+
+        // parent::/self::, and A:: naming a class `$this` is an object of, run the method on `$this`, an object of
+        // its class (see InheritedMethodTaints)
+        if ($stmt->class instanceof PhpParser\Node\Name
+            && $stmt->class->toLowerString() !== 'static'
+            && !$stmt->isFirstClassCallable()
+            && isset($context->vars_in_scope['$this'])
+        ) {
+            $named_class = in_array($stmt->class->toLowerString(), ['parent', 'self'], true)
+                ? null
+                : ClassLikeAnalyzer::getFQCLNFromNameObject($stmt->class, $statements_analyzer->getAliases());
+
+            foreach ($context->vars_in_scope['$this']->getAtomicTypes() as $this_atomic) {
+                if ($this_atomic instanceof TNamedObject
+                    && ($named_class === null
+                        || strtolower($named_class) === strtolower($this_atomic->value)
+                        || ($codebase->classlike_storage_provider->has($this_atomic->value)
+                            && $codebase->classlikes->classExtends($this_atomic->value, $named_class)))
+                ) {
+                    $stmt->setAttribute(InheritedMethodTaints::BODY_CLASS_ATTRIBUTE, $this_atomic->value);
+
+                    foreach ($stmt->getArgs() as $arg) {
+                        $arg->value->setAttribute(InheritedMethodTaints::BODY_CLASS_ATTRIBUTE, $this_atomic->value);
+                    }
+                }
+            }
+        }
 
         // collected by the atomic analyzers; a call nothing describes may do anything
         $stmt->setAttribute(NewAnalyzer::CALLEE_CAPABILITIES_ATTRIBUTE, null);
@@ -224,18 +267,36 @@ final class StaticCallAnalyzer extends CallAnalyzer
         $moved_call = false;
         $has_existing_method = false;
 
+        // `$a?->b()::c()` short-circuits the whole chain: null is not a class to call, it is the result
+        $class_state = $stmt->class instanceof PhpParser\Node\Expr && $lhs_type->isNullable()
+            ? NullsafeChainState::of($stmt->class)
+            : NullsafeChainState::None;
+
         foreach ($lhs_type->getAtomicTypes() as $lhs_type_part) {
             AtomicStaticCallAnalyzer::analyze(
                 $statements_analyzer,
                 $stmt,
                 $context,
                 $lhs_type_part,
-                $lhs_type->ignore_nullable_issues,
+                $lhs_type->ignore_nullable_issues || $class_state === NullsafeChainState::ShortCircuit,
                 $moved_call,
                 $has_mock,
                 $has_existing_method,
                 $template_result,
             );
+        }
+
+        if ($class_state !== NullsafeChainState::None) {
+            $stmt_type = $statements_analyzer->node_data->getType($stmt);
+
+            $class_state->afterLink($stmt_type && $stmt_type->isNullable())->markOn($stmt);
+
+            if ($stmt_type && !$stmt_type->isNullable()) {
+                $statements_analyzer->node_data->setType(
+                    $stmt,
+                    Type::combineUnionTypes($stmt_type, Type::getNull()),
+                );
+            }
         }
 
         if (!$stmt->isFirstClassCallable() && !$has_existing_method) {
@@ -287,23 +348,36 @@ final class StaticCallAnalyzer extends CallAnalyzer
             $node_location,
         ) ? $node_location : null;
 
-        $method_location = $method_storage
-            ? ($graph instanceof VariableUseGraph
-                ? ($method_storage->return_type_location ?: $method_storage->location)
-                : ($method_storage->signature_return_type_location ?: $method_storage->location))
-            : null;
-
         if (!$method_storage) {
             $method_source = DataFlowNode::getForCallableReturn(
                 'builtin',
                 $cased_method_id,
             );
         } else {
-            $method_source = DataFlowNode::getForMethodReturn(
-                $cased_method_id,
-                $method_storage,
-                $specialization_location,
-            );
+            /** @var string|null $body_class set above */
+            $body_class = $stmt->getAttribute(InheritedMethodTaints::BODY_CLASS_ATTRIBUTE);
+            $declaring_method_id = is_string($body_class)
+                ? $statements_analyzer->getCodebase()->methods->getDeclaringMethodId($method_id)
+                : null;
+            $body_suffix = is_string($body_class) && $declaring_method_id
+                ? InheritedMethodTaints::getBodySuffix($statements_analyzer, $body_class, $declaring_method_id)
+                : null;
+
+            $method_source = $body_suffix !== null && $declaring_method_id
+                ? InheritedMethodTaints::withMethodSuffix(
+                    $declaring_method_id,
+                    $body_suffix,
+                    static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
+                        $statements_analyzer->getCodebase()->methods->getCasedMethodId($declaring_method_id),
+                        $method_storage,
+                        $specialization_location,
+                    ),
+                )
+                : DataFlowNode::getForMethodReturn(
+                    $cased_method_id,
+                    $method_storage,
+                    $specialization_location,
+                );
         }
 
         $graph->addNode($method_source);
@@ -349,12 +423,12 @@ final class StaticCallAnalyzer extends CallAnalyzer
             $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
         }
 
-        if ($conditionally_removed_taints && $method_location) {
-            $assignment_node = DataFlowNode::getForAssignment(
-                $method_id . '-escaped',
-                $method_location,
-                $method_source->specialization_key,
-            );
+        if ($conditionally_removed_taints) {
+            // a node of this call's own: what it removes depends on its arguments, and $method_source may be
+            // shared with the other calls, the last call deciding for all
+            $assignment_node = DataFlowNode::getForAssignment($method_id . '-escaped', $node_location);
+
+            $graph->addNode($assignment_node);
 
             $graph->addPath(
                 $method_source,
@@ -374,6 +448,23 @@ final class StaticCallAnalyzer extends CallAnalyzer
             return;
         }
 
+        // unlike static::, a class it names (parent::, self::, A::) has the call run that method, and no override
+        if ($method_storage
+            && (!$stmt->class instanceof PhpParser\Node\Name || $stmt->class->toLowerString() === 'static')
+        ) {
+            $dispatch_node = MethodCallReturnTypeFetcher::getReturnDispatchNode(
+                $codebase,
+                $taint_flow_graph,
+                $method_id,
+                $method_storage,
+                $node_location,
+            );
+
+            if ($dispatch_node) {
+                $return_type_candidate = $return_type_candidate->addParentNodes([$dispatch_node->id => $dispatch_node]);
+            }
+        }
+
         if ($method_storage
             && $method_storage->taint_source_types
         ) {
@@ -382,7 +473,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $method_storage,
                 null,
                 $method_storage->taint_source_types
-                    & ~($method_storage->signature_return_type?->getTaintsToRemove() ?? 0),
+                    & ~($method_storage->signature_return_type?->getTaintsToRemove($codebase->getInputTaints()) ?? 0),
             );
 
             $taint_flow_graph->addSource($method_node);
@@ -396,8 +487,33 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $stmt->getArgs(),
                 $specialization_location,
                 $method_source,
+                $codebase->getInputTaints(),
                 $method_storage->removed_taints | $removed_taints,
                 $added_taints,
+            );
+
+            FunctionCallReturnTypeFetcher::taintUsingCallableFlows(
+                $codebase,
+                $method_storage,
+                $taint_flow_graph,
+                $cased_method_id,
+                $method_id,
+                $specialization_location,
+                $method_source,
+                $method_storage->removed_taints | $removed_taints,
+                $added_taints,
+            );
+
+            $return_type_candidate = TaintStore::taintCall(
+                $statements_analyzer,
+                $taint_flow_graph,
+                $method_storage,
+                $stmt->getArgs(),
+                $node_location,
+                $return_type_candidate,
+                $cased_method_id,
+                $method_id,
+                $specialization_location,
             );
         }
     }

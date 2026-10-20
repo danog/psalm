@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\AttributesAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\BinaryOp\ConcatAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
@@ -25,6 +26,7 @@ use Psalm\Internal\Codebase\InternalTaintSourceMap;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Provider\ReturnTypeProvider\ArrayMapReturnTypeProvider;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -81,7 +83,7 @@ final class ArgumentsAnalyzer
 {
     /**
      * @see self::getByRefFlowInputs()
-     * @var array<lowercase-string, array<string, list<string>>>|null
+     * @var array<lowercase-string, array<string, array<int|string, string>>>|null
      */
     private static ?array $by_ref_flow_map = null;
 
@@ -582,18 +584,65 @@ final class ArgumentsAnalyzer
                 $param_storage->type_inferred = true;
             }
 
-            if ($param_storage->type
-                && ($method_id === 'array_map' || in_array($method_id, self::ARRAY_FILTERLIKE, true))
-            ) {
-                $temp = Type::getMixed();
-                ArrayFetchAnalyzer::taintArrayFetch(
+            if ($method_id === 'array_map' || in_array($method_id, self::ARRAY_FILTERLIKE, true)) {
+                self::taintClosureParamWithArrayElements(
                     $statements_analyzer,
                     $args[1 - $argument_offset]->value,
-                    null,
-                    $param_storage->type,
-                    $temp,
+                    $param_storage,
+                    $method_id === 'array_map'
+                        ? ArrayMapReturnTypeProvider::getElementMarker($statements_analyzer, $context, $args)
+                        : null,
                 );
             }
+        }
+    }
+
+    /**
+     * The parameter of the closure array_map() or a function like array_filter() is given takes the elements of the
+     * array: through its type, or, if it has none to hold them, through the node the closure assigns it from. With
+     * $element_marker, each with its own key (see ArrayMapReturnTypeProvider::getElementMarker()).
+     */
+    private static function taintClosureParamWithArrayElements(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $array,
+        FunctionLikeParameter $param_storage,
+        ?string $element_marker,
+    ): void {
+        $temp = Type::getMixed();
+
+        if ($param_storage->type) {
+            ArrayFetchAnalyzer::taintArrayFetch(
+                $statements_analyzer,
+                $array,
+                null,
+                $param_storage->type,
+                $temp,
+                foreach_marker: $element_marker,
+            );
+
+            return;
+        }
+
+        if (!$param_storage->location || !$graph = $statements_analyzer->getDataFlowGraphWithSuppressed()) {
+            return;
+        }
+
+        $element_type = Type::getMixed();
+        ArrayFetchAnalyzer::taintArrayFetch(
+            $statements_analyzer,
+            $array,
+            null,
+            $element_type,
+            $temp,
+            foreach_marker: $element_marker,
+        );
+
+        // see FunctionLikeAnalyzer::processParams()
+        $param_node = DataFlowNode::getForAssignment('$' . $param_storage->name, $param_storage->location);
+        $graph->addNode($param_node);
+
+        foreach ($element_type->parent_nodes as $parent_node) {
+            $graph->addPath($parent_node, $param_node, '=');
         }
     }
 
@@ -1055,6 +1104,12 @@ final class ArgumentsAnalyzer
             && $cased_method_id
             && !self::returnsInsteadOfOutputting($statements_analyzer, $cased_method_id, $args)
         ) {
+            $format_removed_taints = self::getTaintsRemovedByPrintfFormat(
+                $statements_analyzer,
+                $cased_method_id,
+                $args,
+            );
+
             foreach ($args as $argument_offset => $_) {
                 if (!isset($arg_function_params[$argument_offset])) {
                     continue;
@@ -1074,7 +1129,7 @@ final class ArgumentsAnalyzer
                 foreach ($arg_function_params[$argument_offset] as $function_param) {
                     $sinks = self::getArgumentSinks($cased_method_id, $argument_offset, $args, $function_param->sinks);
 
-                    if ($sinks) {
+                    if ($sinks || $function_param->value_sinks) {
                         if (!$function_storage) {
                             // Mirror the value-node keying in ArgumentAnalyzer::processTaintedness:
                             // when the caller has no storage, resolve it from the cased method id so
@@ -1111,6 +1166,11 @@ final class ArgumentsAnalyzer
                                 $function_storage,
                                 $code_location,
                             );
+
+                            // the node is this call's own: what its format prints of this argument only
+                            if (isset($format_removed_taints[$argument_offset])) {
+                                $sink = $sink->setTaints($sink->taints & ~$format_removed_taints[$argument_offset]);
+                            }
                         } else {
                             $sink = DataFlowNode::getForMethodArgument(
                                 $cased_method_id,
@@ -1124,7 +1184,16 @@ final class ArgumentsAnalyzer
                             );
                         }
 
-                        $statements_analyzer->taint_flow_graph->addSink($sink);
+                        if ($sinks) {
+                            $statements_analyzer->taint_flow_graph->addSink($sink);
+                        }
+
+                        if ($function_param->value_sinks) {
+                            $statements_analyzer->taint_flow_graph->addArgumentValuesSink(
+                                $sink,
+                                $function_param->value_sinks,
+                            );
+                        }
                     }
                 }
             }
@@ -1365,8 +1434,17 @@ final class ArgumentsAnalyzer
                 }
             }
 
-            $by_ref_type = $by_ref_type ?: Type::getMixed();
-            $by_ref_out_type = $by_ref_out_type ?: $by_ref_type;
+            // the declared types as the caller sees them, with e.g. the class constants, int-masks and
+            // type aliases resolved, as for the other parameters
+            $self_class = $function_storage instanceof MethodStorage ? $function_storage->defining_fqcln : null;
+            $static_class = $method_identifier?->fq_class_name ?? $self_class;
+
+            $by_ref_type = $by_ref_type
+                ? TypeExpander::expandUnion($codebase, $by_ref_type, $self_class, $static_class, null)
+                : Type::getMixed();
+            $by_ref_out_type = $by_ref_out_type
+                ? TypeExpander::expandUnion($codebase, $by_ref_out_type, $self_class, $static_class, null)
+                : $by_ref_type;
 
             // what the function-like leaves in the parameter (see FunctionLikeAnalyzer::taintByRefParamsOut())
             $out_type_holds_value = false;
@@ -1398,22 +1476,45 @@ final class ArgumentsAnalyzer
             // a builtin filling this parameter with data given to other ones (preg_match(), ...)
             if ($function_storage === null
                 && $function_param !== null
-                && $statements_analyzer->getTaintFlowGraphWithSuppressed()
+                && ($graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
             ) {
-                foreach (self::getByRefFlowInputs($method_id, $function_param->name) as $input_name) {
+                foreach (self::getByRefFlowInputs($method_id, $function_param->name) as $input_key => $input_value) {
+                    [$input_name, $path_type] = is_int($input_key) ? [$input_value, null] : [$input_key, $input_value];
                     $input_arg = self::getArgForParam($args, $function_params, $input_name);
                     $input_type = $input_arg ? $statements_analyzer->node_data->getType($input_arg->value) : null;
 
-                    if ($input_type && $input_type->parent_nodes) {
-                        $by_ref_out_type = $by_ref_out_type->addParentNodes($input_type->parent_nodes);
+                    if (!$input_type || !$input_type->parent_nodes) {
+                        continue;
                     }
+
+                    if ($path_type === null) {
+                        $by_ref_out_type = $by_ref_out_type->addParentNodes($input_type->parent_nodes);
+
+                        continue;
+                    }
+
+                    $flow_node = DataFlowNode::getForAssignment(
+                        $method_id . '($' . $function_param->name . ')',
+                        $call_location,
+                    );
+                    $graph->addNode($flow_node);
+
+                    foreach ($input_type->parent_nodes as $parent_node) {
+                        $graph->addPath($parent_node, $flow_node, $path_type);
+                    }
+
+                    $by_ref_out_type = $by_ref_out_type->addParentNodes([$flow_node->id => $flow_node]);
                 }
             }
 
             // a builtin reading from outside the program into this parameter (socket_recv(), ...)
             if ($source_param !== null
                 && ($graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
-                && ($source_taints = InternalTaintSourceMap::getTaints($method_id, $source_param)) !== 0
+                && ($source_taints = InternalTaintSourceMap::getTaints(
+                    $method_id,
+                    $source_param,
+                    $statements_analyzer->getCodebase()->getInputTaints(),
+                )) !== 0
             ) {
                 $by_ref_out_type = InternalTaintSourceMap::addSource(
                     $graph,
@@ -1442,16 +1543,16 @@ final class ArgumentsAnalyzer
     }
 
     /**
-     * The parameters of a builtin whose taints flow into its by-reference parameter $param_name
-     * (see dictionaries/InternalTaintByRefFlowMap.php)
+     * The parameters of a builtin whose taints flow into its by-reference parameter $param_name, each as a value, or
+     * as a key whose value is the type of the path it flows through (see dictionaries/InternalTaintByRefFlowMap.php)
      *
-     * @return list<string>
+     * @return array<int|string, string>
      * @psalm-capabilities read-globals|write-globals
      */
     private static function getByRefFlowInputs(string $function_id, string $param_name): array
     {
         if (self::$by_ref_flow_map === null) {
-            /** @var array<lowercase-string, array<string, list<string>>> */
+            /** @var array<lowercase-string, array<string, array<int|string, string>>> */
             self::$by_ref_flow_map = require(dirname(__DIR__, 7) . '/dictionaries/InternalTaintByRefFlowMap.php');
         }
 
@@ -1518,7 +1619,7 @@ final class ArgumentsAnalyzer
         CodeLocation $call_location,
     ): DataFlowNode {
         if ($method_id !== null) {
-            $cased_function_id = FunctionLikeAnalyzer::getByRefParamsOutMethodId($codebase, $method_id);
+            $cased_function_id = FunctionLikeAnalyzer::getCasedBodyMethodId($codebase, $method_id);
             $storage = $codebase->methods->getStorage(
                 $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id,
             );
@@ -1832,13 +1933,13 @@ final class ArgumentsAnalyzer
         if (!$arg->value instanceof PhpParser\Node\Expr\Variable) {
             $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-            if (!in_array('EmptyArrayAccess', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['EmptyArrayAccess'])) {
                 $statements_analyzer->addSuppressedIssues(['EmptyArrayAccess']);
             }
 
             $v = ExpressionAnalyzer::analyze($statements_analyzer, $arg->value, $context);
 
-            if (!in_array('EmptyArrayAccess', $suppressed_issues, true)) {
+            if (!isset($suppressed_issues['EmptyArrayAccess'])) {
                 $statements_analyzer->removeSuppressedIssues(['EmptyArrayAccess']);
             }
 
@@ -2337,10 +2438,43 @@ final class ArgumentsAnalyzer
     }
 
     /**
+     * The taints the values printf() or vprintf() is given can't print, by offset in $args: those of a string, for
+     * the values a literal format only formats as numbers (see FunctionCallReturnTypeFetcher, which removes them
+     * from what sprintf() returns)
+     *
+     * @param array<int, PhpParser\Node\Arg> $args
+     * @return array<int, int>
+     * @psalm-capabilities read-props
+     */
+    private static function getTaintsRemovedByPrintfFormat(
+        StatementsAnalyzer $statements_analyzer,
+        string $function_id,
+        array $args,
+    ): array {
+        $function_id = strtolower($function_id);
+
+        if (($function_id !== 'printf' && $function_id !== 'vprintf') || !isset($args[0])) {
+            return [];
+        }
+
+        $format_type = $statements_analyzer->node_data->getType($args[0]->value);
+
+        return $format_type && $format_type->allStringLiterals()
+            ? FunctionCallReturnTypeFetcher::getTaintsRemovedBySprintfFormats(
+                ConcatAnalyzer::getLiteralValues($format_type),
+                $args,
+                $statements_analyzer->getCodebase()->getInputTaints(),
+                $function_id === 'vprintf',
+            )
+            : [];
+    }
+
+    /**
      * print_r() and var_export() return what they would output when their second argument is true: they output
      * nothing then, so their output sinks don't apply.
      *
      * @param array<int, PhpParser\Node\Arg> $args
+     * @psalm-capabilities read-props
      */
     private static function returnsInsteadOfOutputting(
         StatementsAnalyzer $statements_analyzer,

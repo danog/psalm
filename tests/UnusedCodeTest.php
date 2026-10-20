@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -14,11 +15,13 @@ use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\IssueBuffer;
+use Psalm\Storage\Capabilities;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
 use function array_column;
 use function getcwd;
 use function preg_quote;
+use function sort;
 use function strpos;
 
 use const DIRECTORY_SEPARATOR;
@@ -55,9 +58,9 @@ final class UnusedCodeTest extends TestCase
     }
 
     /**
-     * @dataProvider providerValidCodeParse
      * @param array<string> $ignored_issues
      */
+    #[DataProvider('providerValidCodeParse')]
     public function testValidCode(string $code, array $ignored_issues = []): void
     {
         $test_name = $this->getTestName();
@@ -86,10 +89,10 @@ final class UnusedCodeTest extends TestCase
     }
 
     /**
-     * @dataProvider providerInvalidCodeParse
-     * @param array<string> $ignored_issues
+     * @param array<string> $error_levels
      */
-    public function testInvalidCode(string $code, string $error_message, array $ignored_issues = []): void
+    #[DataProvider('providerInvalidCodeParse')]
+    public function testInvalidCode(string $code, string $error_message, array $error_levels = []): void
     {
         if (strpos($this->getTestName(), 'SKIPPED-') !== false) {
             $this->markTestSkipped();
@@ -100,7 +103,7 @@ final class UnusedCodeTest extends TestCase
 
         $file_path = self::$src_dir_path . 'somefile.php';
 
-        foreach ($ignored_issues as $error_level) {
+        foreach ($error_levels as $error_level) {
             $this->project_analyzer->getCodebase()->config->setCustomErrorLevel($error_level, Config::REPORT_SUPPRESS);
         }
 
@@ -241,6 +244,133 @@ final class UnusedCodeTest extends TestCase
         );
     }
 
+    public function testOnlyAnInterfaceDeclaringAMethodThatDoesntSayWhatItDoesNeedsAClassAnnotation(): void
+    {
+        $this->project_analyzer->getConfig()->throw_exception = false;
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->project_analyzer->getConfig()->setCustomErrorLevel(
+            'MissingInterfaceImmutableAnnotation',
+            Config::REPORT_ERROR,
+        );
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                /** @api */
+                interface Marker {}
+
+                /**
+                 * @api
+                 * @psalm-purity-template P
+                 */
+                interface Cache {
+                    /**
+                     * @psalm-pure
+                     * @psalm-purity-from-template P
+                     */
+                    public function get(string $key): string;
+
+                    /** @psalm-capabilities read-props */
+                    public function count(): int;
+                }
+
+                /** @api */
+                interface Store {
+                    /** @psalm-pure */
+                    public function get(string $key): string;
+
+                    public function clear(): void;
+                }',
+        );
+        $this->analyzeFile($file_path, new Context(), false);
+        $this->project_analyzer->consolidateAnalyzedData();
+
+        $missing = [];
+
+        foreach (IssueBuffer::getIssuesDataForFile($file_path) as $issue) {
+            if ($issue->type === 'MissingInterfaceImmutableAnnotation') {
+                $missing[] = $issue->selected_text;
+            }
+        }
+
+        self::assertSame(['Store'], $missing);
+    }
+
+    public function testMarkerInterfacesArePure(): void
+    {
+        $this->project_analyzer->getConfig()->throw_exception = false;
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->project_analyzer->getConfig()->setCustomErrorLevel(
+            'MissingInterfaceImmutableAnnotation',
+            Config::REPORT_ERROR,
+        );
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                /** @api */
+                interface Marker {}
+
+                /** @api */
+                interface SubMarker extends Marker {}
+
+                /**
+                 * @api
+                 * @psalm-immutable
+                 */
+                interface ImmutableMarker {}
+
+                /** @api */
+                interface Service extends Marker {
+                    public function run(): void;
+                }
+
+                /** @api */
+                final class Counter implements SubMarker, ImmutableMarker {
+                    private int $count = 0;
+
+                    /** @psalm-capabilities read-props|write-this-props|io */
+                    public function increment(): void {
+                        $this->count++;
+                        echo $this->count;
+                    }
+                }',
+        );
+        $this->analyzeFile($file_path, new Context(), false);
+        $this->project_analyzer->consolidateAnalyzedData();
+
+        $issues = [];
+
+        foreach (IssueBuffer::getIssuesDataForFile($file_path) as $issue) {
+            if ($issue->type === 'MissingInterfaceImmutableAnnotation' || $issue->type === 'ImmutableDependency') {
+                $issues[] = $issue->type . ' ' . $issue->selected_text;
+            }
+        }
+
+        sort($issues);
+
+        // only the marker interface marked immutable caps its implementers (reported on the implementing class)
+        self::assertSame(['ImmutableDependency Counter', 'MissingInterfaceImmutableAnnotation Service'], $issues);
+
+        $classlike_storage_provider = $this->project_analyzer->getCodebase()->classlike_storage_provider;
+
+        foreach (['Marker', 'SubMarker'] as $marker) {
+            $storage = $classlike_storage_provider->get($marker);
+
+            self::assertTrue($storage->is_marker_interface);
+            self::assertTrue($storage->has_mutations_annotation);
+            self::assertSame(Capabilities::NONE, $storage->capabilities);
+        }
+
+        foreach (['ImmutableMarker', 'Service'] as $interface) {
+            self::assertFalse($classlike_storage_provider->get($interface)->is_marker_interface);
+        }
+    }
+
     public function testDeadReadDoesNotMakeConstructorOnlyPropertyUsed(): void
     {
         $this->project_analyzer->getConfig()->throw_exception = false;
@@ -308,7 +438,7 @@ final class UnusedCodeTest extends TestCase
      * @return array<string, array{code:string, ignored_issues?: list<string>}>
      * @psalm-pure
      */
-    public function providerValidCodeParse(): array
+    public static function providerValidCodeParse(): array
     {
         return [
             'pureIteratorCursorMovesAreUsed' => [
@@ -1615,10 +1745,10 @@ final class UnusedCodeTest extends TestCase
     }
 
     /**
-     * @return array<string,array{code:string,error_message:string,ignored_issues?:list<string>}>
+     * @return array<string,array{code:string,error_message:string,error_levels?:list<string>}>
      * @psalm-pure
      */
-    public function providerInvalidCodeParse(): array
+    public static function providerInvalidCodeParse(): array
     {
         return [
             'unusedClass' => [
@@ -1788,7 +1918,7 @@ final class UnusedCodeTest extends TestCase
 
                     $a = new A();',
                 'error_message' => 'PossiblyUnusedProperty',
-                'ignored_issues' => ['UnusedVariable'],
+                'error_levels' => ['UnusedVariable'],
             ],
             'possiblyUnusedPropertyWrittenNeverRead' => [
                 'code' => '<?php
@@ -1800,7 +1930,7 @@ final class UnusedCodeTest extends TestCase
                     $a = new A();
                     $a->foo = "bar";',
                 'error_message' => 'PossiblyUnusedProperty',
-                'ignored_issues' => ['UnusedVariable'],
+                'error_levels' => ['UnusedVariable'],
             ],
             'possiblyUnusedPropertyWithArrayWrittenNeverRead' => [
                 'code' => '<?php
@@ -1812,7 +1942,7 @@ final class UnusedCodeTest extends TestCase
                     $a = new A();
                     $a->foo[] = "bar";',
                 'error_message' => 'PossiblyUnusedProperty',
-                'ignored_issues' => ['UnusedVariable'],
+                'error_levels' => ['UnusedVariable'],
             ],
             'unusedProperty' => [
                 'code' => '<?php
@@ -1823,7 +1953,7 @@ final class UnusedCodeTest extends TestCase
 
                     $a = new A();',
                 'error_message' => 'UnusedProperty',
-                'ignored_issues' => ['UnusedVariable'],
+                'error_levels' => ['UnusedVariable'],
             ],
             'privateUnusedMethod' => [
                 'code' => '<?php

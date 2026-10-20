@@ -18,9 +18,117 @@ final class ConditionalTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
+            'orWithACallAssertingNothingWhenFalseNarrowsWhatItsOtherSideTested' => [
+                'code' => '<?php
+                    /** @psalm-assert-if-true =non-empty-string $s */
+                    function isFilled(string $s): bool {
+                        return $s !== "";
+                    }
+
+                    function f(?string $id, ?string $name): string {
+                        if ($id === null || !str_contains($id, "::")) {
+                            return "";
+                        }
+                        /** @psalm-check-type-exact $id = string */;
+
+                        if ($name === null || !isFilled($name)) {
+                            return "";
+                        }
+                        /** @psalm-check-type-exact $name = string */;
+
+                        return $id . $name;
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
+            ],
+            'orWithAnAssignmentOnTheSideAssertingNothingWhenFalseForgetsWhatTheOtherSideTested' => [
+                'code' => '<?php
+                    /** @psalm-assert-if-true =non-empty-string $s */
+                    function isFilled(string $s, ?string $other): bool {
+                        return $s !== "";
+                    }
+
+                    function nextId(): ?string {
+                        return null;
+                    }
+
+                    function f(?string $id, string $name): ?string {
+                        if ($id === null || !isFilled($name, $id = nextId())) {
+                            return "";
+                        }
+                        /** @psalm-check-type-exact $id = null|string */;
+
+                        return $id;
+                    }',
+            ],
+            'elseIfConditionAssignmentReachesTheBranchesAfterIt' => [
+                'code' => '<?php
+                    function configured(): ?string {
+                        return null;
+                    }
+
+                    function version(bool $cli, bool $env): string {
+                        if ($cli) {
+                            $version = "cli";
+                        } elseif (($version = configured()) !== null && $env) {
+                        } elseif ($env) {
+                            /** @psalm-check-type-exact $version = null */;
+                            return "";
+                        } else {
+                            /** @psalm-check-type-exact $version = null|string */;
+                        }
+                        return $version ?? "";
+                    }',
+            ],
+            'elseIfConditionAssignmentReachesTheCodeAfterIt' => [
+                'code' => '<?php
+                    function configured(): ?string {
+                        return null;
+                    }
+
+                    function version(array $options, bool $cli, bool $env): ?string {
+                        if (isset($options["version"])) {
+                            $version = (string) $options["version"];
+                        } elseif (($version = configured()) !== null && $env) {
+                        }
+                        /** @psalm-check-type-exact $version = null|string */;
+
+                        if ($cli) {
+                            $source = "cli";
+                        } elseif (($source = configured()) !== null && $env) {
+                        }
+                        /** @psalm-check-type-exact $source = null|string */;
+
+                        return $version ?? $source;
+                    }',
+            ],
+            'instanceofDoesNotTakeObjectsWithToStringFromStrings' => [
+                'code' => '<?php
+                    /** @template T */
+                    final class Box {
+                        /** @param T $value */
+                        public function __construct(public $value) {}
+
+                        public function __toString(): string {
+                            return "";
+                        }
+                    }
+
+                    /** @return Box<int>|string */
+                    function getBoxOrString() {
+                        return new Box(1);
+                    }
+
+                    $item = getBoxOrString();
+                    $box = $item instanceof Box ? $item : null;',
+                'assertions' => [
+                    '$box' => 'Box<int>|null',
+                ],
+            ],
             'arrayAssignmentPropagation' => [
                 'code' => '<?php
                     $dummy = ["test" => 123];
@@ -3197,7 +3305,7 @@ final class ConditionalTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'makeNonNullableNull' => [

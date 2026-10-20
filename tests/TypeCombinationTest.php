@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Override;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Tests\Traits\ValidCodeAnalysisTestTrait;
 use Psalm\Type;
@@ -17,9 +18,9 @@ final class TypeCombinationTest extends TestCase
     use ValidCodeAnalysisTestTrait;
 
     /**
-     * @dataProvider providerTestValidTypeCombination
      * @param non-empty-list<string> $types
      */
+    #[DataProvider('providerTestValidTypeCombination')]
     public function testValidTypeCombination(string $expected, array $types): void
     {
         $converted_types = [];
@@ -46,7 +47,7 @@ final class TypeCombinationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'multipleValuedArray' => [
@@ -148,7 +149,7 @@ final class TypeCombinationTest extends TestCase
                         $x[] = "some_" . $id;
                     }',
                 'assertions' => [
-                    '$x===' => 'list<non-empty-string>',
+                    '$x===' => "list{0?: '0', ...<non-empty-string>}",
                 ],
             ],
             'loopNonLowercaseLiteralWithNonEmptyLowercaseShouldBeNonEmptyAndNotLowercase' => [
@@ -165,7 +166,7 @@ final class TypeCombinationTest extends TestCase
                         $x[] = "some_" . $id;
                     }',
                 'assertions' => [
-                    '$x===' => 'list<non-empty-string>',
+                    '$x===' => "list{0?: 'TEXT', ...<non-empty-string>}",
                 ],
             ],
             'nonemptyliteralstring' => [
@@ -190,7 +191,7 @@ final class TypeCombinationTest extends TestCase
      * @return array<string,array{string,non-empty-list<string>}>
      * @psalm-pure
      */
-    public function providerTestValidTypeCombination(): iterable
+    public static function providerTestValidTypeCombination(): iterable
     {
         return [
             'complexArrayFallback1' => [
