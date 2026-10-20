@@ -8,10 +8,12 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Assignment\ArrayAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\DestructorAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Issue\ImpureVariable;
 use Psalm\IssueBuffer;
 use Psalm\Storage\Capabilities;
@@ -35,6 +37,24 @@ use function strtok;
  */
 final class UnsetAnalyzer
 {
+    /**
+     * Marks an expression unset() is given, as opposed to one an unset expression goes through
+     */
+    private const TARGET_ATTRIBUTE = 'psalmUnsetTarget';
+
+    /**
+     * Whether unsetting writes the property the expression fetches: when it's the expression unset() removes, or
+     * holds the array an element is removed from. An element of an object (an ArrayAccess) is removed by its
+     * offsetUnset(), charged as that call, and the property keeps holding the same object
+     */
+    public static function writesFetchedProperty(Context $context, PhpParser\Node\Expr $stmt, ?Union $type): bool
+    {
+        return $context->inside_unset
+            && ($stmt->getAttribute(self::TARGET_ATTRIBUTE) === true
+                || $type === null
+                || !$type->isObjectType());
+    }
+
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Stmt\Unset_ $stmt,
@@ -43,6 +63,8 @@ final class UnsetAnalyzer
         $context->inside_unset = true;
 
         foreach ($stmt->vars as $var) {
+            $var->setAttribute(self::TARGET_ATTRIBUTE, true);
+
             $was_inside_general_use = $context->inside_general_use;
             $context->inside_general_use = true;
 
@@ -73,12 +95,16 @@ final class UnsetAnalyzer
                     );
                 }
 
-                if ($var instanceof PhpParser\Node\Expr\Variable && isset($context->vars_in_scope[$var_id])) {
-                    // the object the variable holds may die here
+                $unset_type = $var instanceof PhpParser\Node\Expr\Variable
+                    ? $context->vars_in_scope[$var_id] ?? null
+                    : $statements_analyzer->node_data->getType($var);
+
+                if ($unset_type !== null) {
+                    // the object the variable, property or array element holds may die here
                     DestructorAnalyzer::chargeDestruction(
                         $statements_analyzer,
                         $context,
-                        $context->vars_in_scope[$var_id],
+                        $unset_type,
                         $var_id,
                         $stmt,
                     );
@@ -188,7 +214,14 @@ final class UnsetAnalyzer
                         }
                     }
 
-                    $context->vars_in_scope[$root_var_id] = new Union($root_types);
+                    $context->vars_in_scope[$root_var_id] = self::taintUnsetOffset(
+                        $statements_analyzer,
+                        $var,
+                        $root_var_id,
+                        $context->vars_in_scope[$root_var_id],
+                        new Union($root_types),
+                        $key_type,
+                    );
 
                     $context->removeVarFromConflictingClauses(
                         $root_var_id,
@@ -200,5 +233,48 @@ final class UnsetAnalyzer
         }
 
         $context->inside_unset = false;
+    }
+
+    /**
+     * The array $root_var_id is once its offset $var is unset, of type $new_type: what it held under its other keys
+     * flows into it, not what it held under that key (see ArrayAssignmentAnalyzer::getOverwritePathType()). Only
+     * for a single literal key: the graphs are left as they were for any other.
+     */
+    private static function taintUnsetOffset(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr\ArrayDimFetch $var,
+        string $root_var_id,
+        Union $old_type,
+        Union $new_type,
+        Union $key_type,
+    ): Union {
+        $graph = $statements_analyzer->getDataFlowGraphWithSuppressed();
+
+        if ($key_type->isSingleStringLiteral()) {
+            $key = $key_type->getSingleStringLiteral();
+        } elseif ($key_type->isSingleIntLiteral()) {
+            $key = $key_type->getSingleIntLiteral();
+        } else {
+            return $new_type;
+        }
+
+        if ($graph === null || $old_type->parent_nodes === []) {
+            return $new_type;
+        }
+
+        $node = DataFlowNode::getForAssignment(
+            $root_var_id,
+            new CodeLocation($statements_analyzer->getSource(), $var->var),
+        );
+
+        $graph->addNode($node);
+
+        $path_type = ArrayAssignmentAnalyzer::getOverwritePathType($old_type, $key);
+
+        foreach ($old_type->parent_nodes as $parent_node) {
+            $graph->addPath($parent_node, $node, $path_type);
+        }
+
+        return $new_type->setParentNodes([$node->id => $node]);
     }
 }

@@ -156,9 +156,75 @@ final class AssertAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
+            'assertKeyOfAClassConstantNarrowsToItsKeys' => [
+                'code' => '<?php
+                    final class OwnerTypes {
+                        public const ALLOWED = ["organization" => true, "prof" => true];
+                    }
+
+                    /** @psalm-assert key-of<OwnerTypes::ALLOWED> $type */
+                    function assertOwnerType(string $type): void {
+                        if (!array_key_exists($type, OwnerTypes::ALLOWED)) {
+                            throw new InvalidArgumentException("unknown owner type");
+                        }
+                    }
+
+                    function getOwnerType(): string {
+                        return "";
+                    }
+
+                    $type = getOwnerType();
+                    assertOwnerType($type);',
+                'assertions' => [
+                    '$type===' => "'organization'|'prof'",
+                ],
+            ],
+            'assertTemplateBoundToAUnionNarrowsToIt' => [
+                'code' => '<?php
+                    /**
+                     * @template T of string
+                     * @param T $expected
+                     * @psalm-assert T $actual
+                     */
+                    function assertSame(string $expected, string $actual): void {}
+
+                    /** @var "a"|"b" $expected */
+                    $expected = rand(0, 1) ? "a" : "b";
+                    function getActual(): string {
+                        return "";
+                    }
+
+                    $actual = getActual();
+                    assertSame($expected, $actual);',
+                'assertions' => [
+                    '$actual===' => "'a'|'b'",
+                ],
+            ],
+            'assertKeyOfAClassConstantOnAPropertyNotFetchedYetNarrowsToItsKeys' => [
+                'code' => '<?php
+                    final class OwnerTypes {
+                        public const ALLOWED = ["organization" => true, "prof" => true];
+                    }
+
+                    final class Owner {
+                        public function __construct(public string $type) {}
+
+                        /** @psalm-assert key-of<OwnerTypes::ALLOWED> $this->type */
+                        public function assertKnownType(): void {
+                            if (!array_key_exists($this->type, OwnerTypes::ALLOWED)) {
+                                throw new InvalidArgumentException("unknown owner type");
+                            }
+                        }
+                    }
+
+                    function ownerType(Owner $owner): void {
+                        $owner->assertKnownType();
+                        /** @psalm-check-type-exact $owner->type = \'organization\'|\'prof\' */;
+                    }',
+            ],
             'implicitAssertInstanceOfB' => [
                 'code' => '<?php
                     namespace Bar;
@@ -1642,6 +1708,93 @@ final class AssertAnnotationTest extends TestCase
                         }
                     }',
             ],
+            'assertOnGenericMethodResolvesClassTemplate' => [
+                'code' => '<?php
+                    final class Item {}
+
+                    /**
+                     * @psalm-immutable
+                     * @template T
+                     */
+                    final class Box {
+                        /** @return T|null */
+                        public function first() { throw new LogicException(); }
+
+                        /** @psalm-assert-if-false null $this->first() */
+                        public function isNotEmpty(): bool { return true; }
+                    }
+
+                    /** @param Box<Item> $box */
+                    function check(Box $box): void {
+                        if ($box->isNotEmpty()) {
+                            $x = $box->first();
+                            /** @psalm-check-type-exact $x = Item */;
+                        }
+                    }',
+            ],
+            'assertOnConditionalReturnResolvesLikeCallWithoutArguments' => [
+                'code' => '<?php
+                    final class Item {}
+
+                    /**
+                     * @psalm-immutable
+                     * @template T
+                     */
+                    final class Box {
+                        /**
+                         * @template D
+                         * @param D|(Closure(): D)|null $default
+                         * @return ($default is Closure ? D : (D|T))
+                         */
+                        public function first($default = null) { throw new LogicException(); }
+
+                        /** @psalm-assert-if-false null $this->first() */
+                        public function isNotEmpty(): bool { return true; }
+                    }
+
+                    /** @param Box<Item> $box */
+                    function check(Box $box): void {
+                        if ($box->isNotEmpty()) {
+                            $x = $box->first();
+                            /** @psalm-check-type-exact $x = Item */;
+                        } else {
+                            $y = $box->first();
+                            /** @psalm-check-type-exact $y = null */;
+                        }
+                    }',
+            ],
+            'assertOnIfThisIsMethodKeepsDeclaredReturnType' => [
+                'code' => '<?php
+                    final class Item {}
+
+                    /**
+                     * @psalm-immutable
+                     * @template T
+                     */
+                    final class Box {
+                        /**
+                         * @template U
+                         * @psalm-if-this-is Box<U>
+                         * @param (Closure(): U)|null $default
+                         * @return U|null
+                         */
+                        public function first($default = null) { throw new LogicException(); }
+
+                        /** @psalm-assert-if-false null $this->first() */
+                        public function isNotEmpty(): bool { return true; }
+                    }
+
+                    /** @param Box<Item> $box */
+                    function check(Box $box): string {
+                        if ($box->isNotEmpty()) {
+                            $x = $box->first();
+                            // must stay possibly null: the declared type is kept, not resolved to never
+                            return $x === null ? "empty" : "item";
+                        }
+
+                        return "empty";
+                    }',
+            ],
             'assertTemplatedIterable' => [
                 'code' => '<?php
                     class Foo{}
@@ -3072,7 +3225,7 @@ final class AssertAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'assertInstanceOfMultipleInterfaces' => [
@@ -3420,7 +3573,7 @@ final class AssertAnnotationTest extends TestCase
                     function requiresString(string $_str): void {}
                 ',
                 'error_message' => 'NullArgument',
-                'ignored_issues' => ['UnsupportedPropertyReferenceUsage'],
+                'error_levels' => ['UnsupportedPropertyReferenceUsage'],
             ],
             'assertionOnMagicPropertyWithoutMutationFreeGet' => [
                 'code' => '<?php

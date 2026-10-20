@@ -17,7 +17,7 @@ final class PureAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'simplePureFunction' => [
@@ -156,6 +156,41 @@ final class PureAnnotationTest extends TestCase
                         $c->incrementByFive();
                         return $c;
                     }',
+            ],
+            'varDocblockOnAssignmentKeepsTheFreshnessOfANewObject' => [
+                'code' => '<?php
+                    /**
+                     * @psalm-external-mutation-free
+                     * @template T
+                     */
+                    final class Box {
+                        /**
+                         * @psalm-mutation-free
+                         * @param T $v
+                         */
+                        public function __construct(private mixed $v) {}
+
+                        /** @param T $v */
+                        public function set(mixed $v): void {
+                            $this->v = $v;
+                        }
+
+                        /** @return T */
+                        public function get(): mixed {
+                            return $this->v;
+                        }
+                    }
+
+                    /** @psalm-pure */
+                    function f(int $i): int {
+                        /** @var Box<int> */
+                        $b = new Box($i);
+                        $b->set($i + 1);
+                        return $b->get();
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
             ],
             'canCreateImmutableObject' => [
                 'code' => '<?php
@@ -641,6 +676,28 @@ final class PureAnnotationTest extends TestCase
                     Date2::tt();
                     ',
             ],
+            'noSuggestionBelowTheLowerBoundOfAPurityTemplate' => [
+                'code' => '<?php
+                    /**
+                     * @template T
+                     * @psalm-purity-template write-this-props <= P
+                     */
+                    final class Wrapper {
+                        /**
+                         * @param Iterator[P]<int, T> $source
+                         * @psalm-capabilities read-props
+                         */
+                        public function __construct(private Iterator $source) {}
+
+                        /**
+                         * @psalm-capabilities read-props
+                         * @psalm-purity-from-template P
+                         */
+                        public function valid(): bool {
+                            return $this->source->valid();
+                        }
+                    }',
+            ],
         ];
     }
 
@@ -648,7 +705,7 @@ final class PureAnnotationTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'impurePropertyAssignment' => [
@@ -772,6 +829,84 @@ final class PureAnnotationTest extends TestCase
                         return $c;
                     }',
                 'error_message' => 'ImpureMethodCall',
+            ],
+            'varDocblockOnAssignmentFromParameterDoesNotMakeItFresh' => [
+                'code' => '<?php
+                    /**
+                     * @psalm-external-mutation-free
+                     * @template T
+                     */
+                    final class Box {
+                        /**
+                         * @psalm-mutation-free
+                         * @param T $v
+                         */
+                        public function __construct(private mixed $v) {}
+
+                        /** @param T $v */
+                        public function set(mixed $v): void {
+                            $this->v = $v;
+                        }
+
+                        /** @return T */
+                        public function get(): mixed {
+                            return $this->v;
+                        }
+                    }
+
+                    /**
+                     * @psalm-pure
+                     * @param Box<int> $b
+                     */
+                    function f(Box $b, int $i): int {
+                        /** @var Box<int> */
+                        $c = $b;
+                        $c->set($i);
+                        return $c->get();
+                    }',
+                'error_message' => 'ImpureMethodCall',
+                'error_levels' => [],
+                'php_version' => '8.0',
+            ],
+            'varDocblockOnAssignmentFromPropertyDoesNotMakeItFresh' => [
+                'code' => '<?php
+                    /**
+                     * @psalm-external-mutation-free
+                     * @template T
+                     */
+                    final class Box {
+                        /**
+                         * @psalm-mutation-free
+                         * @param T $v
+                         */
+                        public function __construct(private mixed $v) {}
+
+                        /** @param T $v */
+                        public function set(mixed $v): void {
+                            $this->v = $v;
+                        }
+
+                        /** @return T */
+                        public function get(): mixed {
+                            return $this->v;
+                        }
+                    }
+
+                    final class Holder {
+                        /** @param Box<int> $box */
+                        public function __construct(public Box $box) {}
+                    }
+
+                    /** @psalm-mutation-free */
+                    function f(Holder $h, int $i): int {
+                        /** @var Box<int> */
+                        $c = $h->box;
+                        $c->set($i);
+                        return $c->get();
+                    }',
+                'error_message' => 'ImpureMethodCall',
+                'error_levels' => [],
+                'php_version' => '8.0',
             ],
             'useOfStaticMakesFunctionImpure' => [
                 'code' => '<?php

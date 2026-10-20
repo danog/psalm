@@ -20,7 +20,7 @@ final class ForeachTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'foreachByReferenceWritesIntoTheItemsOfTheArray' => [
@@ -50,6 +50,21 @@ final class ForeachTest extends TestCase
                     '$counts===' => "array<string, 'many'|int>",
                 ],
             ],
+            'foreachByReferenceWritesWhatTheValueVariableHoldsWhereTheLoopIsBrokenOutOf' => [
+                'code' => '<?php
+                    /** @var array<string, int> */
+                    $counts = [];
+                    foreach ($counts as &$count) {
+                        if (rand(0, 1)) {
+                            $count = "many";
+                            break;
+                        }
+                    }
+                    unset($count);',
+                'assertions' => [
+                    '$counts===' => "array<string, 'many'|int>",
+                ],
+            ],
             'foreachByReferenceDoesNotWriteWhatTheValueVariableHeldBefore' => [
                 'code' => '<?php
                     /**
@@ -64,6 +79,37 @@ final class ForeachTest extends TestCase
                         unset($value);
 
                         return $groups;
+                    }',
+            ],
+            'variableAssignedLaterInTheBodyHoldsWhatThePreviousIterationLeft' => [
+                'code' => '<?php
+                    /** @param list<int> $values */
+                    function f(array $values): void {
+                        $previousValues = [];
+                        $continued = [];
+                        foreach ($values as $value) {
+                            $previousValues[] = $previous ?? null;
+                            $continued[] = $skipped ?? null;
+                            if ($value > 5) {
+                                $skipped = "skipped";
+                                continue;
+                            }
+                            $previous = $value;
+                        }
+                        /** @psalm-check-type-exact $previousValues = list<int<min, 5>|null> */;
+                        /** @psalm-check-type-exact $continued = list<\'skipped\'|null> */;
+                    }',
+            ],
+            'superglobalReadInALoopIsDefinedAfterIt' => [
+                'code' => '<?php
+                    function f(): array {
+                        foreach (["_GET", "_POST"] as $name) {
+                            if (isset($GLOBALS[$name]) && is_array($GLOBALS[$name])) {
+                                echo count($GLOBALS[$name]);
+                            }
+                        }
+
+                        return array_keys($GLOBALS);
                     }',
             ],
             'switchVariableWithContinue' => [
@@ -1301,7 +1347,7 @@ final class ForeachTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'foreachKeyAndDestructuredValueNotNullAfterBreakingLoopOnNonEmptyArray' => [

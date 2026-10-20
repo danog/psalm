@@ -87,6 +87,7 @@ use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TClosedResource;
 use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TFalse;
+use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
@@ -1798,6 +1799,7 @@ final class AssertionFinder
     /**
      * @param PhpParser\Node\Expr\BinaryOp\Greater|PhpParser\Node\Expr\BinaryOp\GreaterOrEqual $conditional
      * @return false|int
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private static function hasSuperiorNumberCheck(
         FileSource $source,
@@ -1858,6 +1860,7 @@ final class AssertionFinder
     /**
      * @param PhpParser\Node\Expr\BinaryOp\Smaller|PhpParser\Node\Expr\BinaryOp\SmallerOrEqual $conditional
      * @return false|int
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private static function hasInferiorNumberCheck(
         FileSource $source,
@@ -1940,6 +1943,7 @@ final class AssertionFinder
     /**
      * @param Identical|Equal|NotIdentical|NotEqual $conditional
      * @return false|int
+     * @psalm-capabilities read-props
      */
     private static function hasTypedValueComparison(
         PhpParser\Node\Expr\BinaryOp $conditional,
@@ -3792,6 +3796,7 @@ final class AssertionFinder
 
     /**
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
+     * @psalm-capabilities read-props|write-this-props|write-refs
      */
     private static function getInarrayAssertions(
         PhpParser\Node\Expr\FuncCall $expr,
@@ -4283,10 +4288,12 @@ final class AssertionFinder
 
                         $instanceof_type = new Union([$instanceof_type]);
 
+                        // instanceof only checks the class: compared with the type arguments, the bare
+                        // class would not fit an `Iterator<K, V>` whose K is a template
                         if (!UnionTypeComparator::canExpressionTypesBeIdentical(
                             $codebase,
                             $instanceof_type,
-                            $var_type,
+                            self::withoutTypeArguments($var_type),
                         )) {
                             if ($var_type->from_docblock) {
                                 IssueBuffer::maybeAdd(
@@ -4316,6 +4323,30 @@ final class AssertionFinder
         }
 
         return $if_types ? [$if_types] : [];
+    }
+
+    /**
+     * @psalm-pure
+     */
+    private static function withoutTypeArguments(Union $type): Union
+    {
+        $atomic_types = [];
+
+        foreach ($type->getAtomicTypes() as $atomic_type) {
+            if ($atomic_type instanceof TGenericObject) {
+                $atomic_type = new TNamedObject(
+                    $atomic_type->value,
+                    $atomic_type->is_static,
+                    $atomic_type->definite_class,
+                    $atomic_type->extra_types,
+                    $atomic_type->from_docblock,
+                );
+            }
+
+            $atomic_types[] = $atomic_type;
+        }
+
+        return $type->setTypes($atomic_types);
     }
 
     /**
@@ -4376,6 +4407,9 @@ final class AssertionFinder
         }
     }
 
+    /**
+     * @psalm-capabilities read-props
+     */
     public static function isPropertyImmutableOnArgument(
         string                       $property,
         NodeDataProvider             $node_provider,

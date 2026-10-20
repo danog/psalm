@@ -49,6 +49,7 @@ use function strtolower;
 
 /**
  * @internal
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class AtomicTypeComparator
 {
@@ -146,13 +147,29 @@ final class AtomicTypeComparator
                 return true;
             }
 
+            // a conditional purity argument (`[$param is array ? pure : P]`) fits if both branches do
+            if ($input_type_part instanceof TConditional) {
+                $branch_type_parts = array_merge(
+                    array_values($input_type_part->if_type->getAtomicTypes()),
+                    array_values($input_type_part->else_type->getAtomicTypes()),
+                );
+
+                foreach ($branch_type_parts as $branch_type_part) {
+                    if (!self::isContainedBy($codebase, $branch_type_part, $container_type_part)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
             // a capability set fits a purity template if every value of the template allows it,
             // i.e. its lower bound does: `pure` fits `Closure[P]` for any P
             if ($input_type_part instanceof TCapabilities
                 && $container_type_part instanceof TTemplateParam
                 && Capabilities::isPurityType($container_type_part->as)
             ) {
-                return Capabilities::allows(
+                return Capabilities::allowsAnyOf(
                     self::getPurityTemplateLowerBound($codebase, $container_type_part),
                     $input_type_part->capabilities,
                 );
@@ -161,7 +178,7 @@ final class AtomicTypeComparator
             // a capability set is a subtype of every superset: pure fits anywhere, impure only in impure
             return $input_type_part instanceof TCapabilities
                 && $container_type_part instanceof TCapabilities
-                && Capabilities::allows($container_type_part->capabilities, $input_type_part->capabilities);
+                && Capabilities::allowsAnyOf($container_type_part->capabilities, $input_type_part->capabilities);
         }
 
         if ($input_type_part instanceof TMixed
@@ -802,7 +819,7 @@ final class AtomicTypeComparator
 
     /**
      * @psalm-assert-if-true TKeyedArray $array
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     public static function isLegacyTListLike(Atomic $array): bool
     {
@@ -816,7 +833,7 @@ final class AtomicTypeComparator
     }
     /**
      * @psalm-assert-if-true TKeyedArray $array
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     public static function isLegacyTNonEmptyListLike(Atomic $array): bool
     {
@@ -905,6 +922,7 @@ final class AtomicTypeComparator
      * The capabilities every value of a purity template has: its lower bound
      * (`@psalm-purity-template write-props <= C`), which only a class purity template can declare.
      *
+     * @return CapabilitySet
      * @psalm-capabilities read-props
      */
     private static function getPurityTemplateLowerBound(Codebase $codebase, TTemplateParam $template): int

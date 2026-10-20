@@ -20,9 +20,58 @@ final class RedundantConditionTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
+            'negatedInstanceofOfAGenericSubclassOnAnInterfaceWithTemplateArguments' => [
+                'code' => '<?php
+                    /**
+                     * @template K as array-key
+                     * @implements Iterator<K, mixed>
+                     */
+                    abstract class Rows implements Iterator {}
+
+                    /**
+                     * @template K as array-key
+                     */
+                    final class Holder {
+                        /** @param Iterator<K, mixed> $source */
+                        public function __construct(private readonly Iterator $source) {}
+
+                        /** @return Rows<K> */
+                        public function rows(): Rows {
+                            $source = $this->source;
+                            if (!$source instanceof Rows) {
+                                throw new Exception();
+                            }
+                            return $source;
+                        }
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
+            ],
+            'instanceofThenPropertyOfATemplateParamNarrowedBefore' => [
+                'code' => '<?php
+                    interface Node {}
+                    final class Leaf implements Node {}
+                    final class Branch implements Node {
+                        public bool $open = false;
+                    }
+
+                    /**
+                     * @template T as Node
+                     * @param T $node
+                     */
+                    function visit(Node $node): void {
+                        if ($node instanceof Leaf) {
+                            return;
+                        }
+                        if ($node instanceof Branch && $node->open) {
+                            echo "open";
+                        }
+                    }',
+            ],
             'ignoreIssueAndAssign' => [
                 'code' => '<?php
                     function foo(): stdClass {
@@ -993,9 +1042,27 @@ final class RedundantConditionTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
+            'instanceofOfATemplateParamAlreadyNarrowedToTheClass' => [
+                'code' => '<?php
+                    interface Node {}
+                    final class Branch implements Node {}
+
+                    /**
+                     * @template T as Node
+                     * @param T $node
+                     */
+                    function visit(Node $node): void {
+                        if ($node instanceof Branch) {
+                            if ($node instanceof Branch) {
+                                echo "branch";
+                            }
+                        }
+                    }',
+                'error_message' => 'RedundantConditionGivenDocblockType',
+            ],
             'ifFalse' => [
                 'code' => '<?php
                     $y = false;
@@ -1143,7 +1210,7 @@ final class RedundantConditionTest extends TestCase
                         return $a;
                     }',
                 'error_message' => 'RedundantCondition',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'refineTypeInMethodCall' => [
                 'code' => '<?php
@@ -1281,7 +1348,7 @@ final class RedundantConditionTest extends TestCase
                         $b = $a && rand(0, 1);
                     }',
                 'error_message' => 'RedundantCondition',
-                'ignored_issues' => ['MissingParamType'],
+                'error_levels' => ['MissingParamType'],
             ],
             'negatedInstanceof' => [
                 'code' => '<?php

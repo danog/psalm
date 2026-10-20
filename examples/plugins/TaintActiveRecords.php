@@ -12,7 +12,6 @@ use Psalm\Plugin\EventHandler\AddTaintsInterface;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TNamedObject;
-use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 
 use function strpos;
@@ -51,7 +50,7 @@ final class TaintActiveRecords implements AddTaintsInterface
             }
 
             if (self::containsActiveRecord($expr_type)) {
-                return TaintKind::ALL_INPUT;
+                return $event->getCodebase()->getInputTaints();
             }
         } while ($expr = self::getParentNode($expr));
 
@@ -61,7 +60,7 @@ final class TaintActiveRecords implements AddTaintsInterface
     /**
      * @return bool `true` if union contains a type of model
      *
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     private static function containsActiveRecord(Union $union_type): bool
     {

@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Scanner;
 
+use Psalm\Issue\InvalidDocblock;
 use Psalm\Storage\Capabilities;
 
 /**
  * @internal
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class FunctionDocblockComment
 {
@@ -123,6 +125,14 @@ final class FunctionDocblockComment
     public array $assert_untainted_params = [];
 
     /**
+     * What is wrong with the docblock: FunctionLikeDocblockScanner keeps it in the storage of the function-like, whose
+     * analysis reports it (Config reports those of the stubs, which aren't analyzed)
+     *
+     * @var list<InvalidDocblock>
+     */
+    public array $docblock_issues = [];
+
+    /**
      * Whether or not to ignore the nullability of this function's return type
      */
     public bool $ignore_nullable_return = false;
@@ -164,7 +174,11 @@ final class FunctionDocblockComment
 
     public bool $inheritdoc = false;
 
-    /** A bitmask of {@see Capabilities} constants */
+    /**
+     * A bitmask of {@see Capabilities} constants
+     *
+     * @var CapabilitySet
+     */
     public int $capabilities = Capabilities::ALL;
 
     public bool $has_mutations_annotation = false;

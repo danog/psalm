@@ -6,7 +6,6 @@ namespace Psalm\Tests\Config;
 
 use InvalidArgumentException;
 use Override;
-use PHPUnit\Framework\MockObject\MockObject;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -26,7 +25,6 @@ use Psalm\Report\ReportOptions;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
-use stdClass;
 
 use function dirname;
 use function get_class;
@@ -751,6 +749,166 @@ final class PluginTest extends TestCase
         $this->analyzeFile($file_path, new Context());
     }
 
+    public function testMethodCapabilitiesProviderGivesTheCallsLevel(): void
+    {
+        require_once __DIR__ . '/Plugin/MethodCapabilitiesPlugin.php';
+
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+                    <plugins>
+                        <pluginClass class="Psalm\\Test\\Config\\Plugin\\MethodCapabilitiesPlugin" />
+                    </plugins>
+                </psalm>',
+            ),
+        );
+
+        $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                namespace Ns;
+
+                class Model {
+                    /** @var array<string, string> */
+                    public array $properties = [];
+
+                    /** @psalm-impure */
+                    public function get(string $key): string {
+                        return $this->properties[$key] ?? "";
+                    }
+                }
+
+                final class User extends Model {}
+
+                /** @psalm-capabilities read-props */
+                function name(User $user): string {
+                    return $user->get("name");
+                }',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    public function testMethodCapabilitiesProviderKeepsTheMethodsLevelOtherwise(): void
+    {
+        $this->expectExceptionMessage('ImpureMethodCall');
+        $this->expectException(CodeException::class);
+        require_once __DIR__ . '/Plugin/MethodCapabilitiesPlugin.php';
+
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+                    <plugins>
+                        <pluginClass class="Psalm\\Test\\Config\\Plugin\\MethodCapabilitiesPlugin" />
+                    </plugins>
+                </psalm>',
+            ),
+        );
+
+        $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                namespace Ns;
+
+                class Model {
+                    /** @var array<string, string> */
+                    public array $properties = [];
+
+                    /** @psalm-impure */
+                    public function get(string $key): string {
+                        return $this->properties[$key] ?? "";
+                    }
+                }
+
+                final class User extends Model {}
+
+                /** @psalm-capabilities read-props */
+                function name(User $user): string {
+                    return $user->get("email");
+                }',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    public function testMethodCapabilitiesProviderIsNotAskedAboutAFirstClassCallable(): void
+    {
+        require_once __DIR__ . '/Plugin/MethodCapabilitiesPlugin.php';
+
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="1"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+                    <plugins>
+                        <pluginClass class="Psalm\\Test\\Config\\Plugin\\MethodCapabilitiesPlugin" />
+                    </plugins>
+                </psalm>',
+            ),
+        );
+
+        $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+
+        // creating the closure is not a call of the method: the hook, whose getCallArgs() reads the arguments
+        // of a call, isn't asked about it
+        $this->addFile(
+            $file_path,
+            '<?php
+                namespace Ns;
+
+                class Model {
+                    /** @var array<string, string> */
+                    public array $properties = [];
+
+                    /** @psalm-impure */
+                    public function get(string $key): string {
+                        return $this->properties[$key] ?? "";
+                    }
+                }
+
+                final class User extends Model {}
+
+                /**
+                 * @return \Closure(string): string
+                 * @psalm-capabilities read-props
+                 */
+                function getter(User $user): \Closure {
+                    return $user->get(...);
+                }',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
     public function testFunctionProviderHooksInvalidArg(): void
     {
         $this->expectExceptionMessage('InvalidScalarArgument');
@@ -881,35 +1039,17 @@ final class PluginTest extends TestCase
             ),
         );
 
-        $mock = $this->getMockBuilder(stdClass::class)->setMethods(['check'])->getMock();
-        $mock->expects($this->exactly(4))
-            ->method('check')
-            ->withConsecutive(
-                [$this->equalTo('b')],
-                [$this->equalTo('array_map')],
-                [$this->equalTo('fopen')],
-                [$this->equalTo('a')],
-            );
-        $plugin = new class($mock) implements AfterEveryFunctionCallAnalysisInterface {
-            private static MockObject $m;
+        $plugin = new class implements AfterEveryFunctionCallAnalysisInterface {
+            /** @var list<string> */
+            public static array $function_ids = [];
 
             /**
-             * @psalm-mutation-free
-             */
-            public function __construct(MockObject $m)
-            {
-                self::$m = $m;
-            }
-
-            /**
-             * @psalm-external-mutation-free
+             * @psalm-capabilities read-globals|write-globals
              */
             #[Override]
             public static function afterEveryFunctionCallAnalysis(AfterEveryFunctionCallAnalysisEvent $event): void
             {
-                $function_id = $event->getFunctionId();
-                /** @psalm-suppress UndefinedInterfaceMethod */
-                self::$m->check($function_id);
+                self::$function_ids[] = $event->getFunctionId();
             }
         };
 
@@ -934,6 +1074,8 @@ final class PluginTest extends TestCase
         );
 
         $this->analyzeFile($file_path, new Context());
+
+        $this->assertSame(['b', 'array_map', 'fopen', 'a'], $plugin::$function_ids);
     }
 
     public function testAddTaints(): void
@@ -987,6 +1129,59 @@ final class PluginTest extends TestCase
         );
 
         $this->project_analyzer->trackTaintedInputs();
+
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessageMatches('/TaintedHtml/');
+
+        $this->analyzeFile($file_path, new Context());
+    }
+
+    public function testTaintStoreOfPlugin(): void
+    {
+        $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
+            TestConfig::loadFromXML(
+                dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
+                '<?xml version="1.0"?>
+                <psalm
+                    errorLevel="6"
+                    runTaintAnalysis="true"
+                >
+                    <projectFiles>
+                        <directory name="src" />
+                    </projectFiles>
+                    <plugins>
+                        <plugin filename="examples/plugins/TaintSqlTables.php" />
+                    </plugins>
+                </psalm>',
+            ),
+        );
+
+        $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
+
+        $file_path = (string) getcwd() . '/src/somefile.php';
+        $db = '<?php // --taint-analysis
+            namespace app;
+
+            final class Db {
+                public function insert(string $table, string $row): void {}
+
+                public function query(string $sql): string {
+                    return $sql;
+                }
+            }
+
+            function store(Db $db, string $id): void {
+                $db->insert("comments_" . $id, (string) ($_GET["text"] ?? ""));
+            }
+            ';
+
+        $this->addFile($file_path, $db . 'echo (new Db())->query("SELECT text FROM users");');
+
+        $this->project_analyzer->trackTaintedInputs();
+
+        $this->analyzeFile($file_path, new Context());
+
+        $this->addFile($file_path, $db . 'echo (new Db())->query("SELECT text FROM comments_1");');
 
         $this->expectException(CodeException::class);
         $this->expectExceptionMessageMatches('/TaintedHtml/');

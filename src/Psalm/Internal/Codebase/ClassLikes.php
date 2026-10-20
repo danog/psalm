@@ -86,6 +86,7 @@ use const T_WHITESPACE;
  * @internal
  *
  * Handles information about classes, interfaces and traits
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class ClassLikes
 {
@@ -945,6 +946,8 @@ final class ClassLikes
                 || !$this->config->isInProjectDirs($owner_storage->location->file_path);
         });
 
+        $subclass_capabilities = $this->getSubclassCapabilities($codebase->analyzer->mutable_classes);
+
         foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
             try {
                 $classlike_storage = $this->classlike_storage_provider->get($fq_class_name_lc);
@@ -1016,7 +1019,9 @@ final class ClassLikes
                 }
 
                 $mut = Capabilities::toNamedLevel(
-                    $codebase->analyzer->mutable_classes[$fq_class_name_lc] ?? Capabilities::NONE,
+                    ($codebase->analyzer->mutable_classes[$fq_class_name_lc] ?? Capabilities::NONE)
+                    | $this->getRequiredContractCapabilities($classlike_storage)
+                    | ($subclass_capabilities[$fq_class_name_lc] ?? Capabilities::NONE),
                 );
                 if ($mut === Capabilities::NONE) {
                     foreach ($classlike_storage->properties as $property) {
@@ -1070,6 +1075,103 @@ final class ClassLikes
         }
     }
 
+    /**
+     * A class contract binds the subclasses too: what the known subclasses of each class need,
+     * apart from what they inherit from it. A subclass with a contract needs what its contract allows.
+     *
+     * @param array<string, CapabilitySet> $mutable_classes
+     * @return array<lowercase-string, CapabilitySet>
+     * @psalm-capabilities read-props
+     */
+    private function getSubclassCapabilities(array $mutable_classes): array
+    {
+        $subclass_capabilities = [];
+
+        foreach ($this->existing_classlikes_lc as $fq_class_name_lc => $_) {
+            try {
+                $classlike_storage = $this->classlike_storage_provider->get($fq_class_name_lc);
+            } catch (InvalidArgumentException) {
+                continue;
+            }
+
+            if ($classlike_storage->parent_classes === []
+                || !$classlike_storage->location
+                || !$this->config->isInProjectDirs($classlike_storage->location->file_path)
+            ) {
+                continue;
+            }
+
+            $capabilities = $classlike_storage->has_mutations_annotation
+                ? $classlike_storage->capabilities
+                : $mutable_classes[$fq_class_name_lc] ?? Capabilities::NONE;
+
+            foreach ($classlike_storage->parent_classes as $parent_class_lc => $_) {
+                $subclass_capabilities[$parent_class_lc]
+                    = ($subclass_capabilities[$parent_class_lc] ?? Capabilities::NONE) | $capabilities;
+            }
+        }
+
+        return $subclass_capabilities;
+    }
+
+    /**
+     * What a contract of the class must allow whatever its methods do: the contract of its parent
+     * class, whose methods it inherits, and the upper bounds of its purity templates, which its
+     * subclasses may bind up to.
+     *
+     * @return CapabilitySet
+     * @psalm-capabilities read-props
+     */
+    private function getRequiredContractCapabilities(ClassLikeStorage $classlike_storage): int
+    {
+        $capabilities = Capabilities::NONE;
+
+        if ($classlike_storage->parent_class !== null) {
+            try {
+                $capabilities |= $this->classlike_storage_provider->get($classlike_storage->parent_class)
+                    ->capabilities;
+            } catch (InvalidArgumentException) {
+                $capabilities |= Capabilities::ALL;
+            }
+        }
+
+        if ($classlike_storage->is_interface) {
+            // an interface is only asked for an annotation, not for a particular one
+            return $capabilities;
+        }
+
+        foreach ($classlike_storage->template_types ?? [] as $template_type) {
+            foreach ($template_type as $bound) {
+                if (Capabilities::isPurityArgument($bound)) {
+                    $capabilities |= Capabilities::fromType($bound);
+                }
+            }
+        }
+
+        return $capabilities;
+    }
+
+    /**
+     * Whether every method an interface declares says what it may do, with a purity annotation or by taking its
+     * purity from a template: then a class-level contract would only cap its implementers further, and an interface
+     * declaring no method (a marker) has nothing to cap.
+     *
+     * @psalm-mutation-free
+     */
+    private static function areAllMethodsAnnotated(ClassLikeStorage $storage): bool
+    {
+        foreach ($storage->methods as $method_storage) {
+            if (!$method_storage->has_mutations_annotation && $method_storage->purity_from_templates === []) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param CapabilitySet $capabilities
+     */
     private static function makeImmutable(
         int $capabilities,
         bool $change,
@@ -1082,7 +1184,7 @@ final class ClassLikes
             return;
         }
         if ($storage->is_interface) {
-            if ($storage->has_mutations_annotation) {
+            if ($storage->has_mutations_annotation || self::areAllMethodsAnnotated($storage)) {
                 return;
             }
             IssueBuffer::maybeAdd(
@@ -1201,7 +1303,7 @@ final class ClassLikes
     }
 
     /**
-     * @psalm-capabilities read-props
+     * @psalm-pure
      */
     private static function getFinalInsertionPosition(CodeLocation $class_location): int
     {
@@ -2613,6 +2715,8 @@ final class ClassLikes
      *     array<lowercase-string, bool>,
      *     array<string, bool>,
      *     array<string, bool>,
+     *     array<lowercase-string, string>,
+     *     array<string, bool>,
      * }
      * @psalm-mutation-free
      */
@@ -2628,6 +2732,8 @@ final class ClassLikes
             $this->existing_interfaces_lc,
             $this->existing_interfaces,
             $this->existing_classes,
+            $this->classlike_aliases_map,
+            $this->existing_classlike_aliases,
         ];
     }
 
@@ -2642,6 +2748,8 @@ final class ClassLikes
      *     6: array<lowercase-string, bool>,
      *     7: array<string, bool>,
      *     8: array<string, bool>,
+     *     9: array<lowercase-string, string>,
+     *     10: array<string, bool>,
      * } $thread_data
      * @psalm-external-mutation-free
      */
@@ -2657,6 +2765,8 @@ final class ClassLikes
             $existing_interfaces_lc,
             $existing_interfaces,
             $existing_classes,
+            $classlike_aliases_map,
+            $existing_classlike_aliases,
         ] = $thread_data;
 
         $this->existing_classlikes_lc = self::mergeThreadData($existing_classlikes_lc, $this->existing_classlikes_lc);
@@ -2668,6 +2778,11 @@ final class ClassLikes
         $this->existing_interfaces_lc = self::mergeThreadData($existing_interfaces_lc, $this->existing_interfaces_lc);
         $this->existing_interfaces = self::mergeThreadData($existing_interfaces, $this->existing_interfaces);
         $this->existing_classes = self::mergeThreadData($existing_classes, $this->existing_classes);
+        $this->classlike_aliases_map += $classlike_aliases_map;
+        $this->existing_classlike_aliases = self::mergeThreadData(
+            $existing_classlike_aliases,
+            $this->existing_classlike_aliases,
+        );
     }
 
     /**

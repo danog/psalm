@@ -43,7 +43,6 @@ jobs:
     env:
       CHUNK_COUNT: "${{ matrix.count }}"
       CHUNK_NUMBER: "${{ matrix.chunk }}"
-      PARALLEL_PROCESSES: 4
 
     steps:
       - name: Set git to use LF
@@ -52,7 +51,7 @@ jobs:
           git config --global core.eol lf
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.5'
           #ini-values: zend.assertions=1, assert.exception=1, opcache.enable_cli=1, opcache.jit=function, opcache.jit_buffer_size=512M
@@ -104,4 +103,4 @@ jobs:
         run: php bin/ci/generate_testsuites.php $env:CHUNK_COUNT
 
       - name: Run unit tests
-        run: vendor/bin/paratest --processes=$env:PARALLEL_PROCESSES --testsuite=chunk_$env:CHUNK_NUMBER --log-junit build/phpunit/phpunit.xml
+        run: vendor/bin/paratest --max-batch-size=1 --processes=$env:NUMBER_OF_PROCESSORS --testsuite=chunk_$env:CHUNK_NUMBER --log-junit build/phpunit/phpunit.xml

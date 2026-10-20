@@ -7,6 +7,10 @@ namespace Psalm\Tests\Internal\Codebase;
 use InvalidArgumentException;
 use Override;
 use PHPUnit\Framework\AssertionFailedError;
+use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Depends;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\ExpectationFailedException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -50,7 +54,7 @@ use const PHP_MINOR_VERSION;
 use const PHP_VERSION;
 use const PHP_VERSION_ID;
 
-/** @group callmap */
+#[Group('callmap')]
 final class InternalCallMapHandlerTest extends TestCase
 {
     /**
@@ -168,18 +172,18 @@ final class InternalCallMapHandlerTest extends TestCase
      * @var array<int|string, string|list<string>>
      */
     private static array $ignoredReturnTypeOnlyFunctions = [
-        'datetime::add' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::modify' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::createfromformat' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
+        'datetime::add' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::modify' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::createfromformat' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
         'datetime::createfromimmutable' => ['8.1'],
-        'datetime::createfrominterface',
-        'datetimeimmutable::createfrominterface',
-        'datetime::setdate' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::setisodate' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::settime' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::settimestamp' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::settimezone' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
-        'datetime::sub' => ['8.1', '8.2', '8.3', '8.4', '8.5'], // DateTime does not contain static
+        'datetime::createfrominterface' => ['8.1', '8.2', '8.3', '8.4', '8.5'],
+        'datetimeimmutable::createfrominterface' => ['8.1', '8.2', '8.3', '8.4', '8.5'],
+        'datetime::setdate' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::setisodate' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::settime' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::settimestamp' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::settimezone' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
+        'datetime::sub' => ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6'], // DateTime does not contain static
     ];
 
     /**
@@ -249,9 +253,6 @@ final class InternalCallMapHandlerTest extends TestCase
         }
     }
 
-    /**
-     * @covers \Psalm\Internal\Codebase\InternalCallMapHandler::getCallMap
-     */
     public function testGetcallmapReturnsAValidCallmap(): void
     {
         $callMap = InternalCallMapHandler::getCallMap();
@@ -289,7 +290,7 @@ final class InternalCallMapHandlerTest extends TestCase
     /**
      * @return iterable<string, array{string, array<int|string, string>}>
      */
-    public function callMapEntryProvider(): iterable
+    public static function callMapEntryProvider(): iterable
     {
         /**
          * This call is needed since InternalCallMapHandler uses the singleton that is initialized by it.
@@ -383,13 +384,13 @@ final class InternalCallMapHandlerTest extends TestCase
     }
 
     /**
-     * @depends testIgnoresAreSortedAndUnique
-     * @depends testGetcallmapReturnsAValidCallmap
-     * @dataProvider callMapEntryProvider
-     * @coversNothing
      * @psalm-param string $functionName
      * @param array<int|string, string> $callMapEntry
      */
+    #[Depends('testIgnoresAreSortedAndUnique')]
+    #[Depends('testGetcallmapReturnsAValidCallmap')]
+    #[DataProvider('callMapEntryProvider')]
+    #[CoversNothing]
     public function testIgnoredFunctionsStillFail(string $functionName, array $callMapEntry): void
     {
         $functionIgnored = $this->isIgnored($functionName);
@@ -441,13 +442,13 @@ final class InternalCallMapHandlerTest extends TestCase
     /**
      * This function will test functions that are in the callmap AND currently defined
      *
-     * @coversNothing
-     * @depends testGetcallmapReturnsAValidCallmap
-     * @depends testIgnoresAreSortedAndUnique
-     * @dataProvider callMapEntryProvider
      * @psalm-param string $functionName
      * @param array<int|string, string> $callMapEntry
      */
+    #[Depends('testGetcallmapReturnsAValidCallmap')]
+    #[Depends('testIgnoresAreSortedAndUnique')]
+    #[DataProvider('callMapEntryProvider')]
+    #[CoversNothing]
     public function testCallMapCompliesWithReflection(string $functionName, array $callMapEntry): void
     {
         if ($this->isIgnored($functionName)) {

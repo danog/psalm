@@ -16,6 +16,8 @@ use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ClassAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
+use Psalm\Internal\Analyzer\InheritedMethodTaints;
+use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\MethodCallAnalyzer;
@@ -67,6 +69,7 @@ use Psalm\Node\VirtualIdentifier;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassLikeStorage;
+use Psalm\Storage\MethodStorage;
 use Psalm\Storage\PropertyStorage;
 use Psalm\Type;
 use Psalm\Type\Atomic;
@@ -428,14 +431,27 @@ final class InstancePropertyAssignmentAnalyzer
         if ($lhs_var_id !== null
             && isset($context->vars_in_scope[$lhs_var_id])
         ) {
-            $real = $lhs_var_id === '$this'
-                ? Capabilities::WRITE_THIS_PROPS
-                : Capabilities::WRITE_PROPS;
-            $mut = $can_set_readonly_property ?
-                ($property_var_pure_compatible
-                    ? Capabilities::NONE
-                    : Capabilities::READ_PROPS
-                ) : $real;
+            // Only whether a readonly property may be set depends on the class scope: nothing else
+            // holds a fresh object, so writing it is free in a function as in a method, and for
+            // the inferred level as for the reported one. `$this` is the caller's own instance,
+            // never a fresh one, even where its type is reference-free, and an object a closure
+            // captured from the scope that created it is the closure's own state.
+            $writes_fresh_object = $property_var_pure_compatible && $lhs_var_id !== '$this';
+            $real = match (true) {
+                $writes_fresh_object => Capabilities::NONE,
+                $lhs_var_id === '$this',
+                $var_type !== null && $var_type->closure_state => Capabilities::WRITE_THIS_PROPS,
+                default => Capabilities::WRITE_PROPS,
+            };
+            // PHP lets a class set the readonly properties of any of its instances, but only `$this`
+            // belongs to the method: writing another, non-fresh instance mutates state held elsewhere.
+            $mut = $lhs_var_id === '$this' && $can_set_readonly_property
+                ? ($property_var_pure_compatible ? Capabilities::NONE : Capabilities::READ_PROPS)
+                : $real;
+
+            // a fresh object holding global state (see MethodCallPurityAnalyzer::getMethodCapabilities()) is
+            // still fresh: nobody else sees its own properties change
+            $on_global_state = $on_global_state && !$writes_fresh_object;
 
             if ($on_global_state) {
                 $real |= Capabilities::WRITE_GLOBALS;
@@ -457,7 +473,9 @@ final class InstancePropertyAssignmentAnalyzer
             );
             $codebase->analyzer->addMutableClass(
                 $declaring_class_storage->name,
-                $mut,
+                // writing a fresh object is free for the writer, but the class still has a property written
+                // where a readonly one couldn't be: it can't be immutable (as before the waiver)
+                $writes_fresh_object && !$can_set_readonly_property ? $mut | Capabilities::WRITE_PROPS : $mut,
             );
         } else {
             if ($on_global_state) {
@@ -587,7 +605,8 @@ final class InstancePropertyAssignmentAnalyzer
 
                 if ($assignment_value_type->parent_nodes) {
                     // what the assigned value cannot hold, given its type, which the property's may not tell
-                    $value_removed_taints = $removed_taints | $assignment_value_type->getTaintsToRemove();
+                    $value_removed_taints = $removed_taints
+                        | $assignment_value_type->getTaintsToRemove($codebase->getInputTaints());
 
                     foreach ($assignment_value_type->parent_nodes as $parent_node) {
                         $data_flow_graph->addPath(
@@ -667,6 +686,10 @@ final class InstancePropertyAssignmentAnalyzer
 
         $graph->addNode($property_node);
 
+        if ($stmt instanceof PhpParser\Node\Expr\StaticPropertyFetch && $statements_analyzer->taint_flow_graph) {
+            $statements_analyzer->taint_flow_graph->addSharedState($property_node);
+        }
+
         $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
 
         $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
@@ -688,7 +711,8 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($assignment_value_type->parent_nodes) {
             // what the assigned value cannot hold, given its type, which the property's may not tell
-            $value_removed_taints = $removed_taints | $assignment_value_type->getTaintsToRemove();
+            $value_removed_taints = $removed_taints
+                | $assignment_value_type->getTaintsToRemove($codebase->getInputTaints());
 
             foreach ($assignment_value_type->parent_nodes as $parent_node) {
                 $graph->addPath(
@@ -1340,9 +1364,13 @@ final class InstancePropertyAssignmentAnalyzer
 
         $has_regular_setter = true;
 
+        // in the body of an inherited method analyzed for a class inheriting it, `$this` is an object of that class
         if ($stmt->var instanceof PhpParser\Node\Expr\Variable
             && $stmt->var->name === 'this'
             && $context->self
+            && (DataFlowNode::$body_suffix === null
+                || !$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
+                || InheritedMethodTaints::isPrivateIn($codebase, $context->self, $prop_name))
         ) {
             $self_property_id = $context->self . '::$' . $prop_name;
 
@@ -1570,11 +1598,20 @@ final class InstancePropertyAssignmentAnalyzer
                 $declaring_property_class,
             );
 
-            if ($lhs_type_part instanceof TGenericObject) {
+            $localizing_type_part = self::getLocalizingTypePart(
+                $statements_analyzer,
+                $codebase,
+                $context,
+                $lhs_var_id,
+                $lhs_type_part,
+                $fq_class_name,
+            );
+
+            if ($localizing_type_part !== null) {
                 $class_property_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
                     $codebase,
                     $class_property_type,
-                    $lhs_type_part,
+                    $localizing_type_part,
                     $class_storage,
                     $declaring_class_storage,
                 );
@@ -1724,6 +1761,46 @@ final class InstancePropertyAssignmentAnalyzer
         return $fleshed_out_type;
     }
 
+    /**
+     * The generic type whose template params the property type takes: the object's, or, for `$this` in a method with
+     * `@psalm-self-out`, the self-out type's, as the object becomes that type when the method returns, so what the
+     * method stores must fit the self-out type rather than the type `$this` had when the method was called
+     */
+    private static function getLocalizingTypePart(
+        StatementsAnalyzer $statements_analyzer,
+        Codebase $codebase,
+        Context $context,
+        ?string $lhs_var_id,
+        Atomic $lhs_type_part,
+        string $fq_class_name,
+    ): ?TGenericObject {
+        $source = $statements_analyzer->getSource();
+
+        if ($lhs_var_id === '$this' && $source instanceof MethodAnalyzer) {
+            $method_storage = $source->getFunctionLikeStorage($statements_analyzer);
+
+            if ($method_storage instanceof MethodStorage && $method_storage->self_out_type !== null) {
+                $self_out_type = TypeExpander::expandUnion(
+                    $codebase,
+                    $method_storage->self_out_type,
+                    $context->self,
+                    $context->self,
+                    $context->parent,
+                );
+
+                foreach ($self_out_type->getAtomicTypes() as $self_out_type_part) {
+                    if ($self_out_type_part instanceof TGenericObject
+                        && strtolower($self_out_type_part->value) === strtolower($fq_class_name)
+                    ) {
+                        return $self_out_type_part;
+                    }
+                }
+            }
+        }
+
+        return $lhs_type_part instanceof TGenericObject ? $lhs_type_part : null;
+    }
+
     private static function analyzeSetCall(
         ?string $var_id,
         Context $context,
@@ -1764,7 +1841,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $suppressed_issues = $statements_analyzer->getSuppressedIssues();
 
-        if (!in_array('PossiblyNullReference', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['PossiblyNullReference'])) {
             $statements_analyzer->addSuppressedIssues(['PossiblyNullReference']);
         }
 
@@ -1775,7 +1852,7 @@ final class InstancePropertyAssignmentAnalyzer
             false,
         );
 
-        if (!in_array('PossiblyNullReference', $suppressed_issues, true)) {
+        if (!isset($suppressed_issues['PossiblyNullReference'])) {
             $statements_analyzer->removeSuppressedIssues(['PossiblyNullReference']);
         }
 

@@ -4,15 +4,25 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Psalm\CodeLocation;
 use Psalm\Type\Union;
 
 /**
  * @api
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class MethodStorage extends FunctionLikeStorage
 {
     use UnserializeMemoryUsageSuppressionTrait;
     public bool $is_static = false;
+
+    /**
+     * The properties a constructor without a purity annotation assigns, if it only does that and was given what
+     * that needs (see FunctionLikeNodeScanner::applyTrivialConstructorCapabilities())
+     *
+     * @var list<string>|null
+     */
+    public ?array $trivial_constructor_properties = null;
 
     public int $visibility = 0;
 
@@ -42,6 +52,7 @@ final class MethodStorage extends FunctionLikeStorage
      */
     public bool $mutation_free_assumed = false;
     
+    /** @var CapabilitySet */
     public int $containing_class_capabilities = Capabilities::ALL;
 
     /**
@@ -51,8 +62,16 @@ final class MethodStorage extends FunctionLikeStorage
 
     public ?Union $self_out_type = null;
 
+    public ?CodeLocation $self_out_type_location = null;
+
     public ?Union $if_this_is_type = null;
     public bool $stubbed = false;
 
     public bool $probably_fluent = false;
+
+    /**
+     * Whether the method always returns its receiver: it declares `@return $this`, or it can't be
+     * overridden and every one of its returns is `return $this;`
+     */
+    public bool $returns_this = false;
 }

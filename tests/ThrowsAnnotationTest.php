@@ -36,6 +36,28 @@ final class ThrowsAnnotationTest extends TestCase
         $this->analyzeFile('somefile.php', $context);
     }
 
+    public function testVoidAsThrowsMeansNothingIsThrown(): void
+    {
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                namespace Foo;
+
+                /**
+                 * @throws void
+                 * @psalm-pure
+                 */
+                function bar() : int {
+                    return 1;
+                }',
+        );
+
+        $context = new Context();
+
+        $this->analyzeFile('somefile.php', $context);
+        $this->assertSame(0, IssueBuffer::getErrorCount());
+    }
+
     public function testNonThrowableClassAsThrows(): void
     {
         $this->expectExceptionMessage('InvalidThrow');
@@ -71,6 +93,96 @@ final class ThrowsAnnotationTest extends TestCase
                      * @psalm-mutation-free
                      */
                     public function bar() : void {}
+                }',
+        );
+
+        $context = new Context();
+
+        $this->analyzeFile('somefile.php', $context);
+    }
+
+    public function testGenericThrowableClassAsThrows(): void
+    {
+        Config::getInstance()->check_for_throws_docblock = true;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                /** @template T */
+                final class MyException extends Exception {
+                    /** @param T $data */
+                    public function __construct(public mixed $data) {}
+                }
+
+                /**
+                 * @throws MyException<DateTime>
+                 */
+                function foo(): void {
+                    throw new MyException(new DateTime());
+                }
+
+                /**
+                 * @throws MyException<array<int, string>>|RuntimeException some description
+                 */
+                function bar(): void {
+                    throw new MyException([1 => "a"]);
+                }
+
+                /**
+                 * @throws MyException<array<int, string>>
+                 */
+                function baz(): void {
+                    foo();
+                }
+
+                function qux(): void {
+                    try {
+                        bar();
+                    } catch (MyException|RuntimeException) {}
+                }',
+        );
+
+        $context = new Context();
+
+        $this->analyzeFile('somefile.php', $context);
+    }
+
+    public function testUndefinedGenericClassAsThrows(): void
+    {
+        $this->expectExceptionMessage('UndefinedDocblockClass - somefile.php:3:28 - Docblock-defined class, interface or enum named Foo does not exist');
+        $this->expectException(CodeException::class);
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                /**
+                 * @throws Foo<int, string>
+                 */
+                function bar() : void {}',
+        );
+
+        $context = new Context();
+
+        $this->analyzeFile('somefile.php', $context);
+    }
+
+    public function testUndocumentedThrowOfGenericClass(): void
+    {
+        $this->expectExceptionMessage('MissingThrowsDocblock');
+        $this->expectException(CodeException::class);
+        Config::getInstance()->check_for_throws_docblock = true;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                /** @template T */
+                final class MyException extends Exception {}
+
+                /**
+                 * @throws MyException<int>
+                 */
+                function foo(): void {
+                    throw new RuntimeException();
                 }',
         );
 

@@ -18,7 +18,7 @@ final class TypeAlgebraTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'twoVarLogicSimple' => [
@@ -1277,6 +1277,50 @@ final class TypeAlgebraTest extends TestCase
                         }
                     }',
             ],
+            'staticPropertyNarrowedAfterEarlyReturn' => [
+                'code' => '<?php
+                    final class A {
+                        public static ?int $x = null;
+                    }
+
+                    function f(): int {
+                        if (A::$x === null) {
+                            return 0;
+                        }
+
+                        return A::$x;
+                    }',
+            ],
+            'staticPropertyArrayOffsetNarrowedAfterEarlyReturn' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var array{a?: int}|null */
+                        public static ?array $x = null;
+                    }
+
+                    function f(): int {
+                        if (A::$x === null || !isset(A::$x["a"])) {
+                            return 0;
+                        }
+
+                        return A::$x["a"];
+                    }',
+            ],
+            'staticPropertyPropertyNarrowedAfterEarlyReturn' => [
+                'code' => '<?php
+                    final class A {
+                        public static ?A $x = null;
+                        public ?int $y = null;
+                    }
+
+                    function f(): int {
+                        if (A::$x === null || A::$x->y === null) {
+                            return 0;
+                        }
+
+                        return A::$x->y;
+                    }',
+            ],
         ];
     }
 
@@ -1284,9 +1328,24 @@ final class TypeAlgebraTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
+            'staticPropertyNarrowedToDeclaredTypeAfterEarlyReturn' => [
+                'code' => '<?php
+                    final class A {
+                        public static ?int $x = null;
+                    }
+
+                    function f(): string {
+                        if (A::$x === null) {
+                            return "";
+                        }
+
+                        return A::$x;
+                    }',
+                'error_message' => 'InvalidReturnStatement',
+            ],
             'threeVarLogicWithChange' => [
                 'code' => '<?php
                     function takesString(string $s): void {}
@@ -1340,7 +1399,7 @@ final class TypeAlgebraTest extends TestCase
                         return $a;
                     }',
                 'error_message' => 'NullableReturnStatement',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'invertedTwoVarLogicNotNestedWithElseif' => [
                 'code' => '<?php
@@ -1357,7 +1416,7 @@ final class TypeAlgebraTest extends TestCase
                         return $a;
                     }',
                 'error_message' => 'NullableReturnStatement',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'threeVarLogicWithElseifAndAnd' => [
                 'code' => '<?php
@@ -1375,7 +1434,7 @@ final class TypeAlgebraTest extends TestCase
                         return $a;
                     }',
                 'error_message' => 'TypeDoesNotContainType',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'twoVarLogicNotNestedWithElseifIncorrectlyReinforcedInIf' => [
                 'code' => '<?php
@@ -1392,7 +1451,7 @@ final class TypeAlgebraTest extends TestCase
                         return $a;
                     }',
                 'error_message' => 'RedundantCondition',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'repeatedIfStatements' => [
                 'code' => '<?php
@@ -1407,7 +1466,7 @@ final class TypeAlgebraTest extends TestCase
                         }
                     }',
                 'error_message' => 'TypeDoesNotContainType',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'repeatedConditionals' => [
                 'code' => '<?php
@@ -1500,7 +1559,7 @@ final class TypeAlgebraTest extends TestCase
                         }
                     }',
                 'error_message' => 'RedundantCondition',
-                'ignored_issues' => ['RiskyTruthyFalsyComparison'],
+                'error_levels' => ['RiskyTruthyFalsyComparison'],
             ],
             'dependentTypeInvalidated' => [
                 'code' => '<?php
@@ -1538,7 +1597,7 @@ final class TypeAlgebraTest extends TestCase
                         }
                     }',
                 'error_message' => 'NullReference',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.1',
             ],
             'arrayShapeListCanBeEmpty' => [

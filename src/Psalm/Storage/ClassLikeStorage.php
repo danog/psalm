@@ -26,6 +26,7 @@ use function in_array;
 
 /**
  * @api
+ * @psalm-import-type CapabilitySet from Capabilities
  */
 final class ClassLikeStorage implements HasAttributesInterface
 {
@@ -45,6 +46,15 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $populated = false;
 
     public bool $stubbed = false;
+
+    /**
+     * How the strings some members of the class hold start, as the scan found them, for the names of the keyed stores
+     * of the taint analysis (see StringStartScanner)
+     *
+     * @internal
+     * @var array<string, string>
+     */
+    public array $string_starts = [];
 
     /**
      * The `analysis_php_version_id` at which this native symbol became available, from an `@since`
@@ -185,6 +195,7 @@ final class ClassLikeStorage implements HasAttributesInterface
 
     public bool $is_enum = false;
 
+    /** @var CapabilitySet */
     public int $capabilities = Capabilities::ALL;
 
     /**
@@ -194,6 +205,13 @@ final class ClassLikeStorage implements HasAttributesInterface
     public ?Union $capabilities_type = null;
 
     public bool $has_mutations_annotation = false;
+
+    /**
+     * Whether the class is a marker interface without a class-level purity annotation: it declares no method or
+     * property, nor inherits one, so it does nothing and counts as pure. Its contract caps no implementer, as it has
+     * none of their methods to cap.
+     */
+    public bool $is_marker_interface = false;
 
     public bool $specialize_instance = false;
 
@@ -338,7 +356,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * what every value of the template requires, so the methods depending on it get these
      * capabilities unconditionally, and subclasses may not bind it to less.
      *
-     * @var array<string, int>
+     * @var array<string, CapabilitySet>
      */
     public array $template_lower_bounds = [];
 
@@ -459,7 +477,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public function isPure(): bool
     {
-        return Capabilities::allows(Capabilities::NONE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::NONE, $this->capabilities);
     }
 
     /**
@@ -467,7 +485,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public function isMutationFree(): bool
     {
-        return Capabilities::allows(Capabilities::MUTATION_FREE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::MUTATION_FREE, $this->capabilities);
     }
 
     /**
@@ -475,7 +493,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public function isExternalMutationFree(): bool
     {
-        return Capabilities::allows(Capabilities::EXTERNAL_MUTATION_FREE, $this->capabilities);
+        return Capabilities::allowsAnyOf(Capabilities::EXTERNAL_MUTATION_FREE, $this->capabilities);
     }
 
     /**

@@ -86,7 +86,6 @@ final class TypeCombiner
      *  - and `array + array<string> = array<mixed>`
      *
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpurePropertyAssignment We're not actually mutating any external instance
      * @param  non-empty-list<Atomic>    $types
      * @param  int    $literal_limit any greater number of literal types than this
      *                               will be merged to a scalar
@@ -870,10 +869,13 @@ final class TypeCombiner
                 $existing_template_type = $combination->value_types[$type_key];
 
                 if (!$existing_template_type->as->equals($type->as)) {
+                    // a template bounded by mixed and narrowed in one branch is bounded by mixed again
                     $existing_template_type = $existing_template_type->replaceAs(Type::combineUnionTypes(
                         $type->as,
                         $existing_template_type->as,
                         $codebase,
+                        false,
+                        false,
                     ));
                     $combination->value_types[$type_key] = $existing_template_type;
                 }

@@ -22,7 +22,9 @@ use Psalm\Storage\Capabilities;
 use Throwable;
 
 use function array_keys;
+use function array_map;
 use function array_pop;
+use function implode;
 
 /**
  * Infers the level of mutations (purity) of every analysed function-like once
@@ -36,11 +38,12 @@ use function array_pop;
  * call graph, so that call chains in any order and recursive cycles (direct,
  * mutual, or through closures) all converge.
  *
+ * @psalm-import-type CapabilitySet from Capabilities
  * @psalm-type MutationInfo = array{
- *     intrinsic: int,
- *     allowed: int,
+ *     intrinsic: CapabilitySet,
+ *     allowed: CapabilitySet,
  *     callees: array<string, bool>,
- *     default_intrinsic: int,
+ *     default_intrinsic: CapabilitySet,
  *     default_callees: array<string, bool>,
  *     location: CodeLocation,
  *     cased_name: string,
@@ -48,7 +51,8 @@ use function array_pop;
  *     class: ?string,
  *     start: int,
  *     fresh: bool,
- *     report: bool
+ *     report: bool,
+ *     wildcards?: array<string, list<string>>
  * }
  * @internal
  */
@@ -59,7 +63,7 @@ final class MutationLevelResolver
      * mutation info: node id => level.
      *
      * @param array<string, MutationInfo> $infos
-     * @return array<string, int> node id => bitmask of {@see Capabilities} constants
+     * @return array<string, CapabilitySet> node id => bitmask of {@see Capabilities} constants
      * @psalm-pure
      */
     public static function resolveLevels(array $infos): array
@@ -122,7 +126,7 @@ final class MutationLevelResolver
                         : $callee_level;
                 }
 
-                if (!Capabilities::allows(
+                if (!Capabilities::allowsAnyOf(
                     FunctionLikeAnalyzer::getParamDefaultCapabilities(Capabilities::toNamedLevel($levels[$node_id])),
                     $default_level,
                 )) {
@@ -145,7 +149,7 @@ final class MutationLevelResolver
      * @param array<string, MutationInfo> $infos
      * @param array<string, array<string, true>> $callers
      * @param array<string, array<string, true>> $default_callers
-     * @param array<string, int> $levels
+     * @param array<string, CapabilitySet> $levels
      * @param list<string> $queue
      * @param array<string, true> $default_checks
      * @param-out list<never> $queue
@@ -175,7 +179,7 @@ final class MutationLevelResolver
                 $level |= $callee_level;
             }
 
-            if ($level !== $levels[$node_id]) {
+            if (!Capabilities::equals($level, $levels[$node_id])) {
                 // levels only ever increase and are bounded, so this terminates even with cycles
                 $levels[$node_id] = $level;
 
@@ -227,15 +231,25 @@ final class MutationLevelResolver
             $level = Capabilities::toNamedLevel($level);
 
             if (!$info['report']
-                || !Capabilities::allows($info['allowed'], $level)
-                || $level === Capabilities::toNamedLevel($info['allowed'])
+                || !Capabilities::allowsAnyOf($info['allowed'], $level)
+                || Capabilities::equals($level, Capabilities::toNamedLevel($info['allowed']))
             ) {
                 continue;
             }
 
+            // the parameters whose closures it calls, and whose iterables and objects it uses,
+            // that would take the `_` purity: where, by parameter
+            $wildcards = $info['wildcards'] ?? [];
+
             IssueBuffer::maybeAdd(
                 new MissingPureAnnotation(
                     $info['cased_name'] . ' must be marked @' . Capabilities::toFunctionAnnotation($level)
+                    . ($wildcards
+                        ? ', with the _ purity for ' . implode(', ', array_map(
+                            static fn(string $param): string => '$' . $param,
+                            array_keys($wildcards),
+                        )) . ' (Closure[_], Traversable[_], ...),'
+                        : '')
                     . ' to aid security analysis'
                     . ', run with --alter --issues=MissingPureAnnotation to fix this',
                     $info['location'],
@@ -249,11 +263,14 @@ final class MutationLevelResolver
                 $stmt = self::findFunctionLike($codebase, $file_path, $info['start']);
 
                 if ($stmt !== null) {
-                    FunctionDocblockManipulator::getForFunction(
+                    $manipulator = FunctionDocblockManipulator::getForFunction(
                         $project_analyzer,
                         $file_path,
                         $stmt,
-                    )->setCapabilities($level);
+                    );
+
+                    $manipulator->setCapabilities($level);
+                    $manipulator->addPurityWildcards($wildcards);
                 }
             }
         }

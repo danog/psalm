@@ -51,7 +51,7 @@ final class ClassTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerValidCodeParse(): iterable
+    public static function providerValidCodeParse(): iterable
     {
         return [
             'overrideProtectedAccessLevelToPublic' => [
@@ -463,12 +463,12 @@ final class ClassTest extends TestCase
             ],
             'classAliasOnNonexistentClass' => [
                 'code' => '<?php
-                    if (!class_exists(\PHPUnit\Framework\TestCase::class)) {
+                    if (!class_exists(\Exception::class)) {
                         /** @psalm-suppress UndefinedClass */
-                        class_alias(\PHPUnit_Framework_TestCase::class, \PHPUnit\Framework\TestCase::class);
+                        class_alias(\Legacy_Exception::class, \Exception::class);
                     }
 
-                    class T extends \PHPUnit\Framework\TestCase {
+                    class T extends \Exception {
 
                     }',
                 'assertions' => [],
@@ -522,6 +522,19 @@ final class ClassTest extends TestCase
                     }
                     class_alias(A::class, B::class);
                     B::$prop = 123;',
+            ],
+            'classAliasInterfaceMethodCall' => [
+                'code' => '<?php
+                    interface NewI {}
+                    class_alias(NewI::class, OldI::class);
+
+                    class A implements OldI {
+                        public function foo(): void {}
+                    }
+
+                    function action(A $a): void {
+                        $a->foo();
+                    }',
             ],
             'resourceAndNumericSoftlyReserved' => [
                 'code' => '<?php
@@ -658,6 +671,7 @@ final class ClassTest extends TestCase
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
+                     * @psalm-capabilities read-props|write-this-props
                      */
                     class iter extends ArrayObject {
                         /**
@@ -693,6 +707,7 @@ final class ClassTest extends TestCase
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
+                     * @psalm-capabilities read-props|write-this-props
                      */
                     class iter extends ArrayObject {
                         /**
@@ -730,6 +745,7 @@ final class ClassTest extends TestCase
                      * @template TTValue
                      *
                      * @extends ArrayObject<TTKey, TTValue>
+                     * @psalm-capabilities read-props|write-this-props
                      */
                     class iter extends ArrayObject {
                         /**
@@ -959,7 +975,7 @@ final class ClassTest extends TestCase
      * @psalm-pure
      */
     #[Override]
-    public function providerInvalidCodeParse(): iterable
+    public static function providerInvalidCodeParse(): iterable
     {
         return [
             'undefinedClass' => [
@@ -1296,6 +1312,7 @@ final class ClassTest extends TestCase
 
             'detectMissingTemplateExtendsNative' => [
                 'code' => '<?php
+                    /** @psalm-capabilities read-props|write-this-props */
                     final class C extends ArrayObject {}
                 ',
                 'error_message' => 'MissingTemplateParam',
@@ -1347,7 +1364,7 @@ final class ClassTest extends TestCase
                     class C implements Throwable {}
                 ',
                 'error_message' => 'InvalidInterfaceImplementation',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '7.0',
             ],
             'directConstructorCall' => [
@@ -1390,7 +1407,7 @@ final class ClassTest extends TestCase
                     $foo->a = 33;
                     PHP,
                 'error_message' => 'InaccessibleProperty',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.2',
             ],
             'readonlyClassRequiresTypedProperties' => [
@@ -1402,7 +1419,7 @@ final class ClassTest extends TestCase
                     }
                     PHP,
                 'error_message' => 'MissingPropertyType',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.2',
             ],
             'readonlyClassCannotHaveDynamicProperties' => [
@@ -1412,7 +1429,7 @@ final class ClassTest extends TestCase
                     readonly class Foo {}
                     PHP,
                 'error_message' => 'InvalidAttribute',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.2',
             ],
             'readonlyClassesCannotBeExtendedByNonReadonlyOnes' => [
@@ -1422,7 +1439,7 @@ final class ClassTest extends TestCase
                     class Bar extends Foo {}
                     PHP,
                 'error_message' => 'InvalidExtendClass',
-                'ignored_issues' => [],
+                'error_levels' => [],
                 'php_version' => '8.2',
             ],
             'classCannotExtendIfNotInInheritors' => [
@@ -1435,7 +1452,7 @@ final class ClassTest extends TestCase
                     class BazClass extends BaseClass {} // this is an error
                     PHP,
                 'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'classCannotImplementIfNotInInheritors' => [
                 'code' => <<<'PHP'
@@ -1447,7 +1464,7 @@ final class ClassTest extends TestCase
                     class BazClass implements BaseInterface {}
                     PHP,
                 'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'interfaceCannotImplementIfNotInInheritors' => [
                 'code' => <<<'PHP'
@@ -1459,7 +1476,7 @@ final class ClassTest extends TestCase
                     interface BazInterface extends BaseInterface {}
                     PHP,
                 'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'UnfulfilledInterfaceInheritors' => [
                 'code' => <<<'PHP'
@@ -1475,7 +1492,7 @@ final class ClassTest extends TestCase
                     class BazClass implements InterFaceA, InterFaceB {}
                     PHP,
                 'error_message' => 'InheritorViolation',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'duplicateInstanceProperties' => [
                 'code' => <<<'PHP'
@@ -1486,7 +1503,7 @@ final class ClassTest extends TestCase
                     }
                     PHP,
                 'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'duplicateStaticProperties' => [
                 'code' => <<<'PHP'
@@ -1497,7 +1514,7 @@ final class ClassTest extends TestCase
                     }
                     PHP,
                 'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'duplicateMixedProperties' => [
                 'code' => <<<'PHP'
@@ -1508,7 +1525,7 @@ final class ClassTest extends TestCase
                     }
                     PHP,
                 'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
             'duplicatePropertiesDifferentVisibility' => [
                 'code' => <<<'PHP'
@@ -1519,7 +1536,7 @@ final class ClassTest extends TestCase
                     }
                     PHP,
                 'error_message' => 'DuplicateProperty',
-                'ignored_issues' => [],
+                'error_levels' => [],
             ],
         ];
     }

@@ -8,6 +8,7 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
@@ -28,6 +29,7 @@ use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
+use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
@@ -48,6 +50,7 @@ use function filter_var;
 use function is_int;
 use function is_numeric;
 use function is_string;
+use function substr;
 use function trim;
 
 use const FILTER_VALIDATE_INT;
@@ -364,9 +367,15 @@ final class ArrayAnalyzer
             }
 
             $item_is_list_item = true;
-            $item_key_value = ++$array_creation_info->int_offset;
 
-            $key_atomic_type = new TLiteralInt($item_key_value);
+            if ($array_creation_info->int_offset_known) {
+                $item_key_value = ++$array_creation_info->int_offset;
+                $key_atomic_type = new TLiteralInt($item_key_value);
+            } else {
+                // appended after an unpacked array of unknown length, so at an unknown index past the known ones
+                $key_atomic_type = new TIntRange($array_creation_info->int_offset + 1, null);
+            }
+
             $array_creation_info->item_key_atomic_types[] = $key_atomic_type;
             $key_type = new Union([$key_atomic_type]);
         }
@@ -398,9 +407,12 @@ final class ArrayAnalyzer
                 if ($item_value_type->parent_nodes) {
                     $var_location = new CodeLocation($statements_analyzer->getSource(), $item);
 
+                    $key_path_suffix = $item_key_value !== null
+                        ? '-\'' . $item_key_value . '\''
+                        : ArrayFetchAnalyzer::getKeyPrefixPathSuffix($statements_analyzer, $item->key) ?? '';
+
                     $new_parent_node = DataFlowNode::getForAssignment(
-                        'array'
-                            . ($item_key_value !== null ? '[\'' . $item_key_value . '\']' : ''),
+                        'array' . ($key_path_suffix !== '' ? '[' . substr($key_path_suffix, 1) . ']' : ''),
                         $var_location,
                     );
 
@@ -424,15 +436,14 @@ final class ArrayAnalyzer
                         }
 
                         // what an item holds can't carry the taints its type can't (see Union::getTaintsToRemove())
-                        $removed_taints |= $item_value_type->getTaintsToRemove();
+                        $removed_taints |= $item_value_type->getTaintsToRemove($codebase->getInputTaints());
                     }
 
                     foreach ($item_value_type->parent_nodes as $parent_node) {
                         $graph->addPath(
                             $parent_node,
                             $new_parent_node,
-                            'arrayvalue-assignment'
-                                . ($item_key_value !== null ? '-\'' . $item_key_value . '\'' : ''),
+                            'arrayvalue-assignment' . $key_path_suffix,
                             $added_taints,
                             $removed_taints,
                         );
@@ -471,7 +482,7 @@ final class ArrayAnalyzer
                             $taint_flow_graph->addSource($taint_source);
                         }
 
-                        $removed_taints |= $item_key_type->getTaintsToRemove();
+                        $removed_taints |= $item_key_type->getTaintsToRemove($codebase->getInputTaints());
                     }
 
                     foreach ($item_key_type->parent_nodes as $parent_node) {
@@ -618,6 +629,25 @@ final class ArrayAnalyzer
             if ($unpacked_atomic_type instanceof TKeyedArray) {
                 foreach ($unpacked_atomic_type->properties as $key => $property_value) {
                     if ($property_value->possibly_undefined) {
+                        // a string key keeps its place: it is either what the unpacked array holds under it, or
+                        // what the array had before (a list renumbers its keys, so their places are unknown);
+                        // not in array_keys, as a later item setting the key is no duplicate of a maybe missing one
+                        if (is_string($key) && $codebase->analysis_php_version_id > 8_00_00) {
+                            $previous_value = $array_creation_info->property_types[$key] ?? null;
+
+                            $array_creation_info->item_key_atomic_types[] = Type::getAtomicStringFromLiteral($key);
+                            $array_creation_info->all_list = false;
+                            $array_creation_info->property_types[$key] = $previous_value === null
+                                ? $property_value
+                                : Type::combineUnionTypes(
+                                    $previous_value,
+                                    $property_value->setPossiblyUndefined(false),
+                                    $codebase,
+                                )->setPossiblyUndefined($previous_value->possibly_undefined);
+
+                            continue;
+                        }
+
                         $has_possibly_undefined = true;
                         continue;
                     }
@@ -646,6 +676,18 @@ final class ArrayAnalyzer
                                 $statements_analyzer->getSuppressedIssues(),
                             );
                             continue 2;
+                        }
+                        if (!$array_creation_info->int_offset_known) {
+                            // renumbered after an unpacked array of unknown length, so at an unknown index
+                            $array_creation_info->item_key_atomic_types[] = new TIntRange(
+                                $array_creation_info->int_offset + 1,
+                                null,
+                            );
+                            $array_creation_info->item_value_atomic_types = array_merge(
+                                $array_creation_info->item_value_atomic_types,
+                                array_values($property_value->getAtomicTypes()),
+                            );
+                            continue;
                         }
                         $new_offset = ++$array_creation_info->int_offset;
                         $array_creation_info->item_key_atomic_types[] = new TLiteralInt($new_offset);
@@ -723,8 +765,17 @@ final class ArrayAnalyzer
                 $array_creation_info->all_list = false;
             }
 
+            // the integer keys of the items unpacked are renumbered, and how many there are is unknown
+            if (!$iterable_type->type_params[0]->isString()) {
+                $array_creation_info->int_offset_known = false;
+            }
+
             // Unpacked array might overwrite known properties, so values are merged when the keys intersect.
+            // Only string keys can be overwritten: unpacked integer keys are renumbered past the known ones.
             foreach ($array_creation_info->property_types as $prop_key_val => $prop_val) {
+                if (is_int($prop_key_val)) {
+                    continue;
+                }
                 $prop_key = new Union([ConstantTypeResolver::getLiteralTypeFromScalarValue($prop_key_val)]);
                 // Since $prop_key is a single literal type, the types intersect iff $prop_key is contained by the
                 // template type (ie $prop_key cannot overlap with the template type without being contained by it).
