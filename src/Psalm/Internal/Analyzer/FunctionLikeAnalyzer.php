@@ -43,6 +43,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypeVisitor\TypeChecker;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\InvalidDocblockParamName;
 use Psalm\Issue\InvalidOverride;
@@ -751,8 +752,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $codebase,
                     )
                     : Type::getVoid();
-                
-                $isVoid = $inferred_return->isVoid();
+
+                // a generator returns the generator, whatever its own return statements return
+                $isVoid = !$storage->has_yield && $inferred_return->isVoid();
             }
             if ($isVoid
                 && !$this->function instanceof Closure
@@ -1669,6 +1671,16 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             if ($function_param->type) {
                 $param_type = $function_param->type;
+
+                if ($function_param->type_location) {
+                    TypeChecker::checkDeferredIntersections(
+                        $param_type,
+                        $this,
+                        $function_param->type_location,
+                        $storage->suppressed_issues,
+                        $context,
+                    );
+                }
 
                 try {
                     $param_type = TypeExpander::expandUnion(

@@ -52,6 +52,8 @@ final class TypeTokenizer
         'null' => true,
         'mixed' => true,
         'numeric-string' => true,
+        'decimal-int-string' => true,
+        'non-decimal-int-string' => true,
         'class-string' => true,
         'interface-string' => true,
         'enum-string' => true,
@@ -181,8 +183,9 @@ final class TypeTokenizer
             } elseif ($was_space
                 && in_array(implode('', array_slice($chars, $i, 3)), ['as ', 'is ', 'of '])
             ) {
-                $type_tokens[++$rtc] = [$char . $chars[$i+1], $i - 1];
-                $type_tokens[++$rtc] = ['', ++$i];
+                [$keyword, $keyword_end] = self::readKeyword($string_type, $i);
+                $type_tokens[++$rtc] = [$keyword, $i - 1];
+                $type_tokens[++$rtc] = ['', $i = $keyword_end];
                 $was_char = false;
                 continue;
             } elseif ($was_space
@@ -345,6 +348,31 @@ final class TypeTokenizer
     }
 
     /**
+     * Reads the `as`, `is`, `is not` or `of` keyword starting at $i.
+     *
+     * @return array{string, int} the keyword, and the offset of its last character
+     * @psalm-pure
+     */
+    private static function readKeyword(string $string_type, int $i): array
+    {
+        $keyword = substr($string_type, $i, 2);
+
+        if ($keyword === 'is') {
+            $j = $i + 2;
+
+            while (($string_type[$j] ?? null) === ' ') {
+                ++$j;
+            }
+
+            if (substr($string_type, $j, 4) === 'not ') {
+                return ['is not', $j + 2];
+            }
+        }
+
+        return [$keyword, $i + 1];
+    }
+
+    /**
      * @psalm-pure
      */
     public static function fixScalarTerms(
@@ -389,7 +417,7 @@ final class TypeTokenizer
                 $string_type_token[0],
                 [
                     '<', '>', '|', '?', ',', '{', '}', ':', '::', '[', ']', '(', ')', '&', '=', '...', 'as', 'is',
-                    'covariant', 'contravariant',
+                    'is not', 'covariant', 'contravariant',
                 ],
                 true,
             )) {
