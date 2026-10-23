@@ -645,6 +645,213 @@ final class TypeCombinationTest extends TestCase
                     'Exception::class',
                 ],
             ],
+            'combineNonFalsyLowercaseStringWithFalsyLiteral' => [
+                'non-empty-lowercase-string',
+                [
+                    'lowercase-string&non-falsy-string',
+                    "'0'",
+                ],
+            ],
+            'combineNonFalsyLowercaseStringWithUppercaseLiteral' => [
+                'non-falsy-string',
+                [
+                    'lowercase-string&non-falsy-string',
+                    "'Abc'",
+                ],
+            ],
+            'combineNonFalsyLowercaseStringWithEmptyLiteral' => [
+                'lowercase-string',
+                [
+                    'lowercase-string&non-falsy-string',
+                    "''",
+                ],
+            ],
+            'combineNonFalsyLowercaseStringWithNonEmptyLowercaseString' => [
+                'non-empty-lowercase-string',
+                [
+                    'lowercase-string&non-falsy-string',
+                    'non-empty-lowercase-string',
+                ],
+            ],
+            'combineNonFalsyLowercaseStringWithNonFalsyString' => [
+                'non-falsy-string',
+                [
+                    'non-falsy-string',
+                    'lowercase-string&non-falsy-string',
+                ],
+            ],
+            'combineNonFalsyNumericStringWithZero' => [
+                'numeric-string',
+                [
+                    'non-falsy-string&numeric-string',
+                    "'0'",
+                ],
+            ],
+            'combineNonFalsyNumericStringWithNonNumericLiteral' => [
+                'non-falsy-string',
+                [
+                    'non-falsy-string&numeric-string',
+                    "'abc'",
+                ],
+            ],
+            'combineLowercaseNumericStringWithUppercaseNumericLiteral' => [
+                'numeric-string',
+                [
+                    'lowercase-string&numeric-string',
+                    "'1E3'",
+                ],
+            ],
+            'combineLowercaseNumericStringWithLowercaseLiteral' => [
+                'non-empty-lowercase-string',
+                [
+                    "'abc'",
+                    'lowercase-string&numeric-string',
+                ],
+            ],
+            'combineLowercaseNumericStringWithNonFalsyLowercaseString' => [
+                'non-empty-lowercase-string',
+                [
+                    'lowercase-string&numeric-string',
+                    'lowercase-string&non-falsy-string',
+                ],
+            ],
+            'combineNonFalsyLowercaseNumericStringWithNonFalsyNumericString' => [
+                'non-falsy-string&numeric-string',
+                [
+                    'lowercase-string&non-falsy-string&numeric-string',
+                    'non-falsy-string&numeric-string',
+                ],
+            ],
+            'combineNonFalsyNumericStringWithLowercaseNumericString' => [
+                'numeric-string',
+                [
+                    'non-falsy-string&numeric-string',
+                    'lowercase-string&numeric-string',
+                ],
+            ],
+            'combineNonFalsyNumericStringWithNumericString' => [
+                'numeric-string',
+                [
+                    'numeric-string',
+                    'non-falsy-string&numeric-string',
+                ],
+            ],
+            'combineNonFalsyNumericStringWithString' => [
+                'string',
+                [
+                    'non-falsy-string&numeric-string',
+                    'string',
+                ],
+            ],
+            'combineNumericStringWithNonNumericLiteral' => [
+                'non-empty-string',
+                [
+                    'numeric-string',
+                    "'a'",
+                ],
+            ],
+            'combineDecimalIntStringWithNonFalsyLowercaseString' => [
+                'non-empty-lowercase-string',
+                [
+                    'decimal-int-string',
+                    'lowercase-string&non-falsy-string',
+                ],
+            ],
+            'combineLowercaseNumericStringWithDecimalIntString' => [
+                'lowercase-string&numeric-string',
+                [
+                    'lowercase-string&numeric-string',
+                    'decimal-int-string',
+                ],
+            ],
+            'combineDecimalIntStringWithNonFalsyNumericString' => [
+                'numeric-string',
+                [
+                    'decimal-int-string',
+                    'non-falsy-string&numeric-string',
+                ],
+            ],
+            'combineNonDecimalIntStringWithNonFalsyLowercaseString' => [
+                'string',
+                [
+                    'non-decimal-int-string',
+                    'lowercase-string&non-falsy-string',
+                ],
+            ],
+            'combineDecimalIntStringWithDecimalIntLiteral' => [
+                'decimal-int-string',
+                [
+                    'decimal-int-string',
+                    "'123'",
+                ],
+            ],
+            'combineDecimalIntStringWithNumericLiteral' => [
+                "'1.5'|decimal-int-string",
+                [
+                    'decimal-int-string',
+                    "'1.5'",
+                ],
+            ],
+            'combineDecimalIntStringWithLiterals' => [
+                "'a'|decimal-int-string",
+                [
+                    "'5'",
+                    'decimal-int-string',
+                    "'a'",
+                ],
+            ],
+            'combineDecimalIntStringAndLiteralWithNonEmptyString' => [
+                'non-empty-string',
+                [
+                    'decimal-int-string',
+                    "'a'",
+                    'non-empty-string',
+                ],
+            ],
+            'combineDecimalIntStringAndEmptyLiteralWithNonEmptyString' => [
+                'string',
+                [
+                    'decimal-int-string',
+                    "''",
+                    'non-empty-string',
+                ],
+            ],
+            'combineDecimalIntStringAndLiteralWithNumericString' => [
+                'non-empty-string',
+                [
+                    'decimal-int-string',
+                    "'a'",
+                    'numeric-string',
+                ],
+            ],
+            'combineDecimalIntStringWithNumericString' => [
+                'numeric-string',
+                [
+                    'decimal-int-string',
+                    'numeric-string',
+                ],
+            ],
+            'combineDecimalIntStringWithNonDecimalIntString' => [
+                'string',
+                [
+                    'decimal-int-string',
+                    'non-decimal-int-string',
+                ],
+            ],
+            'combineNonDecimalIntStringWithNonDecimalIntLiteral' => [
+                'non-decimal-int-string',
+                [
+                    'non-decimal-int-string',
+                    "'abc'",
+                ],
+            ],
+            'combineNonDecimalIntStringWithDecimalIntLiteral' => [
+                "'123'|non-decimal-int-string",
+                [
+                    'non-decimal-int-string',
+                    "'123'",
+                ],
+            ],
             'combineClassStringWithNumericString' => [
                 'class-string|numeric-string',
                 [

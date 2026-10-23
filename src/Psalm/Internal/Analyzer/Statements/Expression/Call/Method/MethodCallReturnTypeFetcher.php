@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFet
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Codebase\ReceiverPropertyTaints;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\TaintStore;
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -278,55 +279,28 @@ final class MethodCallReturnTypeFetcher
             $context,
         );
 
-        // what a generator gives comes from what it yields (see YieldAnalyzer::taintGenerator())
-        $generator_path_type = match (strtolower((string) $declaring_method_id)) {
-            'generator::current', 'generator::send' => 'arrayvalue-fetch',
-            'generator::key' => 'arraykey-fetch',
-            'generator::getreturn' => 'return',
-            default => null,
-        };
-
-        if ($generator_path_type !== null
-            && ($graph = $statements_analyzer->getDataFlowGraphWithSuppressed())
+        // what is sent to a generator becomes the value of its yield expressions (what it gives back, see
+        // YieldAnalyzer::taintGenerator(), flows as dictionaries/InternalTaintObjectFlowMap.php says)
+        if (strtolower((string) $declaring_method_id) === 'generator::send'
+            && isset($args[0])
+            && ($taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
             && ($var_type = $statements_analyzer->node_data->getType($stmt->var))
             && $var_type->parent_nodes
+            && ($sent_type = $statements_analyzer->node_data->getType($args[0]->value))
+            && $sent_type->parent_nodes
         ) {
-            $generator_node = DataFlowNode::getForAssignment(
-                'generator ' . $cased_method_id,
-                new CodeLocation($statements_analyzer, $stmt->name),
+            $sent_node = DataFlowNode::getForAssignment(
+                'sent to the generator',
+                new CodeLocation($statements_analyzer, $args[0]->value),
             );
 
-            $graph->addNode($generator_node);
+            $taint_flow_graph->addNode($sent_node);
 
-            foreach ($var_type->parent_nodes as $parent_node) {
-                $graph->addPath($parent_node, $generator_node, $generator_path_type);
+            foreach ($sent_type->parent_nodes as $parent_node) {
+                $taint_flow_graph->addPath($parent_node, $sent_node, 'arg');
             }
 
-            $return_type_candidate = $return_type_candidate->addParentNodes(
-                [$generator_node->id => $generator_node],
-            );
-
-            // what is sent becomes the value of the yield expressions of the generator
-            if ($generator_path_type === 'arrayvalue-fetch'
-                && isset($args[0])
-                && ($taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
-                && ($sent_type = $statements_analyzer->node_data->getType($args[0]->value))
-                && $sent_type->parent_nodes
-                && strtolower((string) $declaring_method_id) === 'generator::send'
-            ) {
-                $sent_node = DataFlowNode::getForAssignment(
-                    'sent to the generator',
-                    new CodeLocation($statements_analyzer, $args[0]->value),
-                );
-
-                $taint_flow_graph->addNode($sent_node);
-
-                foreach ($sent_type->parent_nodes as $parent_node) {
-                    $taint_flow_graph->addPath($parent_node, $sent_node, 'arg');
-                }
-
-                $taint_flow_graph->addGeneratorSend($sent_node, $var_type->parent_nodes);
-            }
+            $taint_flow_graph->addGeneratorSend($sent_node, $var_type->parent_nodes);
         }
 
         return NativeClassTaintAnalyzer::taint(
@@ -394,11 +368,9 @@ final class MethodCallReturnTypeFetcher
         );
 
         // what the object holds before the call, which a specialized call may replace in the context below
-        $receiver_parent_nodes = $method_storage->return_source_this === null
-            ? []
-            : (($var_id !== null && isset($context->vars_in_scope[$var_id])
-                ? $context->vars_in_scope[$var_id]
-                : $statements_analyzer->node_data->getType($var_expr))?->parent_nodes ?? []);
+        $receiver_parent_nodes = (($var_id !== null && isset($context->vars_in_scope[$var_id])
+            ? $context->vars_in_scope[$var_id]
+            : $statements_analyzer->node_data->getType($var_expr))?->parent_nodes ?? []);
 
         if ($specialize_call && $taint_flow_graph) {
             // the receiver is only tracked through calls explicitly specialized: see FunctionLikeAnalyzer
@@ -636,6 +608,7 @@ final class MethodCallReturnTypeFetcher
             $method_id,
             $method_storage,
             $node_location,
+            $receiver_parent_nodes,
         );
 
         if ($dispatch_node) {
@@ -683,6 +656,19 @@ final class MethodCallReturnTypeFetcher
             $specialize_call ? $node_location : null,
         );
 
+        $return_type_candidate = ReceiverPropertyTaints::taintCall(
+            $statements_analyzer,
+            $taint_flow_graph,
+            $method_storage,
+            $args,
+            $method_id->fq_class_name,
+            $receiver_parent_nodes,
+            $var_id,
+            $context,
+            $node_location,
+            $return_type_candidate,
+        );
+
         // what the plugins add to and remove from the result of this call, on a node of its own: the nodes the
         // result comes from may be shared with the other calls, the last call deciding for all
         if ($added_taints !== 0 || $removed_taints !== 0) {
@@ -709,6 +695,11 @@ final class MethodCallReturnTypeFetcher
      * DataFlowNode::getForReturnDispatch()) shared by the virtual calls of the method on the class, once, so that
      * the number of calls doesn't multiply its paths. Each call takes it through a node of its own, so that what is
      * added to the result of a call doesn't go to the others.
+     *
+     * The overrides specialized by call take the object of the call, from $receiver_parent_nodes, as their `$this`,
+     * through a node shared the same way (see DataFlowNode::getForThisDispatch()).
+     *
+     * @param array<string, DataFlowNode> $receiver_parent_nodes
      */
     public static function getReturnDispatchNode(
         Codebase $codebase,
@@ -716,6 +707,7 @@ final class MethodCallReturnTypeFetcher
         MethodIdentifier $method_id,
         MethodStorage $method_storage,
         CodeLocation $call_location,
+        array $receiver_parent_nodes = [],
     ): ?DataFlowNode {
         // a constructor is called on the class it constructs, a private method is not overridden
         if ($method_id->method_name === '__construct'
@@ -733,9 +725,15 @@ final class MethodCallReturnTypeFetcher
 
         $cased_method_id = $class_storage->name . '::' . (string) $method_storage->cased_name;
         $dispatch_node = DataFlowNode::getForReturnDispatch($cased_method_id);
+        $this_dispatch_node = DataFlowNode::getForThisDispatch($cased_method_id);
+
+        if ($taint_flow_graph->isEmptyDispatch($dispatch_node)) {
+            return null;
+        }
 
         if (!$taint_flow_graph->hasNode($dispatch_node)) {
             $return_nodes = [];
+            $this_nodes = [];
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
@@ -773,10 +771,29 @@ final class MethodCallReturnTypeFetcher
                 );
 
                 $return_nodes[$return_node->id] = $return_node;
+
+                // The body of a method specialized by call takes `$this` from a node (see FunctionLikeAnalyzer): the
+                // one of the specialization the return node above leaves, so that what it returns of the object, as a
+                // parent class's method calling a method its subclass overrides to return `$this` or a property,
+                // reaches the call
+                if ($specialization_location !== null
+                    && $dependent_storage->specialize_call
+                    && !$method_storage->is_static
+                ) {
+                    $this_node = DataFlowNode::getForAssignment(
+                        '$this in ' . (string) FunctionLikeAnalyzer::getBodyMethodId($codebase, $dependent_method_id),
+                        $specialization_location,
+                        DataFlowNode::getSpecializationKey($specialization_location),
+                    );
+
+                    $this_nodes[$this_node->id] = $this_node;
+                }
             }
 
             // no other method may run: the classes extending this one inherit the method
             if ($return_nodes === []) {
+                $taint_flow_graph->addEmptyDispatch($dispatch_node);
+
                 return null;
             }
 
@@ -786,12 +803,29 @@ final class MethodCallReturnTypeFetcher
                 $taint_flow_graph->addNode($return_node);
                 $taint_flow_graph->addPath($return_node, $dispatch_node, 'dispatch');
             }
+
+            if ($this_nodes !== []) {
+                $taint_flow_graph->addNode($this_dispatch_node);
+
+                foreach ($this_nodes as $this_node) {
+                    $taint_flow_graph->addNode($this_node);
+                    $taint_flow_graph->addPath($this_dispatch_node, $this_node, '=');
+                }
+            }
         }
 
         $call_node = DataFlowNode::getForAssignment($dispatch_node->label, $call_location);
 
         $taint_flow_graph->addNode($call_node);
         $taint_flow_graph->addPath($dispatch_node, $call_node, 'dispatch');
+
+        // Without what the plugins add to and remove from this call: the parent nodes of the object may be shared with
+        // the other calls, the last call deciding for all. They apply to the result of the call on a node of its own.
+        if ($receiver_parent_nodes !== [] && $taint_flow_graph->hasNode($this_dispatch_node)) {
+            foreach ($receiver_parent_nodes as $parent_node) {
+                $taint_flow_graph->addPath($parent_node, $this_dispatch_node, '=');
+            }
+        }
 
         return $call_node;
     }

@@ -45,6 +45,7 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
+use Psalm\Type\Atomic\TLowercaseNumericString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNever;
@@ -53,6 +54,7 @@ use Psalm\Type\Atomic\TNonEmptyNonspecificLiteralString;
 use Psalm\Type\Atomic\TNonEmptyString;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumeric;
+use Psalm\Type\Atomic\TNumericString;
 use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TResource;
 use Psalm\Type\Atomic\TScalar;
@@ -1017,6 +1019,28 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 $existing_var_type->removeType('string');
                 $existing_var_type->addType(Type::getAtomicStringFromLiteral('0'));
             }
+        }
+
+        if ($existing_var_type->hasType('numeric-string')) {
+            $numeric_string_atomic_type = $existing_var_type->getAtomicTypes()['numeric-string'];
+
+            if ($numeric_string_atomic_type::class === TNumericString::class
+                || $numeric_string_atomic_type instanceof TLowercaseNumericString
+            ) {
+                $existing_var_type->removeType('numeric-string');
+                $existing_var_type->addType(Type::getAtomicStringFromLiteral('0'));
+            }
+        }
+
+        // "0" is the only falsy decimal int string, "" the only other falsy string
+        if ($existing_var_type->hasType('decimal-int-string')) {
+            $existing_var_type->removeType('decimal-int-string');
+            $existing_var_type->addType(Type::getAtomicStringFromLiteral('0'));
+        }
+
+        if ($existing_var_type->hasType('non-decimal-int-string')) {
+            $existing_var_type->removeType('non-decimal-int-string');
+            $existing_var_type->addType(Type::getAtomicStringFromLiteral(''));
         }
 
         if ($existing_var_type->hasInt()) {

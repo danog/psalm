@@ -27,6 +27,7 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Block\ForeachAnalyzer;
+use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\NativeClassTaintAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -202,6 +203,15 @@ final class Codebase
      * @var array<string, list<array{string, string}>>|null
      */
     public ?array $constructor_argument_starts = null;
+
+    /**
+     * The types of the global constants matching each wildcard expanded since the files were last scanned, by name
+     * (see ConstFetchAnalyzer::getGlobalConstTypesByWildcard())
+     *
+     * @internal
+     * @var array<string, array<string, Union>>
+     */
+    public array $global_constant_types_by_wildcard = [];
 
     public bool $server_mode = false;
 
@@ -741,6 +751,25 @@ final class Codebase
     }
 
     /**
+     * The path along which the taints of the object a method of a builtin class is called on flow into what the
+     * method returns, as taint analysis follows a call of it: `=` for all of it (ArrayObject::getArrayCopy()),
+     * `arrayvalue-fetch` for its elements (ArrayIterator::current(), Generator::current() and Generator::send(), what
+     * the generator yields), `arraykey-fetch` for its keys (ArrayIterator::key(), Generator::key()), `return` for what
+     * a generator returns (Generator::getReturn()). A method of a class extending a builtin class follows the closest
+     * class having such a path for it. Null if the method gives back none of what its object holds: then only its
+     * body or its `@psalm-flow` annotations can return it.
+     *
+     * @param array<int, Union> $arg_types the types of the arguments of the call, by offset: when the method takes the
+     *   key of the element it returns, like ArrayObject::offsetGet(), a literal key restricts the path to that element
+     *   (`arrayvalue-fetch-'key'`), as with `$array['key']`
+     * @return ?non-empty-string
+     */
+    public function getReceiverTaintPath(string|MethodIdentifier $method_id, array $arg_types = []): ?string
+    {
+        return NativeClassTaintAnalyzer::getReturnPath($this, MethodIdentifier::wrap($method_id), $arg_types);
+    }
+
+    /**
      * Register an alias taint name based on one or more pre-existing taints.
      *
      * @throws AssertionError if the passed taint is already registered or if the alias uses some unregistered taints.
@@ -888,6 +917,8 @@ final class Codebase
         // the classes scanned again may make other `new`
         $this->constructor_argument_starts = null;
         $this->populator->populateCodebase();
+        // the files scanned again may declare other constants
+        $this->global_constant_types_by_wildcard = [];
     }
 
     /**
@@ -954,6 +985,8 @@ final class Codebase
             // the classes scanned again may make other `new`
             $this->constructor_argument_starts = null;
             $this->populator->populateCodebase();
+            // the files scanned again may declare other constants
+            $this->global_constant_types_by_wildcard = [];
         }
     }
 
@@ -1538,6 +1571,7 @@ final class Codebase
         }
 
         $this->file_storage_provider->remove($file_path);
+        $this->global_constant_types_by_wildcard = [];
     }
 
     /**
@@ -2850,6 +2884,8 @@ final class Codebase
     }
 
     /**
+     * Adds a sink and returns it, so addTaintPath() can lead to it (null without taint analysis)
+     *
      * @param ?int $taints the taints the sink must not be given, those of user input (see getInputTaints()) if null
      * @psalm-capabilities read-props|write-this-props|write-props|write-refs
      */
@@ -2857,9 +2893,9 @@ final class Codebase
         string $taint_id,
         CodeLocation $code_location,
         ?int $taints = null,
-    ): void {
+    ): ?DataFlowNode {
         if (!$this->taint_flow_graph) {
-            return;
+            return null;
         }
 
         $sink = DataFlowNode::getForTaint(
@@ -2869,6 +2905,88 @@ final class Codebase
         );
 
         $this->taint_flow_graph->addSink($sink);
+
+        return $sink;
+    }
+
+    /**
+     * Whether taints are tracked in the statements of $source: false without taint analysis, while they suppress
+     * TaintedInput, or while Psalm re-analyzes them only to collect mutations. Adding paths does nothing then.
+     *
+     * @psalm-mutation-free
+     */
+    public function tracksTaintFlow(StatementsSource $source): bool
+    {
+        return $this->getTaintFlowGraphOf($source) !== null;
+    }
+
+    /**
+     * A taint node for a value at $location (one per label and location). The taints of $value_type flow into it.
+     * To make an expression's value come from the node, use `$type->addParentNodes([$node->id => $node])`.
+     *
+     * @psalm-capabilities read-props|write-props
+     */
+    public function getTaintNode(
+        StatementsSource $source,
+        string $label,
+        CodeLocation $location,
+        ?Union $value_type = null,
+    ): DataFlowNode {
+        $node = DataFlowNode::getForAssignment($label, $location);
+
+        $graph = $this->getTaintFlowGraphOf($source);
+        if ($graph === null || $value_type === null) {
+            return $node;
+        }
+
+        if ($value_type->parent_nodes) {
+            $graph->addNode($node);
+            foreach ($value_type->parent_nodes as $parent_node) {
+                $graph->addPath($parent_node, $node, '=');
+            }
+        } elseif ($graph->addPathsFromNestedParentNodes($node, $value_type, $location)) {
+            $graph->addNode($node);
+        }
+
+        return $node;
+    }
+
+    /**
+     * The taint node of the property `Class::$name`: assignments flow into it, fetches read from it. The property
+     * doesn't need to be declared.
+     *
+     * @psalm-pure
+     */
+    public static function getTaintPropertyNode(string $property_id): DataFlowNode
+    {
+        return DataFlowNode::getForPropertyFetch($property_id);
+    }
+
+    /**
+     * Adds a path from $from to $to that adds $added_taints and removes $removed_taints. Does nothing while
+     * tracksTaintFlow($source) is false.
+     *
+     * $path_type is `=` for a plain copy. For arrays, `arrayvalue-assignment-'key'` stores the value under a key,
+     * `arrayvalue-fetch-'key'` reads only that key, and `arrayvalue-assignment` / `arrayvalue-fetch` match any key.
+     *
+     * @psalm-capabilities read-props|write-props
+     */
+    public function addTaintPath(
+        StatementsSource $source,
+        DataFlowNode $from,
+        DataFlowNode $to,
+        string $path_type = '=',
+        int $added_taints = 0,
+        int $removed_taints = 0,
+    ): void {
+        $graph = $this->getTaintFlowGraphOf($source);
+        if ($graph === null) {
+            return;
+        }
+
+        $graph->addNode($from);
+        $graph->addNode($to);
+        $graph->addPath($from, $to, $path_type, $added_taints, $removed_taints);
     }
 
     /**
