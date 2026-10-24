@@ -157,7 +157,15 @@ trait CallableTrait
         $param_string = $this->getParamString();
         $return_type_string = $this->getReturnTypeString();
 
-        return $this->getPurityString() . $param_string . $return_type_string;
+        $key = $this->getPurityString() . $param_string . $return_type_string;
+        if ($this instanceof TClosure && $this->callable_id !== null
+            && \Psalm\Internal\Codebase\ClosedWorld::isEnabled()
+        ) {
+            // closed world: closures of distinct origins stay distinct members, so a call of the value is
+            // attributed to each of them
+            $key .= '#' . $this->callable_id;
+        }
+        return $key;
     }
 
     /**

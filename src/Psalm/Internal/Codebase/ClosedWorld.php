@@ -683,6 +683,307 @@ final class ClosedWorld
     }
 
     /**
+     * Arguments of dynamic calls whose callee the types do not resolve: offset => slot. Every function-like that
+     * may be called dynamically (a closure, a function or method the program names in a string) receives them.
+     *
+     * @var array<int, ClosedWorldSlot>
+     */
+    private array $dynamic_pool = [];
+
+    /** Whether some unresolved dynamic call passes arguments by unpacking (any parameter may receive them). */
+    private ?ClosedWorldSlot $dynamic_pool_spread = null;
+
+    /**
+     * The arguments of a call as the dynamic-call recording takes them: types by position, and the type of the
+     * further ones when an argument is unpacked.
+     *
+     * @param array<PhpParser\Node\Arg> $args
+     * @return array{list<Union>, ?Union}
+     */
+    public static function argTypes(StatementsAnalyzer $statements_analyzer, array $args): array
+    {
+        $types = [];
+        $spread = null;
+        foreach ($args as $arg) {
+            $type = $statements_analyzer->node_data->getType($arg->value) ?? Type::getMixed();
+            if (!$arg->unpack) {
+                $types[] = $type;
+                continue;
+            }
+            $sealed = $type->isSingle() ? $type->getSingleAtomic() : null;
+            if ($sealed instanceof TKeyedArray && $sealed->is_list && $sealed->fallback_params === null) {
+                foreach ($sealed->properties as $element) {
+                    if ($element->possibly_undefined) {
+                        $spread = $spread === null ? $element : Type::combineUnionTypes($spread, $element);
+                    } else {
+                        $types[] = $element;
+                    }
+                }
+                continue;
+            }
+            $element = self::iterableValueType($type);
+            $spread = $spread === null ? $element : Type::combineUnionTypes($spread, $element);
+        }
+        return [$types, $spread];
+    }
+
+    /**
+     * Callables given to a builtin: it calls them with the parameters its signature gives the callable type
+     * (templates resolved by the call), or with unknown arguments when the signature does not say.
+     *
+     * @param array<PhpParser\Node\Arg> $args
+     * @param array<int, list<FunctionLikeParameter>> $arg_function_params
+     */
+    public function recordBuiltinCallbacks(
+        StatementsAnalyzer $statements_analyzer,
+        ?string $function_id,
+        array $args,
+        array $arg_function_params,
+        ?\Psalm\Internal\Type\TemplateResult $template_result,
+    ): void {
+        $trusted = !$this->codebase->config->ignoresDocblockTypesIn($statements_analyzer->getFilePath());
+        $type = static fn(int $i): Union => isset($args[$i])
+            ? ($statements_analyzer->node_data->getType($args[$i]->value) ?? Type::getMixed())
+            : Type::getMixed();
+        $value = static fn(int $i): Union => isset($args[$i]) ? self::iterableValueType($type($i)) : Type::getMixed();
+        $key = static function (int $i) use ($type): Union {
+            $keys = [];
+            foreach ($type($i)->getAtomicTypes() as $atomic) {
+                if ($atomic instanceof TKeyedArray) {
+                    $keys[] = $atomic->getGenericKeyType();
+                } elseif ($atomic instanceof TArray) {
+                    $keys[] = $atomic->type_params[0];
+                } else {
+                    return Type::getArrayKey();
+                }
+            }
+            return $keys ? Type::combineUnionTypeArray($keys, null) : Type::getArrayKey();
+        };
+        // the builtins that call a callable with the elements of their arrays
+        $known = match (strtolower((string) $function_id)) {
+            'array_map' => [0, \array_map(static fn(int $i): Union => $value($i), \range(1, \max(1, \count($args) - 1)))],
+            'array_filter' => [1, isset($args[2]) ? [Type::combineUnionTypes($value(0), $key(0)), $key(0)] : [$value(0)]],
+            'usort', 'uasort' => [1, [$value(0), $value(0)]],
+            'uksort' => [1, [$key(0), $key(0)]],
+            'array_walk', 'array_walk_recursive' => [1, [$value(0), $key(0), $type(2)]],
+            'array_reduce' => [1, [Type::getMixed(), $value(0)]],
+            'preg_replace_callback' => [1, [Type::parseString('array<array-key, string>')]],
+            'iterator_apply' => [1, []],
+            'spl_autoload_register' => [0, [Type::getString()]],
+            default => null,
+        };
+        if ($known !== null) {
+            [$offset, $arg_types] = $known;
+            if (isset($args[$offset])) {
+                $this->recordDynamicCall($type($offset), $arg_types, null, $trusted);
+            }
+            return;
+        }
+        foreach ($args as $offset => $arg) {
+            foreach ($arg_function_params[$offset] ?? [] as $param) {
+                if ($param->type === null || !self::isCallableParam($param->type)) {
+                    continue;
+                }
+                $expected = $param->type;
+                if ($template_result !== null) {
+                    try {
+                        $expected = \Psalm\Internal\Type\TemplateInferredTypeReplacer::replace(
+                            $expected,
+                            $template_result,
+                            $this->codebase,
+                        );
+                    } catch (\Throwable) {
+                    }
+                }
+                $arg_types = null;
+                foreach ($expected->getAtomicTypes() as $atomic) {
+                    if (($atomic instanceof Atomic\TCallable || $atomic instanceof Atomic\TClosure) && $atomic->params !== null) {
+                        $types = [];
+                        foreach ($atomic->params as $cp) {
+                            $t = $cp->type ?? Type::getMixed();
+                            $types[] = $t->hasTemplate() ? Type::getMixed() : $t;
+                        }
+                        $arg_types = $types;
+                        break;
+                    }
+                }
+                $callee = $statements_analyzer->node_data->getType($arg->value);
+                if ($arg_types === null) {
+                    $this->recordDynamicCall($callee, [], Type::getMixed(), $trusted);
+                } else {
+                    $this->recordDynamicCall($callee, $arg_types, null, $trusted);
+                }
+            }
+        }
+    }
+
+    /** @var array<string, FunctionLikeStorage>|null project functions and closures by lowercase id */
+    private ?array $function_by_id = null;
+
+    /**
+     * A dynamic call (`$f(...)`, `call_user_func_array($f, $args)`, a callable given to a builtin that calls it):
+     * the callee's type names its targets - literal function names, closures (by their identity), `[$obj,
+     * 'method']` arrays - and they receive the arguments. A callee the types do not pin down sends the
+     * arguments to every function-like that may be called dynamically.
+     *
+     * @param list<Union> $arg_types arguments by position
+     * @param ?Union $spread type of the further arguments when some were unpacked (or their number is unknown)
+     */
+    public function recordDynamicCall(?Union $callee, array $arg_types, ?Union $spread, bool $trusted_site = false): void
+    {
+        $targets = [];
+        $resolved = $callee !== null;
+        foreach ($callee?->getAtomicTypes() ?? [] as $atomic) {
+            if ($atomic instanceof Atomic\TNull || $atomic instanceof Atomic\TFalse) {
+                continue;
+            }
+            $found = $this->callableTargets($atomic);
+            if ($found === null) {
+                $resolved = false;
+                continue;
+            }
+            foreach ($found as $storage) {
+                $targets[spl_object_id($storage)] = $storage;
+            }
+        }
+        foreach ($targets as $id => $storage) {
+            $this->storages[$id] = $storage;
+            foreach ($storage->params as $i => $param) {
+                $slot = $this->args[$id][$i] ??= new ClosedWorldSlot();
+                if ($param->is_variadic) {
+                    foreach (\array_slice($arg_types, $i) as $t) {
+                        $slot->add($t, false);
+                    }
+                    if ($spread !== null) {
+                        $slot->add($spread, false);
+                    }
+                    break;
+                }
+                if (isset($arg_types[$i])) {
+                    $slot->add($arg_types[$i], false);
+                } elseif ($spread !== null) {
+                    $slot->add($spread, false);
+                }
+                if (!isset($arg_types[$i]) && $param->default_type instanceof Union) {
+                    $slot->add($param->default_type, false);
+                }
+            }
+        }
+        if (getenv('CW_DEBUG')) {
+            fwrite(STDERR, '[closed-world] ' . ($resolved ? 'resolved (' . \count($targets) . ')' : 'unresolved') . ' dynamic call of ' . ($callee?->getId() ?? '?')
+                . ($trusted_site ? ' (trusted)' : '') . ' with (' . \implode(', ', \array_map(static fn(Union $t): string => $t->getId(), $arg_types))
+                . ($spread !== null ? ', ...' . $spread->getId() : '') . ")\n");
+        }
+        if (!$resolved && !$trusted_site) {
+            // (a call inside trusted code reaches only callables given to it through its typed callable
+            // parameters: those were recorded with the parameter's signature where they were given)
+            $this->unknown_callables = true;
+            foreach ($arg_types as $i => $t) {
+                ($this->dynamic_pool[$i] ??= new ClosedWorldSlot())->add($t, false);
+            }
+            if ($spread !== null) {
+                ($this->dynamic_pool_spread ??= new ClosedWorldSlot())->add($spread, false);
+            }
+        }
+    }
+
+    /**
+     * The project function-likes a callable value may call; null when the value does not tell (any of them).
+     *
+     * @return list<FunctionLikeStorage>|null
+     */
+    private function callableTargets(Atomic $atomic): ?array
+    {
+        if ($atomic instanceof Atomic\TClosure) {
+            if ($atomic->callable_id === null) {
+                return null;
+            }
+            $storage = $this->functionById($atomic->callable_id);
+            if ($storage !== null) {
+                return [$storage];
+            }
+            // a first-class callable of a method (`$o->m(...)`): its id is the method id
+            if (\str_contains($atomic->callable_id, '::')) {
+                return $this->methodTargets(...\explode('::', $atomic->callable_id, 2));
+            }
+            return []; // a builtin
+        }
+        if ($atomic instanceof TLiteralString && !$atomic instanceof Atomic\TLiteralClassString) {
+            $name = \ltrim($atomic->value, '\\');
+            if (\str_contains($name, '::')) {
+                return $this->methodTargets(...\explode('::', $name, 2));
+            }
+            $storage = $this->functionById(strtolower($name));
+            return $storage !== null ? [$storage] : [];
+        }
+        if ($atomic instanceof TKeyedArray && \count($atomic->properties) === 2
+            && isset($atomic->properties[0], $atomic->properties[1])
+            && $atomic->properties[1]->isSingleStringLiteral()
+        ) {
+            $method = $atomic->properties[1]->getSingleStringLiteral()->value;
+            $targets = [];
+            foreach ($atomic->properties[0]->getAtomicTypes() as $receiver) {
+                if ($receiver instanceof Atomic\TNamedObject) {
+                    $class = $receiver->value;
+                } elseif ($receiver instanceof Atomic\TLiteralClassString) {
+                    $class = $receiver->value;
+                } elseif ($receiver instanceof TLiteralString) {
+                    $class = $receiver->value;
+                } else {
+                    return null;
+                }
+                $found = $this->methodTargets($class, $method);
+                if ($found === null) {
+                    return null;
+                }
+                $targets = [...$targets, ...$found];
+            }
+            return $targets;
+        }
+        if ($atomic instanceof Atomic\TNamedObject) {
+            // an invokable object: its __invoke is magic (keeps its declared parameter types)
+            return [];
+        }
+        return null;
+    }
+
+    /** @return list<FunctionLikeStorage>|null */
+    private function methodTargets(string $class, string $method): ?array
+    {
+        $class = \ltrim($class, '\\');
+        if (!$this->codebase->classlike_storage_provider->has($class)) {
+            return null;
+        }
+        $class_storage = $this->codebase->classlike_storage_provider->get($class);
+        $declaring = $class_storage->declaring_method_ids[strtolower($method)] ?? null;
+        if ($declaring === null) {
+            // `__call` / `__callStatic` handle it: magic
+            return [];
+        }
+        try {
+            return [$this->codebase->methods->getStorage($declaring)];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function functionById(string $id): ?FunctionLikeStorage
+    {
+        if ($this->function_by_id === null) {
+            $this->function_by_id = [];
+            foreach ($this->codebase->file_storage_provider->getAll() as $file_storage) {
+                if (!$this->codebase->config->isInProjectDirs($file_storage->file_path)) {
+                    continue;
+                }
+                foreach ($file_storage->functions as $fid => $storage) {
+                    $this->function_by_id[strtolower((string) $fid)] = $storage;
+                }
+            }
+        }
+        return $this->function_by_id[$id] ?? null;
+    }
+
+    /**
      * A value used as a callable (called dynamically, or passed where a callable is expected). A string that is
      * not a known literal may name any function-like whose name the program can build.
      */
@@ -818,6 +1119,8 @@ final class ClosedWorld
         $this->global_writes = [];
         $this->outs = [];
         $this->unknown_callables = false;
+        $this->dynamic_pool = [];
+        $this->dynamic_pool_spread = null;
         $this->unknown_method_args = [];
         $this->returns = [];
         $this->always_exits = [];
@@ -859,9 +1162,10 @@ final class ClosedWorld
         foreach ($this->storages as $id => $storage) {
             $group = $groups[$id] ?? [$id];
             $escaped = $this->isEscaped($storage);
+            $dynamic = !$escaped && $this->isDynamicTarget($storage);
             foreach ($storage->params as $i => $param) {
                 $key = 'p:' . $id . ':' . $i;
-                $this->declared_params[$key] ??= [$param, $param->type];
+                $this->declared_params[$key] ??= [$param, $param->signature_type];
                 $declared = $this->declared_params[$key][1];
                 if ($escaped) {
                     $new = $declared;
@@ -870,6 +1174,25 @@ final class ClosedWorld
                     foreach ($group as $member) {
                         if (isset($this->args[$member][$i])) {
                             $slot->merge($this->args[$member][$i]);
+                        }
+                    }
+                    if ($dynamic) {
+                        if ($param->is_variadic) {
+                            foreach ($this->dynamic_pool as $j => $pool) {
+                                if ($j >= $i) {
+                                    $slot->merge($pool);
+                                }
+                            }
+                        } elseif (isset($this->dynamic_pool[$i])) {
+                            $slot->merge($this->dynamic_pool[$i]);
+                        }
+                        if ($this->dynamic_pool_spread !== null) {
+                            $slot->merge($this->dynamic_pool_spread);
+                        }
+                        if (($this->dynamic_pool !== [] || $this->dynamic_pool_spread !== null)
+                            && $param->default_type instanceof Union
+                        ) {
+                            $slot->add($param->default_type, false);
                         }
                     }
                     if ($storage instanceof MethodStorage && $storage->cased_name !== null
@@ -993,7 +1316,8 @@ final class ClosedWorld
         if (($parts[0] === 'p' || $parts[0] === 'r' || $parts[0] === 'o') && isset($this->storages[(int) $parts[1]])) {
             $storage = $this->storages[(int) $parts[1]];
             $name = ($storage instanceof MethodStorage ? $storage->defining_fqcln . '::' : '')
-                . ($storage->cased_name ?? '?');
+                . ($storage->cased_name ?? ('{closure@' . \basename((string) $storage->location?->file_path) . ':'
+                    . ($storage->location?->getLineNumber() ?? 0) . '}'));
             if ($parts[0] === 'p' || $parts[0] === 'o') {
                 return $name . '(' . ($parts[0] === 'o' ? 'out ' : '') . '$'
                     . ($storage->params[(int) $parts[2]]->name ?? '?') . ')';
@@ -1058,32 +1382,53 @@ final class ClosedWorld
     }
 
     /**
-     * Whether a function-like may be called from places the analysis cannot attribute arguments from: callables
-     * built from strings, closures, magic methods. Its parameters keep their declared types.
+     * Whether a function-like may be called from places the analysis cannot attribute arguments from: magic
+     * methods (called by the engine). Its parameters keep their declared types.
      */
     private function isEscaped(FunctionLikeStorage $storage): bool
     {
-        $name = $storage->cased_name;
-        if ($name === null || $storage->location === null) {
+        if ($storage->location === null) {
             return true;
         }
+        if (self::isClosure($storage)) {
+            return false;
+        }
+        if ($storage instanceof MethodStorage) {
+            $lc = strtolower($storage->cased_name);
+            return \str_starts_with($lc, '__') && $lc !== '__construct';
+        }
+        return false;
+    }
+
+    private static function isClosure(FunctionLikeStorage $storage): bool
+    {
+        return !$storage instanceof MethodStorage
+            && ($storage->cased_name === null || \str_ends_with($storage->cased_name, ':-:closure'));
+    }
+
+    /**
+     * Whether a function-like may be the target of a dynamic call the types do not resolve: a closure, a function
+     * or method the program names in a string (see nameMayBeBuilt). It receives the arguments of such calls.
+     */
+    private function isDynamicTarget(FunctionLikeStorage $storage): bool
+    {
+        $name = (string) $storage->cased_name;
         if ($storage instanceof MethodStorage) {
             $lc = strtolower($name);
-            if (\str_starts_with($lc, '__') && $lc !== '__construct') {
-                return true;
-            }
             // `[$obj, 'name']`, `'Class::name'`, `[Class::class, 'name']`
             return $this->nameMayBeBuilt($lc)
                 || $this->nameMayBeBuilt(strtolower((string) $storage->defining_fqcln) . '::' . $lc);
         }
-        if (\str_contains($name, 'closure') || $storage->cased_name === '{closure}') {
+        if (self::isClosure($storage)) {
             return true;
         }
         $fq = strtolower($name);
-        foreach ($this->codebase->file_storage_provider->get($storage->location->file_path)->functions as $fid => $fs) {
-            if ($fs === $storage) {
-                $fq = (string) $fid;
-                break;
+        if ($storage->location !== null) {
+            foreach ($this->codebase->file_storage_provider->get($storage->location->file_path)->functions as $fid => $fs) {
+                if ($fs === $storage) {
+                    $fq = (string) $fid;
+                    break;
+                }
             }
         }
         return $this->nameMayBeBuilt($fq);
@@ -1411,6 +1756,13 @@ final class ClosedWorld
      */
     private array $rewrites = [];
 
+    /** Builtins that only call the callables they are given. */
+    private const CALLBACK_BUILTINS = [
+        'array_map' => true, 'array_filter' => true, 'usort' => true, 'uasort' => true, 'uksort' => true,
+        'array_walk' => true, 'array_walk_recursive' => true, 'array_reduce' => true, 'preg_replace_callback' => true,
+        'iterator_apply' => true, 'call_user_func' => true, 'call_user_func_array' => true,
+    ];
+
     /**
      * Call arities seen this pass, by storage id: [min, max] argument counts, max null when an argument was
      * unpacked.
@@ -1444,6 +1796,7 @@ final class ClosedWorld
             $exact_arity = !$record->node instanceof PhpParser\Node\Expr\Closure
                 && !$record->node instanceof PhpParser\Node\Expr\ArrowFunction
                 && !$this->isEscaped($storage)
+                && !$this->isDynamicTarget($storage)
                 && $this->hasExactArity($storage);
             foreach (self::ownNodes($stmts) as $node) {
                 $pos = (int) $node->getAttribute('startFilePos');
@@ -1471,6 +1824,35 @@ final class ClosedWorld
                     }
                     $this->rewrites[$file][$pos] = ['args', $names];
                     $added++;
+                } elseif ($node instanceof PhpParser\Node\Expr\FuncCall && $node->name instanceof PhpParser\Node\Name
+                    && isset(self::CALLBACK_BUILTINS[strtolower($node->name->getLast())])
+                ) {
+                    // `usort($a, [$obj, 'cmp'])`: the array only names a method for the builtin to call
+                    foreach ($node->getArgs() as $arg) {
+                        $item = $arg->value;
+                        $apos = (int) $item->getAttribute('startFilePos');
+                        if (!$item instanceof PhpParser\Node\Expr\Array_ || \count($item->items) !== 2
+                            || isset($this->rewrites[$file][$apos])
+                            || !$item->items[1] instanceof PhpParser\Node\ArrayItem
+                            || !$item->items[1]->value instanceof PhpParser\Node\Scalar\String_
+                            || !$item->items[0] instanceof PhpParser\Node\ArrayItem
+                            || $item->items[0]->key !== null || $item->items[1]->key !== null
+                        ) {
+                            continue;
+                        }
+                        $receiver = $record->node_data->getType($item->items[0]->value);
+                        if ($receiver === null || !$receiver->isSingle()) {
+                            continue;
+                        }
+                        $r = $receiver->getSingleAtomic();
+                        if ($r instanceof Atomic\TNamedObject) {
+                            $this->rewrites[$file][$apos] = ['method_fcc', $item->items[1]->value->value];
+                            $added++;
+                        } elseif ($r instanceof TLiteralString) {
+                            $this->rewrites[$file][$apos] = ['static_fcc', [$r->value, $item->items[1]->value->value]];
+                            $added++;
+                        }
+                    }
                 } elseif ($node instanceof PhpParser\Node\Stmt\Expression && $node->expr instanceof PhpParser\Node\Expr\FuncCall
                     && $node->expr->name instanceof PhpParser\Node\Name
                     && strtolower($node->expr->name->getLast()) === 'extract' && \count($node->expr->getArgs()) === 1

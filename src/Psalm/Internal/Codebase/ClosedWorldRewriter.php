@@ -104,6 +104,26 @@ final class ClosedWorldRewriter extends NodeVisitorAbstract
                 $attrs + ['kind' => PhpParser\Node\Expr\Array_::KIND_SHORT],
             );
         }
+        if ($kind === 'method_fcc' && $node instanceof PhpParser\Node\Expr\Array_
+            && $node->items[0] instanceof PhpParser\Node\ArrayItem
+        ) {
+            /** @var string $data */
+            return new PhpParser\Node\Expr\MethodCall(
+                $node->items[0]->value,
+                new PhpParser\Node\Identifier($data, $attrs),
+                [new PhpParser\Node\VariadicPlaceholder($attrs)],
+                $attrs,
+            );
+        }
+        if ($kind === 'static_fcc' && $node instanceof PhpParser\Node\Expr\Array_) {
+            /** @var array{string, string} $data */
+            return new PhpParser\Node\Expr\StaticCall(
+                new PhpParser\Node\Name\FullyQualified(\ltrim($data[0], '\\'), $attrs),
+                new PhpParser\Node\Identifier($data[1], $attrs),
+                [new PhpParser\Node\VariadicPlaceholder($attrs)],
+                $attrs,
+            );
+        }
         if ($kind === 'extract' && $node instanceof PhpParser\Node\Stmt\Expression
             && $node->expr instanceof PhpParser\Node\Expr\FuncCall
         ) {

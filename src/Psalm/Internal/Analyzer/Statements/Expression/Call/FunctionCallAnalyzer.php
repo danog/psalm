@@ -151,10 +151,6 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                 $context,
             );
 
-            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
-                $closed_world->recordCallableValue($statements_analyzer->node_data->getType($function_name));
-            }
-
             if ($function_call_info->function_exists === false) {
                 return true;
             }
@@ -231,6 +227,18 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                 $context,
                 $template_result,
             );
+
+            if ($function_name instanceof PhpParser\Node\Expr
+                && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+            ) {
+                [$arg_types, $spread] = \Psalm\Internal\Codebase\ClosedWorld::argTypes($statements_analyzer, $stmt->getArgs());
+                $closed_world->recordDynamicCall(
+                    $statements_analyzer->node_data->getType($function_name),
+                    $arg_types,
+                    $spread,
+                    !$codebase->config->ignoresDocblockTypesIn($statements_analyzer->getFilePath()),
+                );
+            }
         }
 
         if ($set_inside_conditional) {
@@ -911,7 +919,11 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                             $fq_class_name = $parts[0];
                             $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
                             $potential_method_id = new MethodIdentifier($fq_class_name, $parts[1]);
-                        } else {
+                        } elseif (!\Psalm\Internal\Codebase\ClosedWorld::isEnabled()
+                            || $stmt_name_type->isSingleStringLiteral()
+                        ) {
+                            // (closed world: only a callee that is this one name is a call of it; a union of
+                            // callables is a dynamic call of each)
                             $function_call_info->new_function_name = new VirtualFullyQualified(
                                 $var_type_part->value,
                                 $function_name->getAttributes(),

@@ -296,7 +296,9 @@ final class ArgumentsAnalyzer
             $context->inside_isset = $was_inside_isset;
             $context->inside_call = $was_inside_call;
 
-            if ($high_order_callable_info && $high_order_template_result) {
+            if ($high_order_callable_info && $high_order_template_result && !ClosedWorld::isEnabled()) {
+                // (closed world: the argument keeps its own type - a function name, a closure's identity - which
+                // tells the whole-program inference what the callee calls)
                 HighOrderFunctionArgHandler::enhanceCallableArgType(
                     $context,
                     $arg->value,
@@ -1025,13 +1027,6 @@ final class ArgumentsAnalyzer
         }
 
         if (($closed_world = ClosedWorld::get()) !== null) {
-            foreach ($args as $argument_offset => $arg) {
-                foreach ($arg_function_params[$argument_offset] ?? [] as $function_param) {
-                    if ($function_param->type !== null && ClosedWorld::isCallableParam($function_param->type)) {
-                        $closed_world->recordCallableValue($statements_analyzer->node_data->getType($arg->value));
-                    }
-                }
-            }
             $closed_world->recordCall(
                 $statements_analyzer,
                 $function_storage,
@@ -1095,6 +1090,21 @@ final class ArgumentsAnalyzer
                     return false;
                 }
             }
+        }
+
+        if (($closed_world = ClosedWorld::get()) !== null
+            && ($function_storage === null
+                || $function_storage->location === null
+                || !$codebase->config->ignoresDocblockTypesIn($function_storage->location->file_path))
+        ) {
+            // a builtin (or trusted code) calls the callables it is given with what its signature says
+            $closed_world->recordBuiltinCallbacks(
+                $statements_analyzer,
+                \is_string($method_id) ? $method_id : null,
+                $args,
+                $arg_function_params,
+                $template_result,
+            );
         }
 
         if ($statements_analyzer->taint_flow_graph
