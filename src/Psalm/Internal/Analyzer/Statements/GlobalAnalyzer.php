@@ -82,7 +82,12 @@ final class GlobalAnalyzer
                 );
             }
 
-            if ($comment_type) {
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+                && ($global_type = $closed_world->bindGlobal($context, $var_id, 'g:' . $var->name)) !== null
+            ) {
+                $context->vars_in_scope[$var_id] = $global_type;
+                $context->vars_possibly_in_scope[$var_id] = true;
+            } elseif ($comment_type) {
                 $context->vars_in_scope[$var_id] = $comment_type;
                 $context->vars_possibly_in_scope[$var_id] = true;
                 $context->byref_constraints[$var_id] = new ReferenceConstraint($comment_type);

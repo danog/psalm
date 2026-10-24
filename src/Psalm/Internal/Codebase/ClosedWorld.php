@@ -109,6 +109,19 @@ final class ClosedWorld
     /** Whether some callable value reaching a dynamic call or a callable parameter is not a known literal. */
     private bool $unknown_callables = false;
 
+    /**
+     * Writes of global and static variables: slot key (`g:name`, `s:<storage id>:name`) => slot.
+     *
+     * @var array<string, ClosedWorldSlot>
+     */
+    private array $global_writes = [];
+
+    /** @var array<string, Union> current types of global and static variables, by slot key */
+    private array $global_types = [];
+
+    /** @var array<string, true> globals written through `$GLOBALS[...]` (`*`: an unknown one): not inferred */
+    private array $escaped_globals = [];
+
     /** @var array<int, ClosedWorldSlot> body return contributions: storage id => slot */
     private array $returns = [];
 
@@ -386,6 +399,100 @@ final class ClosedWorld
         $this->recordPropertyWrite($property_id, Type::getMixed());
     }
 
+    /**
+     * `global $x` / `static $x`: the local is bound to the slot; its type is the slot's (null: not inferred).
+     */
+    public function bindGlobal(\Psalm\Context $context, string $var_id, string $key): ?Union
+    {
+        $context->closed_world_globals[$var_id] = $key;
+        if (isset($this->escaped_globals['*']) || isset($this->escaped_globals[$key])) {
+            return null;
+        }
+        // not inferred yet: the value of a variable nothing wrote
+        return $this->global_types[$key] ??= Type::getNull();
+    }
+
+    public function staticKey(StatementsAnalyzer $statements_analyzer, string $name): string
+    {
+        $storage = $this->callerStorage($statements_analyzer);
+        return 's:' . ($storage === null ? $statements_analyzer->getFilePath() : spl_object_id($storage)) . ':' . $name;
+    }
+
+    /** After a call that may write globals: the bound locals hold their slots' types again. */
+    public function refreshGlobals(\Psalm\Context $context): void
+    {
+        foreach ($context->closed_world_globals as $var_id => $key) {
+            if (isset($context->vars_in_scope[$var_id])) {
+                $context->vars_in_scope[$var_id] = $this->bindGlobal($context, $var_id, $key)
+                    ?? Type::getMixed();
+            }
+        }
+    }
+
+    /**
+     * After each statement: the global-bound locals whose type is no longer the bound one were written (or
+     * narrowed, which contributes a subset): their types are contributions to the slots. At file scope every
+     * variable is a global.
+     */
+    public function recordStatementVars(StatementsAnalyzer $statements_analyzer, \Psalm\Context $context): void
+    {
+        if (!$this->infers($statements_analyzer->getFilePath())) {
+            return;
+        }
+        if ($statements_analyzer->getSource() instanceof \Psalm\Internal\Analyzer\FileAnalyzer) {
+            foreach ($context->vars_in_scope as $var_id => $_) {
+                if (\preg_match('/^\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/', $var_id) && $var_id !== '$this') {
+                    $context->closed_world_globals[$var_id] ??= 'g:' . \substr($var_id, 1);
+                }
+            }
+        }
+        foreach ($context->closed_world_globals as $var_id => $key) {
+            $type = $context->vars_in_scope[$var_id] ?? null;
+            if ($type === null || $type === ($this->global_types[$key] ?? null)) {
+                continue;
+            }
+            ($this->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
+        }
+    }
+
+    /** The initial value of a static variable. */
+    public function recordStaticDefault(string $key, Union $type): void
+    {
+        ($this->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
+    }
+
+    private function applyGlobals(string $mode): int
+    {
+        $changed = 0;
+        $keys = \array_unique([...array_keys($this->global_writes), ...array_keys($this->global_types)]);
+        \sort($keys);
+        foreach ($keys as $key) {
+            $slot = $this->global_writes[$key] ?? new ClosedWorldSlot();
+            if (isset($this->escaped_globals['*']) || isset($this->escaped_globals[$key])) {
+                $new = Type::getMixed();
+            } else {
+                // the first pass read-modified-wrote it as `mixed`: its contributions are discarded (a global
+                // nothing wrote yet holds null)
+                $new = $mode === 'first' ? Type::getNull() : $slot->value($mode, null);
+                if ($new === null && $mode === 'sound') {
+                    // nothing ever written: reads give null
+                    $new = $slot->isEmpty() ? Type::getNull() : Type::getMixed();
+                }
+            }
+            $k = 'G:' . $key;
+            $new = $this->settle($k, $new);
+            if ($this->assign($k, $new)) {
+                if ($new === null) {
+                    unset($this->global_types[$key]);
+                } else {
+                    $this->global_types[$key] = $new;
+                }
+                $changed++;
+            }
+        }
+        return $changed;
+    }
+
     /** A write of a value to `$o->p` (by the types of `$o`). */
     public function recordPropertyFetchWrite(
         StatementsAnalyzer $statements_analyzer,
@@ -535,9 +642,15 @@ final class ClosedWorld
                 $n instanceof PhpParser\Node\Scalar\String_
                 || $n instanceof PhpParser\Node\Expr\BinaryOp\Concat
                 || $n instanceof PhpParser\Node\Scalar\InterpolatedString
-                || ($n instanceof PhpParser\Node\Expr\CallLike && $n->isFirstClassCallable())) as $node
+                || ($n instanceof PhpParser\Node\Expr\CallLike && $n->isFirstClassCallable())
+                || ($n instanceof PhpParser\Node\Expr\ArrayDimFetch && $n->var instanceof PhpParser\Node\Expr\Variable
+                    && $n->var->name === 'GLOBALS')) as $node
             ) {
-                if ($node instanceof PhpParser\Node\Scalar\String_) {
+                if ($node instanceof PhpParser\Node\Expr\ArrayDimFetch) {
+                    // `$GLOBALS['x']`: the global may be written without a `global` binding
+                    $this->escaped_globals[$node->dim instanceof PhpParser\Node\Scalar\String_
+                        ? 'g:' . $node->dim->value : '*'] = true;
+                } elseif ($node instanceof PhpParser\Node\Scalar\String_) {
                     $this->strings[strtolower(\ltrim($node->value, '\\'))] = true;
                 } elseif ($node instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
                     $left = $node->left;
@@ -690,6 +803,7 @@ final class ClosedWorld
     {
         $this->pass++;
         $this->args = [];
+        $this->global_writes = [];
         $this->outs = [];
         $this->unknown_callables = false;
         $this->unknown_method_args = [];
@@ -840,6 +954,9 @@ final class ClosedWorld
                 $changed++;
             }
         }
+
+        // --- globals and statics ------------------------------------------------------------------------------
+        $changed += $this->applyGlobals($mode);
 
         // --- properties --------------------------------------------------------------------------------------
         $changed += $this->applyDynamicProperties();
@@ -1080,7 +1197,12 @@ final class ClosedWorld
                         continue;
                     }
                 }
-                $new = $slot->value($mode, $declared);
+                // the first pass read-modified-wrote properties as `mixed`: its contributions are discarded
+                $new = $mode === 'first' ? null : $slot->value($mode, $declared);
+                if ($new === null && $mode !== 'sound' && $declared === null) {
+                    // not inferred yet: what an untyped property holds before anything is written
+                    $new = Type::getNull();
+                }
                 if ($new !== null && $declared !== null && !$this->refines($new, $declared)) {
                     $new = $declared;
                 }
@@ -1216,6 +1338,59 @@ final class ClosedWorld
         }
         $result = $changed ? TypeCombiner::combine($atomics) : $type;
         return $result->setParentNodes([]);
+    }
+
+    /**
+     * The type without its nested `mixed` parts: what an optimistic slot holds (an array of unknown items is
+     * assumed to have none yet).
+     */
+    public static function stripMixed(Union $type): Union
+    {
+        $atomics = [];
+        $changed = false;
+        foreach ($type->getAtomicTypes() as $atomic) {
+            $new = self::stripMixedAtomic($atomic);
+            $changed = $changed || $new !== $atomic;
+            if ($new !== null) {
+                $atomics[] = $new;
+            }
+        }
+        if (!$changed) {
+            return $type;
+        }
+        return $atomics ? TypeCombiner::combine($atomics) : Type::getNever();
+    }
+
+    private static function stripMixedAtomic(Atomic $atomic): ?Atomic
+    {
+        if ($atomic instanceof Atomic\TMixed) {
+            return null;
+        }
+        if ($atomic instanceof TKeyedArray) {
+            $props = [];
+            $changed = false;
+            foreach ($atomic->properties as $k => $p) {
+                $props[$k] = self::stripMixed($p);
+                if ($props[$k]->isNever()) {
+                    $props[$k] = $p;
+                }
+                $changed = $changed || $props[$k] !== $p;
+            }
+            $fallback = $atomic->fallback_params;
+            if ($fallback !== null) {
+                $f1 = self::stripMixed($fallback[1]);
+                $changed = $changed || $f1 !== $fallback[1];
+                $fallback = [$fallback[0], $f1];
+            }
+            return $changed
+                ? TKeyedArray::make($props, $atomic->class_strings, $fallback, $atomic->is_list, $atomic->from_docblock)
+                : $atomic;
+        }
+        if ($atomic instanceof TArray) {
+            $value = self::stripMixed($atomic->type_params[1]);
+            return $value === $atomic->type_params[1] ? $atomic : $atomic->setTypeParams([$atomic->type_params[0], $value]);
+        }
+        return $atomic;
     }
 
     /** @var array<string, true>|null lowercase names of the project's functions */

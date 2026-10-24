@@ -16,8 +16,21 @@ for root, _, files in os.walk(src):
         if os.path.join(src, ns_dir) in path:
             count += len(word.findall(text))
             continue
-        # top-level free functions: from `pub fn name(` to the next top-level item
-        for m in re.finditer(r'^pub fn (\w+)\b.*?(?=^\S|\Z)', text, re.M | re.S):
-            if m.group(1) in names:
-                count += len(word.findall(m.group(0)))
+        # top-level free functions: from `pub fn name(` to its matching closing brace
+        for m in re.finditer(r'^pub fn (\w+)\b', text, re.M):
+            if m.group(1) not in names:
+                continue
+            i = text.index('{', m.end())
+            depth = 0
+            j = i
+            while j < len(text):
+                c = text[j]
+                if c == '{':
+                    depth += 1
+                elif c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            count += len(word.findall(text[m.start():j + 1]))
 print(count)

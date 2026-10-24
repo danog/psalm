@@ -70,6 +70,13 @@ final class StaticAnalyzer
                     return;
                 }
 
+                if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                    $closed_world->recordStaticDefault(
+                        $closed_world->staticKey($statements_analyzer, $var->var->name),
+                        $statements_analyzer->node_data->getType($var->default) ?? Type::getMixed(),
+                    );
+                }
+
                 if ($comment_type
                     && ($var_default_type = $statements_analyzer->node_data->getType($var->default))
                     && !UnionTypeComparator::isContainedBy(
@@ -90,8 +97,17 @@ final class StaticAnalyzer
 
             FunctionLikeAnalyzer::unbindByRefParam($codebase, $context, $var_id);
 
+            $static_type = null;
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                $static_type = $closed_world->bindGlobal(
+                    $context,
+                    $var_id,
+                    $closed_world->staticKey($statements_analyzer, $var->var->name),
+                );
+            }
+
             if ($context->check_variables) {
-                $context->vars_in_scope[$var_id] = $comment_type ?: Type::getMixed();
+                $context->vars_in_scope[$var_id] = $static_type ?? $comment_type ?: Type::getMixed();
                 $context->vars_possibly_in_scope[$var_id] = true;
                 $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
                 $statements_analyzer->byref_uses[$var_id] = true;

@@ -274,6 +274,13 @@ final class StatementsAnalyzer extends SourceAnalyzer
                     return false;
                 }
 
+                if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+                    && !$context->collect_initializations
+                    && !$context->collect_mutations
+                ) {
+                    $closed_world->recordStatementVars($this, $context);
+                }
+
                 if (Transpiler::isEnabled()) {
                     Transpiler::get()->recordStatement($this, $stmt, $context);
                 }

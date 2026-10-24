@@ -91,6 +91,14 @@ final class Context
     public array $references_to_external_scope = [];
 
     /**
+     * Closed world: local variables bound to a global or static variable, with the key of its slot (see
+     * Internal\Codebase\ClosedWorld): after a call that may write globals they hold that slot's type again.
+     *
+     * @var array<string, string>
+     */
+    public array $closed_world_globals = [];
+
+    /**
      * The by-reference parameters of the function-like analyzed that still reference the variables passed
      * to them, with the taint node of what the call leaves in those variables. unset(), =&, global and
      * static make a parameter stop referencing it.
@@ -791,6 +799,10 @@ final class Context
         $forget_properties
             = ($callee_capabilities & (Capabilities::WRITE_PROPS | Capabilities::WRITE_THIS_PROPS)) !== 0;
         $forget_statics = ($callee_capabilities & Capabilities::WRITE_GLOBALS) !== 0;
+
+        if ($forget_statics && $this->closed_world_globals) {
+            \Psalm\Internal\Codebase\ClosedWorld::get()?->refreshGlobals($this);
+        }
 
         if (!$forget_properties && !$forget_statics) {
             return;

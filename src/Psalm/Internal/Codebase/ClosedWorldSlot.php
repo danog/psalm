@@ -15,40 +15,47 @@ use Psalm\Type\Union;
  */
 final class ClosedWorldSlot
 {
+    /** union of the contributions that are not `mixed` themselves (sound phase) */
     public ?Union $type = null;
+    /** the same without any nested `mixed` (optimistic phase: unknown items are assumed not to exist) */
+    public ?Union $optimistic = null;
+    /** the optimistic union of the contributions not from direct recursion (first guess) */
     public ?Union $non_recursive = null;
     public bool $mixed = false;
-    public bool $mixed_non_recursive = false;
     public bool $void_paths = false;
 
     public function add(Union $type, bool $recursive): void
     {
         if (ClosedWorld::hasMixed($type)) {
             $this->mixed = true;
-            if (!$recursive) {
-                $this->mixed_non_recursive = true;
-            }
             return;
         }
         $type = ClosedWorld::generalize($type);
-        $this->type = $this->type === null ? $type : Type::combineUnionTypes($this->type, $type);
+        $this->type = self::join($this->type, $type);
+        $stripped = ClosedWorld::stripMixed($type);
+        $this->optimistic = self::join($this->optimistic, $stripped);
         if (!$recursive) {
-            $this->non_recursive = $this->non_recursive === null ? $type : Type::combineUnionTypes($this->non_recursive, $type);
+            $this->non_recursive = self::join($this->non_recursive, $stripped);
         }
+    }
+
+    private static function join(?Union $a, ?Union $b): ?Union
+    {
+        if ($a === null) {
+            return $b;
+        }
+        if ($b === null) {
+            return $a;
+        }
+        return Type::combineUnionTypes($a, $b);
     }
 
     public function merge(ClosedWorldSlot $other): void
     {
-        if ($other->type !== null) {
-            $this->type = $this->type === null ? $other->type : Type::combineUnionTypes($this->type, $other->type);
-        }
-        if ($other->non_recursive !== null) {
-            $this->non_recursive = $this->non_recursive === null
-                ? $other->non_recursive
-                : Type::combineUnionTypes($this->non_recursive, $other->non_recursive);
-        }
+        $this->type = self::join($this->type, $other->type);
+        $this->optimistic = self::join($this->optimistic, $other->optimistic);
+        $this->non_recursive = self::join($this->non_recursive, $other->non_recursive);
         $this->mixed = $this->mixed || $other->mixed;
-        $this->mixed_non_recursive = $this->mixed_non_recursive || $other->mixed_non_recursive;
         $this->void_paths = $this->void_paths || $other->void_paths;
     }
 
@@ -63,14 +70,9 @@ final class ClosedWorldSlot
     }
 
     /**
-     * The slot value: on the first (optimistic) guess the non-`mixed`, non-recursive contributions; afterwards
-     * all of them. Null when nothing was contributed (the declared type stays).
-     */
-    /**
-     * The slot value. `first`: the optimistic first guess (non-`mixed`, non-recursive contributions);
-     * `optimistic`: the non-`mixed` contributions (a `mixed` one is assumed to stem from a slot not inferred
-     * yet); `sound`: all of them. Null when nothing (but `mixed`, optimistically) was contributed: the declared
-     * type stays.
+     * The slot value. `first`: the optimistic first guess (non-recursive contributions); `optimistic`: the
+     * contributions without any `mixed` (a `mixed` is assumed to stem from a slot not inferred yet); `sound`: all
+     * of them. Null when nothing (but `mixed`, optimistically) was contributed: the declared type stays.
      */
     public function value(string $mode, ?Union $declared): ?Union
     {
@@ -78,7 +80,7 @@ final class ClosedWorldSlot
             return $this->non_recursive;
         }
         if ($mode !== 'sound') {
-            return $this->type;
+            return $this->optimistic;
         }
         if ($this->mixed) {
             return $declared ?? Type::getMixed();
