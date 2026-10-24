@@ -90,6 +90,9 @@ final class FunctionDocblockComment
      */
     public bool $specialize_call = false;
 
+    /** Whether the function-like has `@psalm-cli-only` */
+    public bool $cli_only = false;
+
     /**
      * Represents the flow from function params to return type
      *
@@ -116,6 +119,13 @@ final class FunctionDocblockComment
      * @var array<int, array{name:string, taint: int}>
      */
     public array $taint_sink_params = [];
+
+    /**
+     * `@psalm-taint-sink (<conditional>) $param`: the parameter and the conditional type of the taints it is a sink of
+     *
+     * @var list<array{name: string, type: string}>
+     */
+    public array $conditional_taint_sink_params = [];
 
     public int $taint_source_types = 0;
 

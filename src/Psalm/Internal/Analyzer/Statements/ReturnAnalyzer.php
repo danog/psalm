@@ -489,12 +489,17 @@ final class ReturnAnalyzer
                             ) {
                                 $upper_bound->equality_bound_classlike = '';
                             }
+
+                            // a value that only reaches this bound through mixed
+                            // is reported as MixedReturnTypeCoercion at reconciliation
+                            $upper_bound->from_return_requirement = true;
                         }
 
                         $statements_analyzer->type_variable_tracker->addBounds(
                             $union_comparison_results->type_variable_lower_bounds,
                             $union_comparison_results->type_variable_upper_bounds,
                             new CodeLocation($source, $stmt->expr),
+                            $statements_analyzer->getSuppressedIssues(),
                         );
                     }
 
@@ -696,13 +701,18 @@ final class ReturnAnalyzer
 
         $event = new AddRemoveTaintsEvent($stmt->expr, $context, $statements_analyzer, $codebase);
 
-        $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-        $storage->added_taints |= $added_taints;
-        $storage->removed_taints |= $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+        // what is removed from this returned expression only applies to this return, not to the function's other
+        // returns or to its calls
+        $expr_removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+
+        // what is added to it makes the calls of the function a source (see taintUsingStorage())
+        $storage->added_taints |= $codebase->config->eventDispatcher->dispatchAddTaints($event)
+            & ~$expr_removed_taints;
 
         if ($inferred_type->parent_nodes) {
             // what the returned value cannot hold, given its type or the native return type PHP enforces
             $removed_taints = $storage->removed_taints
+                | $expr_removed_taints
                 | $inferred_type->getTaintsToRemove($codebase->getInputTaints())
                 | ($storage->signature_return_type?->getTaintsToRemove($codebase->getInputTaints()) ?? 0);
 

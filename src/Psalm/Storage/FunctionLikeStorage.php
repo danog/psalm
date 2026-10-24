@@ -222,6 +222,12 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     public bool $specialize_call = false;
 
     /**
+     * Whether the function-like only runs from the command line (`@psalm-cli-only`): what it prints goes to a
+     * terminal, not to an HTML response
+     */
+    public bool $cli_only = false;
+
+    /**
      * Whether the function-like is a builtin, declared by Psalm's stubs or built from the call map: it has no body,
      * so the taints of each of its calls flow as its declaration says (see TaintFlowGraph::isCallSpecialized()).
      */
@@ -245,6 +251,14 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      * @var array<Union>
      */
     public array $conditionally_removed_taints = [];
+
+    /**
+     * `@psalm-taint-sink (<conditional>) $param`: the offset of the parameter, and the conditional type of the taints
+     * it is a sink of, which each call resolves with its arguments
+     *
+     * @var list<array{param: int, type: Union}>
+     */
+    public array $conditional_taint_sinks = [];
 
     /**
      * @var array<int, string>
@@ -306,6 +320,20 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      * @var list<array{name: ?int, path_type: string}>
      */
     public array $taint_property_reads = [];
+
+    /**
+     * The flows of arrays given to a method into the properties of the object it is called on that their keys name:
+     * `@psalm-flow ($values) -> $this->{key}`. Each is the offsets of the parameters whose arguments are set.
+     *
+     * @var list<list<int>>
+     */
+    public array $taint_keyed_property_writes = [];
+
+    /**
+     * Whether a method returns the properties of the object it is called on under their names:
+     * `@psalm-flow $this->{key} -> return[key]`
+     */
+    public bool $taint_keyed_property_read = false;
 
     public bool $allow_named_arg_calls = true;
 
