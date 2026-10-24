@@ -88,7 +88,11 @@ final class StaticPropertyAssignmentAnalyzer
 
         foreach ($fq_class_names as $fq_class_name) {
             if (!$prop_name instanceof PhpParser\Node\Identifier) {
-                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordAnyPropertyWrite($fq_class_name, $assignment_value_type);
+                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordAnyPropertyWrite(
+                    $statements_analyzer->getRootFilePath(),
+                    $fq_class_name,
+                    $assignment_value_type,
+                );
                 $was_inside_general_use = $context->inside_general_use;
 
                 $context->inside_general_use = true;
@@ -156,7 +160,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
-                $closed_world->recordPropertyWrite($property_id, $assignment_value_type);
+                $closed_world->recordPropertyWrite($statements_analyzer->getRootFilePath(), $property_id, $assignment_value_type);
             }
 
             $declaring_property_class = (string) $codebase->properties->getDeclaringClassForProperty(

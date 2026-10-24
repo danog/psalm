@@ -89,32 +89,42 @@ final class ClosedWorld
     /** @var array<int, FunctionLikeStorage> every project function-like seen, by object id */
     private array $storages = [];
 
-    /**
-     * Argument contributions of the current pass: storage id => param offset => slot.
-     *
-     * @var array<int, array<int, ClosedWorldSlot>>
-     */
-    private array $args = [];
+    /** @var array<string, ClosedWorldContributions> contributions by the root file whose analysis made them */
+    private array $by_file = [];
+
+    /** the contributions of the file being recorded */
+    private ClosedWorldContributions $cur;
+
+    /** all contributions, merged at the end of a pass */
+    private ClosedWorldContributions $all;
 
     /**
-     * Arguments of method calls on receivers of unknown type: lowercase method name => param offset => slot.
+     * Which root files read which slots (`call:<storage id>` for returns and by-reference outs, `P:` properties,
+     * `G:` globals and statics): re-analyzed when the slot changes. Grows across passes.
      *
-     * @var array<string, array<int, ClosedWorldSlot>>
+     * @var array<string, array<string, true>>
      */
-    private array $unknown_method_args = [];
+    private array $consumers = [];
 
-    /** @var array<int, array<int, ClosedWorldSlot>> what bodies leave in by-reference parameters: storage id => offset */
-    private array $outs = [];
+    /** @var array<int, array<string, true>> root files in which a function-like's body was analyzed */
+    private array $body_roots = [];
 
-    /** Whether some callable value reaching a dynamic call or a callable parameter is not a known literal. */
-    private bool $unknown_callables = false;
+    /** Whether some property type was read without a known file (then every file reads every property). */
+    private bool $unattributed_property_reads = false;
 
-    /**
-     * Writes of global and static variables: slot key (`g:name`, `s:<storage id>:name`) => slot.
-     *
-     * @var array<string, ClosedWorldSlot>
-     */
-    private array $global_writes = [];
+    /** @var array<string, true> slot keys changed by the last apply() */
+    private array $changed_keys = [];
+
+    /** Whether the last apply() or simplification changes what every file may see (dynamic properties). */
+    private bool $everything_dirty = false;
+
+    /** @var array<string, true> files whose statements the last simplification rewrote */
+    private array $rewritten_files = [];
+
+
+
+
+
 
     /** @var array<string, Union> current types of global and static variables, by slot key */
     private array $global_types = [];
@@ -122,26 +132,12 @@ final class ClosedWorld
     /** @var array<string, true> globals written through `$GLOBALS[...]` (`*`: an unknown one): not inferred */
     private array $escaped_globals = [];
 
-    /** @var array<int, ClosedWorldSlot> body return contributions: storage id => slot */
-    private array $returns = [];
 
-    /** @var array<int, true> storages whose body always exits (returns never) */
-    private array $always_exits = [];
 
-    /** @var array<int, true> storages whose body was analyzed in this pass */
-    private array $analyzed = [];
 
-    /** @var array<string, ClosedWorldSlot> property writes: "declaring class lc::name" => slot */
-    private array $props = [];
 
-    /** @var array<string, ClosedWorldSlot> writes to properties of receivers of unknown type: name => slot */
-    private array $unknown_prop_writes = [];
 
-    /** @var array<string, array<string, ClosedWorldSlot>> writes of undeclared (dynamic) properties: class lc => name => slot */
-    private array $dynamic_props = [];
 
-    /** @var array<string, ClosedWorldSlot> `$o->$name = v` with an unknown name: class lc => slot (widens every property) */
-    private array $any_prop_writes = [];
 
     /** @var array<string, true> lowercase string literals of project code (possible callable names) */
     private array $strings = [];
@@ -174,6 +170,25 @@ final class ClosedWorld
     private function __construct(
         private readonly Codebase $codebase,
     ) {
+        $this->cur = new ClosedWorldContributions();
+        $this->all = new ClosedWorldContributions();
+    }
+
+    private function at(string $file): ClosedWorldContributions
+    {
+        return $this->by_file[$file] ??= new ClosedWorldContributions();
+    }
+
+    /** A root file reads a slot (see $consumers); null: a read the analysis cannot attribute. */
+    public function consume(string $key, ?string $file): void
+    {
+        if ($file === null) {
+            if (\str_starts_with($key, 'P:')) {
+                $this->unattributed_property_reads = true;
+            }
+            return;
+        }
+        $this->consumers[$key][$file] = true;
     }
 
     public static function enable(Codebase $codebase): self
@@ -243,10 +258,13 @@ final class ClosedWorld
         }
         $id = spl_object_id($storage);
         $this->storages[$id] = $storage;
+        $file = $statements_analyzer->getRootFilePath();
+        $this->cur = $this->at($file);
+        $this->consumers['call:' . $id][$file] = true;
         $count = \count($args);
         $has_unpack = $has_packed_var;
-        $old = $this->arities[$id] ?? [$count, $count];
-        $this->arities[$id] = [\min($old[0], $count), $has_unpack || $old[1] === null ? null : \max($old[1], $count)];
+        $old = $this->cur->arities[$id] ?? [$count, $count];
+        $this->cur->arities[$id] = [\min($old[0], $count), $has_unpack || $old[1] === null ? null : \max($old[1], $count)];
         $recursive = $statements_analyzer->getSource() instanceof \Psalm\Internal\Analyzer\FunctionLikeAnalyzer
             && $this->callerStorage($statements_analyzer) === $storage;
 
@@ -272,7 +290,7 @@ final class ClosedWorld
                 if (!$arg->unpack) {
                     $bound[$i] = true;
                 }
-                ($this->args[$id][$i] ??= new ClosedWorldSlot())->add($arg_type, $recursive);
+                ($this->cur->args[$id][$i] ??= new ClosedWorldSlot())->add($arg_type, $recursive);
             }
         }
 
@@ -283,9 +301,9 @@ final class ClosedWorld
             }
             $default = $this->defaultType($param, $statements_analyzer);
             if ($default !== null) {
-                ($this->args[$id][$i] ??= new ClosedWorldSlot())->add($default, $recursive);
+                ($this->cur->args[$id][$i] ??= new ClosedWorldSlot())->add($default, $recursive);
             } elseif ($has_packed_var) {
-                ($this->args[$id][$i] ??= new ClosedWorldSlot())->add(Type::getMixed(), $recursive);
+                ($this->cur->args[$id][$i] ??= new ClosedWorldSlot())->add(Type::getMixed(), $recursive);
             }
         }
     }
@@ -297,13 +315,14 @@ final class ClosedWorld
      */
     public function recordUnknownMethodCall(StatementsAnalyzer $statements_analyzer, string $method_name, array $args): void
     {
+        $this->cur = $this->at($statements_analyzer->getRootFilePath());
         $name = strtolower($method_name);
         foreach ($args as $offset => $arg) {
             $type = $statements_analyzer->node_data->getType($arg->value) ?? Type::getMixed();
             if ($arg->unpack || $arg->name !== null) {
                 $type = Type::getMixed();
             }
-            ($this->unknown_method_args[$name][$offset] ??= new ClosedWorldSlot())->add($type, false);
+            ($this->cur->unknown_method_args[$name][$offset] ??= new ClosedWorldSlot())->add($type, false);
         }
     }
 
@@ -324,12 +343,15 @@ final class ClosedWorld
         }
         $id = spl_object_id($storage);
         $this->storages[$id] = $storage;
-        $this->analyzed[$id] = true;
+        $root = $statements_analyzer->getRootFilePath();
+        $this->cur = $this->at($root);
+        $this->body_roots[$id][$root] = true;
+        $this->cur->analyzed[$id] = true;
         foreach ($storage->params as $i => $param) {
             if (!$param->by_ref) {
                 continue;
             }
-            $slot = $this->outs[$id][$i] ??= new ClosedWorldSlot();
+            $slot = $this->cur->outs[$id][$i] ??= new ClosedWorldSlot();
             foreach ($var_types['$' . $param->name] ?? [Type::getMixed()] as $type) {
                 $slot->add($type, false);
             }
@@ -347,10 +369,10 @@ final class ClosedWorld
         );
         $actions = ScopeAnalyzer::getControlActions($stmts, $statements_analyzer->node_data, [], false);
         if ($actions === [ScopeAnalyzer::ACTION_END]) {
-            $this->always_exits[$id] = true;
+            $this->cur->always_exits[$id] = true;
             return;
         }
-        $slot = $this->returns[$id] ??= new ClosedWorldSlot();
+        $slot = $this->cur->returns[$id] ??= new ClosedWorldSlot();
         foreach ($parts as $part) {
             if ($part->isNever()) {
                 continue;
@@ -370,19 +392,23 @@ final class ClosedWorld
     }
 
     /** A write of a value to a declared property. */
-    public function recordPropertyWrite(string $property_id, Union $type): void
+    public function recordPropertyWrite(string $file, string $property_id, Union $type): void
     {
+        $this->cur = $this->at($file);
         [$class, $name] = self::splitPropertyId($property_id);
         $declaring = $this->codebase->properties->getDeclaringClassForProperty($property_id, true);
         if ($declaring !== null) {
             $class = $declaring;
         }
-        ($this->props[strtolower($class) . '::' . $name] ??= new ClosedWorldSlot())->add($type, false);
+        // the write is checked against the property's type
+        $this->consumers['P:' . strtolower($class) . '::' . $name][$file] = true;
+        ($this->cur->props[strtolower($class) . '::' . $name] ??= new ClosedWorldSlot())->add($type, false);
     }
 
     /** A write of a value to a property the class does not declare (PHP creates a dynamic property). */
-    public function recordDynamicPropertyWrite(string $fq_class_name, string $name, Union $type): void
+    public function recordDynamicPropertyWrite(string $file, string $fq_class_name, string $name, Union $type): void
     {
+        $this->cur = $this->at($file);
         $class_lc = strtolower($fq_class_name);
         if (!$this->codebase->classlike_storage_provider->has($class_lc)) {
             return;
@@ -391,24 +417,18 @@ final class ClosedWorld
         if (!$this->infers($class_storage->location?->file_path)) {
             return;
         }
-        ($this->dynamic_props[$class_lc][$name] ??= new ClosedWorldSlot())->add($type, false);
-    }
-
-    /**
-     * A property bound by reference (`$r = &$o->p`, `foreach ($o->p as &$v)`...): writes through the reference
-     * are not seen, so the property may hold anything.
-     */
-    public function recordPropertyAliased(string $property_id): void
-    {
-        $this->recordPropertyWrite($property_id, Type::getMixed());
+        ($this->cur->dynamic_props[$class_lc][$name] ??= new ClosedWorldSlot())->add($type, false);
     }
 
     /**
      * `global $x` / `static $x`: the local is bound to the slot; its type is the slot's (null: not inferred).
      */
-    public function bindGlobal(\Psalm\Context $context, string $var_id, string $key): ?Union
+    public function bindGlobal(\Psalm\Context $context, string $var_id, string $key, ?string $file = null): ?Union
     {
         $context->closed_world_globals[$var_id] = $key;
+        if ($file !== null) {
+            $this->consumers['G:' . $key][$file] = true;
+        }
         if (isset($this->escaped_globals['*']) || isset($this->escaped_globals[$key])) {
             return null;
         }
@@ -443,10 +463,15 @@ final class ClosedWorld
         if (!$this->infers($statements_analyzer->getFilePath())) {
             return;
         }
+        $root = $statements_analyzer->getRootFilePath();
+        $this->cur = $this->at($root);
         if ($statements_analyzer->getSource() instanceof \Psalm\Internal\Analyzer\FileAnalyzer) {
             foreach ($context->vars_in_scope as $var_id => $_) {
-                if (\preg_match('/^\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/', $var_id) && $var_id !== '$this') {
-                    $context->closed_world_globals[$var_id] ??= 'g:' . \substr($var_id, 1);
+                if (\preg_match('/^\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/', $var_id) && $var_id !== '$this'
+                    && !isset($context->closed_world_globals[$var_id])
+                ) {
+                    $context->closed_world_globals[$var_id] = 'g:' . \substr($var_id, 1);
+                    $this->consumers['G:g:' . \substr($var_id, 1)][$root] = true;
                 }
             }
         }
@@ -455,23 +480,24 @@ final class ClosedWorld
             if ($type === null || $type === ($this->global_types[$key] ?? null)) {
                 continue;
             }
-            ($this->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
+            ($this->cur->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
         }
     }
 
     /** The initial value of a static variable. */
-    public function recordStaticDefault(string $key, Union $type): void
+    public function recordStaticDefault(string $file, string $key, Union $type): void
     {
-        ($this->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
+        $this->cur = $this->at($file);
+        ($this->cur->global_writes[$key] ??= new ClosedWorldSlot())->add($type, false);
     }
 
     private function applyGlobals(string $mode): int
     {
         $changed = 0;
-        $keys = \array_unique([...array_keys($this->global_writes), ...array_keys($this->global_types)]);
+        $keys = \array_unique([...array_keys($this->all->global_writes), ...array_keys($this->global_types)]);
         \sort($keys);
         foreach ($keys as $key) {
-            $slot = $this->global_writes[$key] ?? new ClosedWorldSlot();
+            $slot = $this->all->global_writes[$key] ?? new ClosedWorldSlot();
             if (isset($this->escaped_globals['*']) || isset($this->escaped_globals[$key])) {
                 $new = Type::getMixed();
             } else {
@@ -504,7 +530,7 @@ final class ClosedWorld
         Union $type,
     ): void {
         if (!$fetch->name instanceof PhpParser\Node\Identifier && !$fetch->name instanceof PhpParser\Node\VarLikeIdentifier) {
-            $this->recordAnyPropertyWrite('*', $type);
+            $this->recordAnyPropertyWrite($statements_analyzer->getRootFilePath(), '*', $type);
             return;
         }
         $name = $fetch->name->name;
@@ -520,23 +546,23 @@ final class ClosedWorld
                 }
             }
             if (\is_string($class)) {
-                $this->recordPropertyWrite($class . '::$' . $name, $type);
+                $this->recordPropertyWrite($statements_analyzer->getRootFilePath(), $class . '::$' . $name, $type);
                 return;
             }
         }
         if ($receiver_type === null) {
-            $this->recordUnknownPropertyWrite($name, $type);
+            $this->recordUnknownPropertyWrite($statements_analyzer->getRootFilePath(), $name, $type);
             return;
         }
         foreach ($receiver_type->getAtomicTypes() as $atomic) {
             if ($atomic instanceof Atomic\TNamedObject
                 && $this->codebase->properties->propertyExists($atomic->value . '::$' . $name, false)
             ) {
-                $this->recordPropertyWrite($atomic->value . '::$' . $name, $type);
+                $this->recordPropertyWrite($statements_analyzer->getRootFilePath(), $atomic->value . '::$' . $name, $type);
             } elseif ($atomic instanceof Atomic\TNamedObject) {
-                $this->recordDynamicPropertyWrite($atomic->value, $name, $type);
+                $this->recordDynamicPropertyWrite($statements_analyzer->getRootFilePath(), $atomic->value, $name, $type);
             } elseif (!$atomic instanceof Atomic\TNull) {
-                $this->recordUnknownPropertyWrite($name, $type);
+                $this->recordUnknownPropertyWrite($statements_analyzer->getRootFilePath(), $name, $type);
             }
         }
     }
@@ -636,15 +662,17 @@ final class ClosedWorld
     }
 
     /** A property write on a receiver of unknown type. */
-    public function recordUnknownPropertyWrite(string $name, Union $type): void
+    public function recordUnknownPropertyWrite(string $file, string $name, Union $type): void
     {
-        ($this->unknown_prop_writes[$name] ??= new ClosedWorldSlot())->add($type, false);
+        $this->cur = $this->at($file);
+        ($this->cur->unknown_prop_writes[$name] ??= new ClosedWorldSlot())->add($type, false);
     }
 
     /** `$o->$name = v` with a name of unknown value: any property of the class may be written. */
-    public function recordAnyPropertyWrite(string $fq_class_name, Union $type): void
+    public function recordAnyPropertyWrite(string $file, string $fq_class_name, Union $type): void
     {
-        ($this->any_prop_writes[strtolower($fq_class_name)] ??= new ClosedWorldSlot())->add($type, false);
+        $this->cur = $this->at($file);
+        ($this->cur->any_prop_writes[strtolower($fq_class_name)] ??= new ClosedWorldSlot())->add($type, false);
     }
 
     /** @var list<string> lowercase literal prefixes of concatenated strings (`'prefix_' . $x` may name a callable) */
@@ -713,16 +741,7 @@ final class ClosedWorld
         }
     }
 
-    /**
-     * Arguments of dynamic calls whose callee the types do not resolve: offset => slot. Every function-like that
-     * may be called dynamically (a closure, a function or method the program names in a string) receives them.
-     *
-     * @var array<int, ClosedWorldSlot>
-     */
-    private array $dynamic_pool = [];
 
-    /** Whether some unresolved dynamic call passes arguments by unpacking (any parameter may receive them). */
-    private ?ClosedWorldSlot $dynamic_pool_spread = null;
 
     /**
      * The arguments of a call as the dynamic-call recording takes them: types by position, and the type of the
@@ -773,6 +792,7 @@ final class ClosedWorld
         ?\Psalm\Internal\Type\TemplateResult $template_result,
     ): void {
         $trusted = !$this->codebase->config->ignoresDocblockTypesIn($statements_analyzer->getFilePath());
+        $root = $statements_analyzer->getRootFilePath();
         $type = static fn(int $i): Union => isset($args[$i])
             ? ($statements_analyzer->node_data->getType($args[$i]->value) ?? Type::getMixed())
             : Type::getMixed();
@@ -806,7 +826,7 @@ final class ClosedWorld
         if ($known !== null) {
             [$offset, $arg_types] = $known;
             if (isset($args[$offset])) {
-                $this->recordDynamicCall($type($offset), $arg_types, null, $trusted);
+                $this->recordDynamicCall($root, $type($offset), $arg_types, null, $trusted);
             }
             return;
         }
@@ -840,9 +860,9 @@ final class ClosedWorld
                 }
                 $callee = $statements_analyzer->node_data->getType($arg->value);
                 if ($arg_types === null) {
-                    $this->recordDynamicCall($callee, [], Type::getMixed(), $trusted);
+                    $this->recordDynamicCall($root, $callee, [], Type::getMixed(), $trusted);
                 } else {
-                    $this->recordDynamicCall($callee, $arg_types, null, $trusted);
+                    $this->recordDynamicCall($root, $callee, $arg_types, null, $trusted);
                 }
             }
         }
@@ -860,8 +880,14 @@ final class ClosedWorld
      * @param list<Union> $arg_types arguments by position
      * @param ?Union $spread type of the further arguments when some were unpacked (or their number is unknown)
      */
-    public function recordDynamicCall(?Union $callee, array $arg_types, ?Union $spread, bool $trusted_site = false): void
-    {
+    public function recordDynamicCall(
+        string $file,
+        ?Union $callee,
+        array $arg_types,
+        ?Union $spread,
+        bool $trusted_site = false,
+    ): void {
+        $this->cur = $this->at($file);
         $targets = [];
         $resolved = $callee !== null;
         foreach ($callee?->getAtomicTypes() ?? [] as $atomic) {
@@ -879,8 +905,9 @@ final class ClosedWorld
         }
         foreach ($targets as $id => $storage) {
             $this->storages[$id] = $storage;
+            $this->consumers['call:' . $id][$file] = true;
             foreach ($storage->params as $i => $param) {
-                $slot = $this->args[$id][$i] ??= new ClosedWorldSlot();
+                $slot = $this->cur->args[$id][$i] ??= new ClosedWorldSlot();
                 if ($param->is_variadic) {
                     foreach (\array_slice($arg_types, $i) as $t) {
                         $slot->add($t, false);
@@ -908,12 +935,12 @@ final class ClosedWorld
         if (!$resolved && !$trusted_site) {
             // (a call inside trusted code reaches only callables given to it through its typed callable
             // parameters: those were recorded with the parameter's signature where they were given)
-            $this->unknown_callables = true;
+            $this->cur->unknown_callables = true;
             foreach ($arg_types as $i => $t) {
-                ($this->dynamic_pool[$i] ??= new ClosedWorldSlot())->add($t, false);
+                ($this->cur->dynamic_pool[$i] ??= new ClosedWorldSlot())->add($t, false);
             }
             if ($spread !== null) {
-                ($this->dynamic_pool_spread ??= new ClosedWorldSlot())->add($spread, false);
+                ($this->cur->dynamic_pool_spread ??= new ClosedWorldSlot())->add($spread, false);
             }
         }
     }
@@ -1014,41 +1041,11 @@ final class ClosedWorld
         return $this->function_by_id[$id] ?? null;
     }
 
-    /**
-     * A value used as a callable (called dynamically, or passed where a callable is expected). A string that is
-     * not a known literal may name any function-like whose name the program can build.
-     */
-    public function recordCallableValue(?Union $type): void
-    {
-        if ($type === null) {
-            $this->unknown_callables = true;
-            return;
-        }
-        foreach ($type->getAtomicTypes() as $atomic) {
-            if ($atomic instanceof TLiteralString
-                || $atomic instanceof Atomic\TClosure
-                || $atomic instanceof Atomic\TNull
-                || $atomic instanceof Atomic\TFalse
-            ) {
-                continue;
-            }
-            if ($atomic instanceof TKeyedArray && $atomic->is_list && isset($atomic->properties[1])
-                && $atomic->properties[1]->isSingleStringLiteral()
-            ) {
-                continue;
-            }
-            if ($atomic instanceof Atomic\TNamedObject && !$atomic instanceof Atomic\TClosure) {
-                // an invokable object: its __invoke is magic, hence escaped
-                continue;
-            }
-            $this->unknown_callables = true;
-        }
-    }
-
     /** A method called by a name the analysis does not know (`$o->$name()`, `[$o, $name]`). */
-    public function recordUnknownMethodName(): void
+    public function recordUnknownMethodName(string $file): void
     {
-        $this->unknown_callables = true;
+        $this->cur = $this->at($file);
+        $this->cur->unknown_callables = true;
     }
 
     /** Whether the function named so (lowercase, fully qualified) may be called through a string. */
@@ -1067,7 +1064,7 @@ final class ClosedWorld
         if (isset($this->strings[$lc])) {
             return true;
         }
-        if (!$this->unknown_callables) {
+        if (!$this->all->unknown_callables) {
             return false;
         }
         foreach ($this->string_prefixes as $prefix) {
@@ -1140,26 +1137,67 @@ final class ClosedWorld
     // Fixpoint
     // ------------------------------------------------------------------------------------------------------------
 
-    /** Forget the contributions of the previous pass (before re-analyzing). */
-    public function startPass(): void
+    /**
+     * Forget the contributions of the files about to be re-analyzed.
+     *
+     * @param list<string>|null $files null: all
+     */
+    public function startPass(?array $files): void
     {
         $this->pass++;
-        $this->args = [];
-        $this->arities = [];
-        $this->branches = [];
-        $this->global_writes = [];
-        $this->outs = [];
-        $this->unknown_callables = false;
-        $this->dynamic_pool = [];
-        $this->dynamic_pool_spread = null;
-        $this->unknown_method_args = [];
-        $this->returns = [];
-        $this->always_exits = [];
-        $this->analyzed = [];
-        $this->props = [];
-        $this->unknown_prop_writes = [];
-        $this->dynamic_props = [];
-        $this->any_prop_writes = [];
+        if ($files === null) {
+            $this->by_file = [];
+        }
+        foreach ($files ?? [] as $file) {
+            unset($this->by_file[$file]);
+        }
+        $this->changed_keys = [];
+        $this->everything_dirty = false;
+        $this->rewritten_files = [];
+    }
+
+    /**
+     * The root files whose analysis read a slot that changed (or whose statements were rewritten): the worklist
+     * of the next pass. Null: all of them.
+     *
+     * @return list<string>|null
+     */
+    public function filesToReanalyze(): ?array
+    {
+        if ($this->everything_dirty) {
+            return null;
+        }
+        $files = $this->rewritten_files;
+        foreach ($this->changed_keys as $key => $_) {
+            $parts = \explode(':', $key, 3);
+            if ($parts[0] === 'p' || $parts[0] === 'r' || $parts[0] === 'o') {
+                $id = (int) $parts[1];
+                $files += $this->body_roots[$id] ?? [];
+                if ($parts[0] !== 'p') {
+                    $files += $this->consumers['call:' . $id] ?? [];
+                }
+                if (!isset($this->body_roots[$id]) && ($f = $this->storages[$id]->location?->file_path ?? null) !== null) {
+                    $files[$f] = true;
+                }
+            } elseif ($parts[0] === 'P') {
+                if ($this->unattributed_property_reads) {
+                    return null;
+                }
+                $files += $this->consumers[$key] ?? [];
+                [$class] = \explode('::', \substr($key, 2), 2);
+                if ($this->codebase->classlike_storage_provider->has($class)
+                    && ($f = $this->codebase->classlike_storage_provider->get($class)->location?->file_path) !== null
+                ) {
+                    $files[$f] = true;
+                }
+            } elseif ($parts[0] === 'G') {
+                $files += $this->consumers[\substr($key, 2)] ?? [];
+                $files += $this->consumers[$key] ?? [];
+            }
+        }
+        $files = \array_keys($files);
+        \sort($files);
+        return $files;
     }
 
     /**
@@ -1169,6 +1207,7 @@ final class ClosedWorld
      */
     public function apply(): int
     {
+        $this->all = ClosedWorldContributions::merge($this->by_file);
         $this->collectProjectStorages();
         $this->collectStrings();
         if ($this->phase === 'optimistic' && $this->pass >= self::OPTIMISTIC_PASSES) {
@@ -1203,33 +1242,33 @@ final class ClosedWorld
                 } else {
                     $slot = new ClosedWorldSlot();
                     foreach ($group as $member) {
-                        if (isset($this->args[$member][$i])) {
-                            $slot->merge($this->args[$member][$i]);
+                        if (isset($this->all->args[$member][$i])) {
+                            $slot->merge($this->all->args[$member][$i]);
                         }
                     }
                     if ($dynamic) {
                         if ($param->is_variadic) {
-                            foreach ($this->dynamic_pool as $j => $pool) {
+                            foreach ($this->all->dynamic_pool as $j => $pool) {
                                 if ($j >= $i) {
                                     $slot->merge($pool);
                                 }
                             }
-                        } elseif (isset($this->dynamic_pool[$i])) {
-                            $slot->merge($this->dynamic_pool[$i]);
+                        } elseif (isset($this->all->dynamic_pool[$i])) {
+                            $slot->merge($this->all->dynamic_pool[$i]);
                         }
-                        if ($this->dynamic_pool_spread !== null) {
-                            $slot->merge($this->dynamic_pool_spread);
+                        if ($this->all->dynamic_pool_spread !== null) {
+                            $slot->merge($this->all->dynamic_pool_spread);
                         }
-                        if (($this->dynamic_pool !== [] || $this->dynamic_pool_spread !== null)
+                        if (($this->all->dynamic_pool !== [] || $this->all->dynamic_pool_spread !== null)
                             && $param->default_type instanceof Union
                         ) {
                             $slot->add($param->default_type, false);
                         }
                     }
                     if ($storage instanceof MethodStorage && $storage->cased_name !== null
-                        && isset($this->unknown_method_args[strtolower($storage->cased_name)][$i])
+                        && isset($this->all->unknown_method_args[strtolower($storage->cased_name)][$i])
                     ) {
-                        $slot->merge($this->unknown_method_args[strtolower($storage->cased_name)][$i]);
+                        $slot->merge($this->all->unknown_method_args[strtolower($storage->cased_name)][$i]);
                     }
                     $new = $slot->value($mode, $declared) ?? $declared;
                     if ($new !== null && $declared !== null && !$this->refines($new, $declared)) {
@@ -1252,8 +1291,8 @@ final class ClosedWorld
                     } else {
                         $slot = new ClosedWorldSlot();
                         foreach ($group as $member) {
-                            if (isset($this->outs[$member][$i])) {
-                                $slot->merge($this->outs[$member][$i]);
+                            if (isset($this->all->outs[$member][$i])) {
+                                $slot->merge($this->all->outs[$member][$i]);
                             }
                         }
                         // what the caller passed stays when the body leaves the parameter alone
@@ -1285,11 +1324,11 @@ final class ClosedWorld
             $any = false;
             $always_exits = true;
             foreach ($group as $member) {
-                if (isset($this->returns[$member])) {
-                    $slot->merge($this->returns[$member]);
+                if (isset($this->all->returns[$member])) {
+                    $slot->merge($this->all->returns[$member]);
                     $any = true;
                     $always_exits = false;
-                } elseif (!isset($this->always_exits[$member])) {
+                } elseif (!isset($this->all->always_exits[$member])) {
                     $always_exits = false;
                 } else {
                     $any = true;
@@ -1366,6 +1405,7 @@ final class ClosedWorld
             return false;
         }
         $this->values[$key] = $id;
+        $this->changed_keys[$key] = true;
         if ($new !== null) {
             $this->previous[$key] = $new;
         }
@@ -1559,13 +1599,13 @@ final class ClosedWorld
                 $this->declared_props[$key] ??= [$prop, $prop->type];
                 $declared = $prop->signature_type;
                 $slot = new ClosedWorldSlot();
-                if (isset($this->props[strtolower($class_storage->name) . '::' . $name])) {
-                    $slot->merge($this->props[strtolower($class_storage->name) . '::' . $name]);
+                if (isset($this->all->props[strtolower($class_storage->name) . '::' . $name])) {
+                    $slot->merge($this->all->props[strtolower($class_storage->name) . '::' . $name]);
                 }
-                if (isset($this->unknown_prop_writes[$name])) {
-                    $slot->merge($this->unknown_prop_writes[$name]);
+                if (isset($this->all->unknown_prop_writes[$name])) {
+                    $slot->merge($this->all->unknown_prop_writes[$name]);
                 }
-                foreach ($this->any_prop_writes as $writer_class => $any) {
+                foreach ($this->all->any_prop_writes as $writer_class => $any) {
                     if ($writer_class === '*' || $writer_class === strtolower($class_storage->name)
                         || isset($class_storage->parent_classes[$writer_class])
                         || ($this->codebase->classlike_storage_provider->has($writer_class)
@@ -1611,7 +1651,7 @@ final class ClosedWorld
     private function applyDynamicProperties(): int
     {
         $changed = 0;
-        foreach ($this->dynamic_props as $class_lc => $names) {
+        foreach ($this->all->dynamic_props as $class_lc => $names) {
             $class_storage = $this->codebase->classlike_storage_provider->get($class_lc);
             foreach ($names as $name => $_slot) {
                 if (isset($class_storage->declaring_property_ids[$name])) {
@@ -1624,9 +1664,11 @@ final class ClosedWorld
                 $prop->type = Type::getMixed();
                 $this->added_props[$class_lc][$name] = $prop;
                 $this->declareProperty($class_storage, $name, $prop);
+                // every access to the class may now resolve differently
+                $this->everything_dirty = true;
                 $changed++;
                 // the write is now a declared write: account it for the property slot of this pass
-                ($this->props[$class_lc . '::' . $name] ??= new ClosedWorldSlot())->merge($_slot);
+                ($this->all->props[$class_lc . '::' . $name] ??= new ClosedWorldSlot())->merge($_slot);
             }
         }
         return $changed;
@@ -1717,8 +1759,6 @@ final class ClosedWorld
     /** @var array<string, array<int, true>> file => start of a branch (if, elseif, else) removed as dead */
     private array $dead = [];
 
-    /** @var array<string, array<int, bool>> this pass: file => branch start => whether it was ever reachable */
-    private array $branches = [];
 
     /**
      * A branch entered under its condition's assertions: when one of them leaves a variable no possible type,
@@ -1736,6 +1776,7 @@ final class ClosedWorld
         if (!$this->infers($file)) {
             return;
         }
+        $this->cur = $this->at($statements_analyzer->getRootFilePath());
         $reachable = true;
         foreach ($asserted_var_ids as $var_id => $_) {
             if (isset($context->vars_in_scope[$var_id]) && $context->vars_in_scope[$var_id]->isNever()) {
@@ -1744,7 +1785,7 @@ final class ClosedWorld
             }
         }
         $pos = (int) $branch->getAttribute('startFilePos');
-        $this->branches[$file][$pos] = ($this->branches[$file][$pos] ?? false) || $reachable;
+        $this->cur->branches[$file][$pos] = ($this->cur->branches[$file][$pos] ?? false) || $reachable;
     }
 
     /**
@@ -1760,7 +1801,7 @@ final class ClosedWorld
             return 0;
         }
         $n = 0;
-        foreach ($this->branches as $file => $branches) {
+        foreach ($this->all->branches as $file => $branches) {
             foreach ($branches as $pos => $reachable) {
                 if (!$reachable && !isset($this->dead[$file][$pos])) {
                     $this->dead[$file][$pos] = true;
@@ -1794,13 +1835,6 @@ final class ClosedWorld
         'iterator_apply' => true, 'call_user_func' => true, 'call_user_func_array' => true,
     ];
 
-    /**
-     * Call arities seen this pass, by storage id: [min, max] argument counts, max null when an argument was
-     * unpacked.
-     *
-     * @var array<int, array{int, ?int}>
-     */
-    private array $arities = [];
 
     /**
      * At a sound fixpoint: dead branches and dynamic constructs the types resolve.
@@ -1897,6 +1931,9 @@ final class ClosedWorld
         if ($added > 0) {
             fwrite(STDERR, "[closed-world] $added dynamic constructs resolved\n");
         }
+        if ($n + $added > 0) {
+            $this->everything_dirty = true;
+        }
         return $n + $added;
     }
 
@@ -1910,9 +1947,9 @@ final class ClosedWorld
             }
             $n++;
         }
-        $arity = $this->arities[spl_object_id($storage)] ?? null;
+        $arity = $this->all->arities[spl_object_id($storage)] ?? null;
         return $arity !== null && $arity[0] === $n && $arity[1] === $n
-            && !($storage instanceof MethodStorage && isset($this->unknown_method_args[strtolower((string) $storage->cased_name)]));
+            && !($storage instanceof MethodStorage && isset($this->all->unknown_method_args[strtolower((string) $storage->cased_name)]));
     }
 
     /**

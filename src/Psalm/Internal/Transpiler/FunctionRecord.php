@@ -33,6 +33,9 @@ final class FunctionRecord
     /** @var array<string, list<Union>> all observed types per variable */
     public array $var_types = [];
 
+    /** the file whose analysis produced this record (a trait method is analyzed with each using class' file) */
+    public string $root_file_path = '';
+
     public function __construct(
         public Closure|Function_|ClassMethod|ArrowFunction $node,
         public FunctionLikeStorage $storage,

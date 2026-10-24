@@ -233,6 +233,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             ) {
                 [$arg_types, $spread] = \Psalm\Internal\Codebase\ClosedWorld::argTypes($statements_analyzer, $stmt->getArgs());
                 $closed_world->recordDynamicCall(
+                    $statements_analyzer->getRootFilePath(),
                     $statements_analyzer->node_data->getType($function_name),
                     $arg_types,
                     $spread,

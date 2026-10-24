@@ -89,7 +89,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
                 $name_type = $statements_analyzer->node_data->getType($stmt->name);
                 if ($name_type === null || !$name_type->isSingleStringLiteral()) {
-                    $closed_world->recordUnknownMethodName();
+                    $closed_world->recordUnknownMethodName($statements_analyzer->getRootFilePath());
                 }
             }
         }

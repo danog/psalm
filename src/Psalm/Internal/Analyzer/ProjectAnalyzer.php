@@ -533,6 +533,19 @@ final class ProjectAnalyzer
     }
 
     /** Second analysis pass over all project files (after signatures were completed by the transpiler). */
+    /**
+     * Re-analyze some project files only (the closed-world worklist; see Internal\Codebase\ClosedWorld).
+     *
+     * @param list<string> $files
+     */
+    public function reanalyzeFilesForTranspiler(array $files): void
+    {
+        $this->codebase->analyzer->resetAnalyzedMethods();
+        $this->codebase->analyzer->addFilesToAnalyze(\array_combine($files, $files));
+        $this->progress->startPhase(Phase::ANALYSIS, 1);
+        $this->codebase->analyzer->analyzeFiles($this, 1, false, true);
+    }
+
     public function reanalyzeForTranspiler(): void
     {
         $this->codebase->analyzer->resetAnalyzedMethods();

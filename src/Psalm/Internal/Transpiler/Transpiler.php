@@ -265,6 +265,7 @@ final class Transpiler
             $node instanceof ClassMethod ? $node->name->name : null,
         );
 
+        $record->root_file_path = $statements_analyzer->getRootFilePath();
         $record->exit_vars = $context->vars_in_scope;
         $record->addVarTypes($context->vars_in_scope);
 
@@ -402,6 +403,30 @@ final class Transpiler
         }
         $this->inferred_return_types = [];
         return $n;
+    }
+
+    /**
+     * Forget what the analysis of these root files recorded (they are about to be analyzed again).
+     *
+     * @param list<string> $files
+     */
+    public function resetRecordsFor(array $files): void
+    {
+        $set = \array_fill_keys($files, true);
+        foreach ($this->functions as $key => $record) {
+            if (isset($set[$record->root_file_path])) {
+                unset($this->functions[$key]);
+            }
+        }
+        foreach ($this->classes as $key => $record) {
+            if (isset($set[$record->file_path])) {
+                unset($this->classes[$key]);
+            }
+        }
+        foreach ($files as $file) {
+            unset($this->file_stmts[$file]);
+        }
+        $this->active = new \WeakMap();
     }
 
     /** Forget everything recorded by the first analysis pass. */

@@ -457,10 +457,17 @@ final class Psalm
                 if (($closed_world = ClosedWorld::get()) !== null) {
                     // whole-program inference: re-analyze until the inferred types are a fixpoint
                     while ($closed_world->apply() > 0 || $closed_world->simplifyProgram() > 0) {
-                        $closed_world->startPass();
-                        Transpiler::get()->resetRecords();
-                        $project_analyzer->reanalyzeForTranspiler();
-                        Transpiler::phase('closed-world pass ' . $closed_world->pass . ' done');
+                        // the worklist: the files that read what changed
+                        $files = $closed_world->filesToReanalyze();
+                        $closed_world->startPass($files);
+                        if ($files === null) {
+                            Transpiler::get()->resetRecords();
+                            $project_analyzer->reanalyzeForTranspiler();
+                        } else {
+                            Transpiler::get()->resetRecordsFor($files);
+                            $project_analyzer->reanalyzeFilesForTranspiler($files);
+                        }
+                        Transpiler::phase('closed-world pass ' . $closed_world->pass . ' done (' . ($files === null ? 'all' : \count($files)) . ' files)');
                     }
                     $completed = 0;
                 } else {

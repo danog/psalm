@@ -72,6 +72,7 @@ final class StaticAnalyzer
 
                 if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
                     $closed_world->recordStaticDefault(
+                        $statements_analyzer->getRootFilePath(),
                         $closed_world->staticKey($statements_analyzer, $var->var->name),
                         $statements_analyzer->node_data->getType($var->default) ?? Type::getMixed(),
                     );
@@ -103,6 +104,7 @@ final class StaticAnalyzer
                     $context,
                     $var_id,
                     $closed_world->staticKey($statements_analyzer, $var->var->name),
+                    $statements_analyzer->getRootFilePath(),
                 );
             }
 

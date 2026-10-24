@@ -83,7 +83,12 @@ final class GlobalAnalyzer
             }
 
             if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
-                && ($global_type = $closed_world->bindGlobal($context, $var_id, 'g:' . $var->name)) !== null
+                && ($global_type = $closed_world->bindGlobal(
+                    $context,
+                    $var_id,
+                    'g:' . $var->name,
+                    $statements_analyzer->getRootFilePath(),
+                )) !== null
             ) {
                 $context->vars_in_scope[$var_id] = $global_type;
                 $context->vars_possibly_in_scope[$var_id] = true;

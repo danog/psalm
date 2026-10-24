@@ -1204,7 +1204,11 @@ final class AssignmentAnalyzer
                     true,
                 );
 
-                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordPropertyWrite($property_id, $by_ref_out_type);
+                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordPropertyWrite(
+                    $statements_analyzer->getRootFilePath(),
+                    $property_id,
+                    $by_ref_out_type,
+                );
 
                 // the property holds what the call leaves in it (see StaticPropertyAssignmentAnalyzer)
                 if (($graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
@@ -1928,6 +1932,7 @@ final class AssignmentAnalyzer
                 // `$o->$name = v`: any property of the object may be written
                 foreach (($statements_analyzer->node_data->getType($assign_var->var) ?? Type::getMixed())->getAtomicTypes() as $atomic) {
                     $closed_world->recordAnyPropertyWrite(
+                        $statements_analyzer->getRootFilePath(),
                         $atomic instanceof TNamedObject ? $atomic->value : '*',
                         $assign_value_type,
                     );

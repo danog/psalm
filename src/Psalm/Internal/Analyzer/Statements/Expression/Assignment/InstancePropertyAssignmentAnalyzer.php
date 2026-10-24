@@ -170,7 +170,11 @@ final class InstancePropertyAssignmentAnalyzer
 
         if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
             foreach ($assigned_properties as $assigned_property) {
-                $closed_world->recordPropertyWrite($assigned_property->id, $assigned_property->assignment_type);
+                $closed_world->recordPropertyWrite(
+                    $statements_analyzer->getRootFilePath(),
+                    $assigned_property->id,
+                    $assigned_property->assignment_type,
+                );
             }
         }
 
@@ -925,7 +929,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($lhs_type->hasMixed()) {
             if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
-                $closed_world->recordUnknownPropertyWrite($prop_name, $assignment_value_type);
+                $closed_world->recordUnknownPropertyWrite($statements_analyzer->getRootFilePath(), $prop_name, $assignment_value_type);
             }
             if (!$context->collect_initializations
                 && !$context->collect_mutations
@@ -1399,7 +1403,12 @@ final class InstancePropertyAssignmentAnalyzer
         ) {
             if (!$has_magic_setter && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
                 // PHP creates the property on the object: it becomes a declared one in the next pass
-                $closed_world->recordDynamicPropertyWrite($fq_class_name, $prop_name, $assignment_value_type);
+                $closed_world->recordDynamicPropertyWrite(
+                    $statements_analyzer->getRootFilePath(),
+                    $fq_class_name,
+                    $prop_name,
+                    $assignment_value_type,
+                );
             }
             if ($stmt->var instanceof PhpParser\Node\Expr\Variable && $stmt->var->name === 'this') {
                 // if this is a proper error, we'll see it on the first pass
