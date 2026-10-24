@@ -870,7 +870,7 @@ final class Codebase
      */
     public function getStatementsForFile(string $file_path, ?Progress $progress = null): array
     {
-        return $this->statements_provider->getStatementsForFile(
+        $stmts = $this->statements_provider->getStatementsForFile(
             $file_path,
             $this->analysis_php_version_id,
             $this->diff_methods
@@ -879,6 +879,11 @@ final class Codebase
                 || $this->file_reference_provider->cache?->persistent,
             $progress ?? $this->progress,
         );
+        if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+            // branches the whole-program analysis proved dead are removed before they are analyzed
+            $closed_world->pruneStatements($file_path, $stmts);
+        }
+        return $stmts;
     }
 
     /**

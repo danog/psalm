@@ -466,14 +466,13 @@ trait CallTrait
             return new Val('(' . $callee->code . ')(' . implode(', ', $argc) . ')', $t->ret);
         }
         if ($t->kind === RustType::DYN_CALLABLE || $t->kind === RustType::MIXED || $t->kind === RustType::STR) {
-            if ($t->kind === RustType::STR) {
-                $this->warn('string used as a callable', $site);
-            }
             $argc = [];
             foreach ($args as $a) {
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
             }
-            $conv = $t->kind === RustType::DYN_CALLABLE ? $callee->code : 'to_callable(&' . $this->casts->convert($callee->code, $t, RustType::mixed()) . ')';
+            $conv = $t->kind === RustType::DYN_CALLABLE ? $callee->code : ($t->kind === RustType::STR
+                ? 'crate::names::named_callable(' . Names::refOf($callee->code) . ')'
+                : 'crate::names::to_callable_named(' . Names::refOf($callee->code) . ')');
             return $this->narrow(new Val($conv . '.call(vec![' . implode(', ', $argc) . '])', RustType::mixed()), $site);
         }
         if ($t->kind === RustType::CLASS_) {

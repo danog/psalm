@@ -773,6 +773,59 @@ final class CrateEmitter
     }
 
     /**
+     * The functions a string may name when it is called (`call_user_func('f')`, `$cb = 'f'; $cb()`): in a closed
+     * world the program names them in its strings (Internal\Codebase\ClosedWorld), so the table is complete. A
+     * name resolves to an adapter taking the arguments as Mixed (missing optional ones take their defaults).
+     */
+    private function emitNamedCallables(Writer $w, int $crate, ?string $up): void
+    {
+        $closed_world = \Psalm\Internal\Codebase\ClosedWorld::get();
+        $arms = [];
+        $fns = $this->program->functions;
+        ksort($fns);
+        foreach ($fns as $fn) {
+            $lc = strtolower(ltrim((string) ($fn->record->storage->cased_name ?? $fn->fq_name), '\\'));
+            if ($closed_world === null || !$closed_world->mayBeCalledByName($lc)
+                || $this->program->crateOfRecord($fn->record) !== $crate || $fn->generics !== []
+            ) {
+                continue;
+            }
+            $b = new BodyEmitter($this->program, $fn->record, null, $this->casts, $this->builtins, $this->diag, null);
+            $args = [];
+            $required = 0;
+            foreach ($fn->record->node->params as $i => $param) {
+                $t = $fn->param_types[$i] ?? RustType::mixed();
+                if ($param->variadic) {
+                    $inner = $t->kind === RustType::LIST ? $t->inner() : RustType::mixed();
+                    $args[] = 'List::from_vec(__a.iter().skip(' . $i . ').map(|__v| ' . $this->casts->convert('__v.clone()', RustType::mixed(), $inner) . ').collect())';
+                    break;
+                }
+                $arg = $this->casts->convert('__a.get(' . $i . ').cloned().unwrap_or(Mixed::Null)', RustType::mixed(), $t);
+                if ($param->default !== null) {
+                    $arg = 'if __a.len() > ' . $i . ' { ' . $arg . ' } else { ' . $b->constExpr($param->default, $t) . ' }';
+                } else {
+                    $required = $i + 1;
+                }
+                if ($param->byRef) {
+                    $arg = '&mut { ' . $arg . ' }';
+                } elseif (isset($fn->borrow_params[$i])) {
+                    $arg = '&{ ' . $arg . ' }';
+                }
+                $args[] = $arg;
+            }
+            $call = $fn->path() . '(' . implode(', ', $args) . ')';
+            $ret = $fn->return_type->kind === RustType::UNIT || $fn->return_type->kind === RustType::NEVER
+                ? '{ ' . $call . '; Mixed::Null }'
+                : $this->casts->convert($call, $fn->return_type, RustType::mixed());
+            $arms[] = Names::byteStrLiteral($lc) . ' => DynCallable::new(' . $required . ', move |__a: Vec<Mixed>| -> Mixed { ' . $ret . ' })';
+        }
+        $fallback = $up !== null ? $up . 'named_callable(name)' : 'php_rt::to_callable(&Mixed::Str(name.clone()))';
+        $w->line('pub fn named_callable(name: &Str) -> DynCallable { let lc = php_rt::names::norm(name); match lc.as_slice() { '
+            . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . $fallback . ' } }');
+        $w->line('pub fn to_callable_named(m: &Mixed) -> DynCallable { match m { Mixed::Str(__s) => named_callable(__s), _ => php_rt::to_callable(m) } }');
+    }
+
+    /**
      * `instantiate_plugin`: builds a plugin from its class name, for the runtime stub of
      * `Psalm\Internal\PluginInstantiator`. Lists every concrete class compiled in that implements a
      * plugin interface and takes no constructor arguments; a name the program does not know is None.
@@ -856,6 +909,7 @@ final class CrateEmitter
         $w->line('pub fn class_is_trait(name: &Str) -> bool { trait_exists(name) }');
         $w->line('pub fn class_file(name: &Str) -> Option<Str> { class_info(name).and_then(|i| if i.file.is_empty() { None } else { Some(Str::from_static(i.file)) }) }');
         $this->emitPluginTable($w, $classes, $up);
+        $this->emitNamedCallables($w, $crate, $up);
         $w->line('/// `is_subclass_of($sub, $parent)` / `is_a($sub, $parent, true)` on two class names.');
         $w->line('pub fn is_subclass(sub: &Str, parent: &Str, allow_same: bool) -> bool { let s = php_rt::names::norm(sub); let p = php_rt::names::norm(parent); if s == p { return allow_same; } class_info_lc(&s).map_or(false, |i| i.ancestors.iter().any(|a| a.as_bytes() == p.as_slice())) }');
         $w->line('pub fn declared_classlikes(interfaces: bool) -> List<Str> { let mut out: List<Str> = ' . ($up !== null ? $up . 'declared_classlikes(interfaces)' : 'php_rt::names::builtin_declared(interfaces)') . '; for (_, i) in CLASSES { if (interfaces && i.kind == 1) || (!interfaces && (i.kind == 0 || i.kind == 3)) { out.push(Str::from_static(i.name)); } } out }');

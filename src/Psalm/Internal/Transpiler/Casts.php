@@ -410,10 +410,10 @@ final class Casts
                 return '{ let ' . $t . ' = cast::<List<Mixed>>(' . $code . '); (' . implode(', ', $parts) . (count($parts) === 1 ? ',' : '') . ') }';
             }
             if ($tk === RustType::CLOSURE) {
-                return $this->convert('to_callable(' . Names::refOf($code) . ')', RustType::dynCallable(), $to);
+                return $this->convert('crate::names::to_callable_named(' . Names::refOf($code) . ')', RustType::dynCallable(), $to);
             }
             if ($tk === RustType::DYN_CALLABLE) {
-                return 'to_callable(' . Names::refOf($code) . ')';
+                return 'crate::names::to_callable_named(' . Names::refOf($code) . ')';
             }
             $this->needMixedTo($to);
             return 'cast::<' . $to->toRust() . '>(' . $code . ')';
@@ -692,9 +692,9 @@ final class Casts
             return $this->convertClosure($code, $from, $to);
         }
         if ($fk === RustType::STR && ($tk === RustType::CLOSURE || $tk === RustType::DYN_CALLABLE)) {
-            // a function name used as a callable: functions are never looked up by name (closed world)
-            $this->warn('string used as a callable');
-            return $this->convert('to_callable(&Mixed::Str(' . $code . '))', RustType::dynCallable(), $to);
+            // a function name used as a callable: resolved by the crate's table of the functions the program
+            // names in strings (closed world), see CrateEmitter::emitNamedCallables
+            return $this->convert('crate::names::named_callable(&' . $code . ')', RustType::dynCallable(), $to);
         }
         if ($fk === RustType::CLOSURE && $tk === RustType::DYN_CALLABLE) {
             $t = $this->tmp();

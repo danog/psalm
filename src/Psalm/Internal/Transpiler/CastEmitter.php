@@ -1444,7 +1444,7 @@ final class CastEmitter
                 }
                 $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Mixed { fn cast_to(self) -> ' . $to->toRust() . ' { let l = cast::<List<Mixed>>(self); (' . implode(', ', $parts) . (count($parts) === 1 ? ',' : '') . ') } }');
             } else {
-                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Mixed { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv('to_callable(&self)', RustType::dynCallable(), $to) . ' } }');
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Mixed { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv('crate::names::to_callable_named(&self)', RustType::dynCallable(), $to) . ' } }');
             }
             return;
         }
@@ -1530,6 +1530,10 @@ final class CastEmitter
         }
         if ($to->kind === RustType::UNION) {
             return $this->casts->pickMember($to, $from) !== null;
+        }
+        if (($from->kind === RustType::CLOSURE || $from->kind === RustType::STR) && $to->kind === RustType::DYN_CALLABLE) {
+            // a closure, or a function name resolved by the crate's named-callable table
+            return true;
         }
         if ($from->kind === RustType::ANY_OBJECT && $to->kind === RustType::CLASS_) {
             // any object narrows to a class through Mixed (a class of a later crate travels as AnyObject::Other)

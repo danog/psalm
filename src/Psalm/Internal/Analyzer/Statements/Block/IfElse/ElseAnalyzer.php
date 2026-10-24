@@ -78,6 +78,10 @@ final class ElseAnalyzer
                     : null,
             );
 
+            if ($else !== null) {
+                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordBranch($statements_analyzer, $else, $else_context, $else_types);
+            }
+
             $else_context->clauses = Context::removeReconciledClauses($else_context->clauses, $changed_var_ids)[0];
 
             foreach ($changed_var_ids as $changed_var_id => $_) {

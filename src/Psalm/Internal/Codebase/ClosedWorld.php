@@ -715,6 +715,12 @@ final class ClosedWorld
         $this->unknown_callables = true;
     }
 
+    /** Whether the function named so (lowercase, fully qualified) may be called through a string. */
+    public function mayBeCalledByName(string $lc): bool
+    {
+        return $this->nameMayBeBuilt(\ltrim($lc, '\\'));
+    }
+
     /**
      * Whether a lowercase name may be the value of a string the program builds and uses as a callable: a string
      * literal of the program, or (when some callable value is not a known literal) a concatenation starting with
@@ -803,6 +809,7 @@ final class ClosedWorld
     {
         $this->pass++;
         $this->args = [];
+        $this->branches = [];
         $this->global_writes = [];
         $this->outs = [];
         $this->unknown_callables = false;
@@ -1244,6 +1251,12 @@ final class ClosedWorld
         return $changed;
     }
 
+    /** Whether the property is one the program creates dynamically (declared by this inference). */
+    public function isDynamicProperty(string $fq_class_name, string $name): bool
+    {
+        return isset($this->added_props[strtolower($fq_class_name)][$name]);
+    }
+
     private function declareProperty(ClassLikeStorage $class_storage, string $name, PropertyStorage $prop): void
     {
         $class_storage->properties[$name] = $prop;
@@ -1314,6 +1327,87 @@ final class ClosedWorld
             }
         }
         return false;
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Dead branches
+    // ------------------------------------------------------------------------------------------------------------
+
+    /** @var array<string, array<int, true>> file => start of a branch (if, elseif, else) removed as dead */
+    private array $dead = [];
+
+    /** @var array<string, array<int, bool>> this pass: file => branch start => whether it was ever reachable */
+    private array $branches = [];
+
+    /**
+     * A branch entered under its condition's assertions: when one of them leaves a variable no possible type,
+     * the branch cannot run (with these types).
+     *
+     * @param array<string, mixed> $asserted_var_ids
+     */
+    public function recordBranch(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node $branch,
+        \Psalm\Context $context,
+        array $asserted_var_ids,
+    ): void {
+        $file = $statements_analyzer->getFilePath();
+        if (!$this->infers($file)) {
+            return;
+        }
+        $reachable = true;
+        foreach ($asserted_var_ids as $var_id => $_) {
+            if (isset($context->vars_in_scope[$var_id]) && $context->vars_in_scope[$var_id]->isNever()) {
+                $reachable = false;
+                break;
+            }
+        }
+        $pos = (int) $branch->getAttribute('startFilePos');
+        $this->branches[$file][$pos] = ($this->branches[$file][$pos] ?? false) || $reachable;
+    }
+
+    /**
+     * At a sound fixpoint, a branch whose condition cannot hold never runs: it is removed from the program, so
+     * that it neither contributes to the inference nor gets emitted. Removing code only narrows the types, under
+     * which the removed code stays dead.
+     *
+     * @return int number of newly removed branches
+     */
+    public function findDeadBranches(): int
+    {
+        if ($this->phase !== 'sound') {
+            return 0;
+        }
+        $n = 0;
+        foreach ($this->branches as $file => $branches) {
+            foreach ($branches as $pos => $reachable) {
+                if (!$reachable && !isset($this->dead[$file][$pos])) {
+                    $this->dead[$file][$pos] = true;
+                    $n++;
+                }
+            }
+        }
+        if ($n > 0) {
+            fwrite(STDERR, "[closed-world] $n dead branches removed\n");
+        }
+        return $n;
+    }
+
+    /** @param list<PhpParser\Node\Stmt> $stmts */
+    public function pruneStatements(string $file_path, array $stmts): void
+    {
+        if (!isset($this->dead[$file_path])) {
+            return;
+        }
+        $dead = $this->dead[$file_path];
+        $finder = new PhpParser\NodeFinder();
+        foreach ($finder->find($stmts, static fn(PhpParser\Node $n): bool => $n instanceof PhpParser\Node\Stmt\If_
+            || $n instanceof PhpParser\Node\Stmt\ElseIf_ || $n instanceof PhpParser\Node\Stmt\Else_) as $branch
+        ) {
+            if (isset($dead[(int) $branch->getAttribute('startFilePos')])) {
+                $branch->stmts = [];
+            }
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------------

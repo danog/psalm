@@ -251,6 +251,8 @@ final class ElseIfAnalyzer
                 ),
             );
 
+            \Psalm\Internal\Codebase\ClosedWorld::get()?->recordBranch($statements_analyzer, $elseif, $elseif_context, $reconcilable_elseif_types);
+
             if ($newly_reconciled_var_ids) {
                 $elseif_context->clauses = Context::removeReconciledClauses(
                     $elseif_context->clauses,

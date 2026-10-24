@@ -1632,6 +1632,10 @@ final class Program
                         }
                     }
                 }
+                if (!$declared && \Psalm\Internal\Codebase\ClosedWorld::get()?->isDynamicProperty($model->fqcn, $name)) {
+                    // a property the program creates dynamically: a real field
+                    $declared = true;
+                }
                 if (!$declared && $declaring === $model && !$storage->is_trait) {
                     // declared only by another definition of the class (Psalm's own stub of a builtin class
                     // that a runtime stub replaces): not part of the generated struct

@@ -124,6 +124,8 @@ final class IfAnalyzer
                 $if_context->vars_possibly_in_scope[$var_id] = true;
             }
 
+            \Psalm\Internal\Codebase\ClosedWorld::get()?->recordBranch($statements_analyzer, $stmt, $if_context, $reconcilable_if_types);
+
             if ($changed_var_ids) {
                 $if_context->clauses = Context::removeReconciledClauses($if_context->clauses, $changed_var_ids)[0];
 
