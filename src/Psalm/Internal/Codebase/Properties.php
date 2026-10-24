@@ -226,6 +226,7 @@ final class Properties
         bool $property_set,
         ?StatementsSource $source = null,
         ?Context $context = null,
+        ?string $closed_world_file = null,
     ): ?Union {
         // remove leading backslash if it exists
         $property_id = ltrim($property_id, '\\');
@@ -256,7 +257,9 @@ final class Properties
                 $storage = $declaring_class_storage->properties[$property_name];
                 \Psalm\Internal\Codebase\ClosedWorld::get()?->consume(
                     'P:' . strtolower($declaring_class_storage->name) . '::' . $property_name,
-                    $source instanceof \Psalm\Internal\Analyzer\StatementsAnalyzer ? $source->getRootFilePath() : $source?->getFilePath(),
+                    $source instanceof \Psalm\Internal\Analyzer\StatementsAnalyzer
+                        ? $source->getRootFilePath()
+                        : ($source?->getFilePath() ?? $closed_world_file),
                 );
             } else {
                 throw new UnexpectedValueException('Property ' . $property_id . ' should exist');

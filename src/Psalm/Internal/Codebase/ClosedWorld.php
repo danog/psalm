@@ -184,6 +184,10 @@ final class ClosedWorld
     {
         if ($file === null) {
             if (\str_starts_with($key, 'P:')) {
+                if (!$this->unattributed_property_reads && getenv('CW_DEBUG')) {
+                    $trace = \array_map(static fn(array $f): string => \basename($f['file'] ?? '?') . ':' . ($f['line'] ?? 0), \array_slice(\debug_backtrace(), 1, 4));
+                    fwrite(STDERR, "[closed-world] unattributed read of $key from " . \implode(' < ', $trace) . "\n");
+                }
                 $this->unattributed_property_reads = true;
             }
             return;
@@ -1219,7 +1223,10 @@ final class ClosedWorld
      */
     public function filesToReanalyze(): ?array
     {
-        if ($this->everything_dirty) {
+        if ($this->everything_dirty || getenv('CW_FULL')) {
+            if (getenv('CW_DEBUG')) {
+                fwrite(STDERR, "[closed-world] worklist: everything (dynamic properties or simplifications)\n");
+            }
             return null;
         }
         $files = $this->rewritten_files;
@@ -1236,6 +1243,9 @@ final class ClosedWorld
                 }
             } elseif ($parts[0] === 'P') {
                 if ($this->unattributed_property_reads) {
+                    if (getenv('CW_DEBUG')) {
+                        fwrite(STDERR, "[closed-world] worklist: everything (a property read of unknown origin)\n");
+                    }
                     return null;
                 }
                 $files += $this->consumers[$key] ?? [];
@@ -1262,6 +1272,9 @@ final class ClosedWorld
      */
     public function apply(): int
     {
+        $t0 = \microtime(true);
+        // merged in file order: unions are combined the same way whichever files a pass re-analyzed
+        \ksort($this->by_file);
         $this->all = ClosedWorldContributions::merge($this->by_file);
         $this->collectProjectStorages();
         $this->expandPolymorphicNew();
@@ -1276,6 +1289,9 @@ final class ClosedWorld
             $changed = $this->applyAll('sound');
         }
         $this->report($changed);
+        if (getenv('CW_DEBUG')) {
+            fwrite(STDERR, \sprintf("[closed-world] apply took %.2fs\n", \microtime(true) - $t0));
+        }
         return $changed;
     }
 

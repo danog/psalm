@@ -236,6 +236,7 @@ class Reconciler
                 $has_empty,
                 $inside_loop,
                 $has_object_array_access,
+                $statements_analyzer->getRootFilePath(),
             );
 
             if ($result_type && $result_type->isUnionEmpty()) {
@@ -709,7 +710,9 @@ class Reconciler
         bool $has_empty,
         bool $inside_loop,
         bool &$has_object_array_access,
+        ?string $root_file = null,
     ): ?Union {
+        $root_file ??= $code_location?->file_path;
         $key_parts = self::breakUpPathIntoParts($key);
 
         if (count($key_parts) === 1) {
@@ -729,7 +732,12 @@ class Reconciler
             $base_key .= '::$' . $property_name;
 
             if (!isset($existing_keys[$base_key])) {
-                $static_property_type = self::getStaticPropertyType($codebase, $fq_class_name, $property_name);
+                $static_property_type = self::getStaticPropertyType(
+                    $codebase,
+                    $fq_class_name,
+                    $property_name,
+                    $root_file,
+                );
 
                 if (!$static_property_type) {
                     return null;
@@ -952,6 +960,7 @@ class Reconciler
                                         $codebase,
                                         $existing_key_type_part->value,
                                         $property_name,
+                                        $root_file,
                                     );
 
                                     if (!$class_property_type) {
@@ -999,18 +1008,20 @@ class Reconciler
         Codebase $codebase,
         string $fq_class_name,
         string $property_name,
+        ?string $file = null,
     ): ?Union {
         if (!$codebase->classOrInterfaceExists($fq_class_name)) {
             return null;
         }
 
-        return self::getPropertyType($codebase, $fq_class_name, $property_name);
+        return self::getPropertyType($codebase, $fq_class_name, $property_name, $file);
     }
 
     private static function getPropertyType(
         Codebase $codebase,
         string $fq_class_name,
         string $property_name,
+        ?string $file = null,
     ): ?Union {
         $property_id = $fq_class_name . '::$' . $property_name;
 
@@ -1064,6 +1075,7 @@ class Reconciler
             false,
             null,
             null,
+            $file,
         );
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
