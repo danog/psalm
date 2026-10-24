@@ -10,7 +10,12 @@ cd "$(dirname "$0")"
 HERE="$(pwd)"
 OUT="$HERE/rust/generated/tiny_cw"
 CW_FLAG="--transpile-closed-world"
-if [ "$1" = "--no-closed-world" ]; then CW_FLAG=""; fi
+CONFIG=psalm-cw.xml
+if [ "$1" = "--no-closed-world" ]; then
+  CW_FLAG=""
+  CONFIG=psalm-trusted.xml
+  sed 's/closedWorld="true"/closedWorld="false"/' psalm-cw.xml > "$CONFIG"
+fi
 mkdir -p build
 
 cases=()
@@ -23,7 +28,7 @@ mod_of() { # PHP namespace -> generated module dir
 
 echo "=== TRANSPILE ${CW_FLAG:-(trusted mode)} ==="
 rm -rf "$OUT/src"
-php -d memory_limit=4000M ../../psalm -c psalm-cw.xml --no-cache --no-progress --threads=1 $CW_FLAG \
+php -d memory_limit=4000M ../../psalm -c "$CONFIG" --no-cache --no-progress --threads=1 $CW_FLAG \
   --transpile-rust="$OUT" > build/transpile.log 2>&1 || true
 grep -E "Transpiler crashed|Fatal error|Uncaught|\[closed-world\]|\[transpiler\] [a-z]|e\.g\.|\[mixed-var\]" build/transpile.log \
   | grep -v "runtime-stubs" | sed 's#'"$HERE"'/##' || true
