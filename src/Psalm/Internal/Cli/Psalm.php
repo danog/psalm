@@ -456,7 +456,7 @@ final class Psalm
                 Transpiler::phase('analysis pass 1 done');
                 if (($closed_world = ClosedWorld::get()) !== null) {
                     // whole-program inference: re-analyze until the inferred types are a fixpoint
-                    while ($closed_world->apply() > 0 || $closed_world->findDeadBranches() > 0) {
+                    while ($closed_world->apply() > 0 || $closed_world->simplifyProgram() > 0) {
                         $closed_world->startPass();
                         Transpiler::get()->resetRecords();
                         $project_analyzer->reanalyzeForTranspiler();

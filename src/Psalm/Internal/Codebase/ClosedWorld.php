@@ -243,6 +243,10 @@ final class ClosedWorld
         }
         $id = spl_object_id($storage);
         $this->storages[$id] = $storage;
+        $count = \count($args);
+        $has_unpack = $has_packed_var;
+        $old = $this->arities[$id] ?? [$count, $count];
+        $this->arities[$id] = [\min($old[0], $count), $has_unpack || $old[1] === null ? null : \max($old[1], $count)];
         $recursive = $statements_analyzer->getSource() instanceof \Psalm\Internal\Analyzer\FunctionLikeAnalyzer
             && $this->callerStorage($statements_analyzer) === $storage;
 
@@ -809,6 +813,7 @@ final class ClosedWorld
     {
         $this->pass++;
         $this->args = [];
+        $this->arities = [];
         $this->branches = [];
         $this->global_writes = [];
         $this->outs = [];
@@ -1393,21 +1398,178 @@ final class ClosedWorld
         return $n;
     }
 
-    /** @param list<PhpParser\Node\Stmt> $stmts */
-    public function pruneStatements(string $file_path, array $stmts): void
+    /**
+     * Rewrites of constructs whose dynamic part the whole-program types pin down, decided at a sound fixpoint and
+     * applied whenever the file is parsed: file => node start => [kind, data].
+     *
+     * - `var`: `$$name` where `$name` is always one literal string: the variable it names;
+     * - `args`: `func_get_args()` in a function every call of which passes exactly its parameters: the list of
+     *   the parameters (PHP returns their current values);
+     * - `extract`: `extract($sealed_shape);` as a statement: one assignment per key.
+     *
+     * @var array<string, array<int, array{string, mixed}>>
+     */
+    private array $rewrites = [];
+
+    /**
+     * Call arities seen this pass, by storage id: [min, max] argument counts, max null when an argument was
+     * unpacked.
+     *
+     * @var array<int, array{int, ?int}>
+     */
+    private array $arities = [];
+
+    /**
+     * At a sound fixpoint: dead branches and dynamic constructs the types resolve.
+     *
+     * @return int number of new simplifications (the program changed: analyze again)
+     */
+    public function simplifyProgram(): int
     {
-        if (!isset($this->dead[$file_path])) {
-            return;
+        if ($this->phase !== 'sound') {
+            return 0;
         }
-        $dead = $this->dead[$file_path];
-        $finder = new PhpParser\NodeFinder();
-        foreach ($finder->find($stmts, static fn(PhpParser\Node $n): bool => $n instanceof PhpParser\Node\Stmt\If_
-            || $n instanceof PhpParser\Node\Stmt\ElseIf_ || $n instanceof PhpParser\Node\Stmt\Else_) as $branch
-        ) {
-            if (isset($dead[(int) $branch->getAttribute('startFilePos')])) {
-                $branch->stmts = [];
+        $n = $this->findDeadBranches();
+        if (!\Psalm\Internal\Transpiler\Transpiler::isEnabled()) {
+            return $n;
+        }
+        $added = 0;
+        foreach (\Psalm\Internal\Transpiler\Transpiler::get()->functions as $record) {
+            $stmts = $record->node->getStmts();
+            if (!$this->infers($record->file_path) || $stmts === null) {
+                continue;
+            }
+            $file = $record->file_path;
+            $storage = $record->storage;
+            $exact_arity = !$record->node instanceof PhpParser\Node\Expr\Closure
+                && !$record->node instanceof PhpParser\Node\Expr\ArrowFunction
+                && !$this->isEscaped($storage)
+                && $this->hasExactArity($storage);
+            foreach (self::ownNodes($stmts) as $node) {
+                $pos = (int) $node->getAttribute('startFilePos');
+                if (isset($this->rewrites[$file][$pos])) {
+                    continue;
+                }
+                if ($node instanceof PhpParser\Node\Expr\Variable && $node->name instanceof PhpParser\Node\Expr) {
+                    $type = $record->node_data->getType($node->name);
+                    if ($type !== null && $type->isSingleStringLiteral()
+                        && \preg_match('/^[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/', $name = $type->getSingleStringLiteral()->value)
+                        && $name !== 'this'
+                    ) {
+                        $this->rewrites[$file][$pos] = ['var', $name];
+                        $added++;
+                    }
+                } elseif ($node instanceof PhpParser\Node\Expr\FuncCall && $node->name instanceof PhpParser\Node\Name
+                    && strtolower($node->name->getLast()) === 'func_get_args' && $exact_arity && !$node->getArgs()
+                ) {
+                    $names = [];
+                    foreach ($storage->params as $param) {
+                        if ($param->is_variadic || $param->by_ref) {
+                            continue 2;
+                        }
+                        $names[] = $param->name;
+                    }
+                    $this->rewrites[$file][$pos] = ['args', $names];
+                    $added++;
+                } elseif ($node instanceof PhpParser\Node\Stmt\Expression && $node->expr instanceof PhpParser\Node\Expr\FuncCall
+                    && $node->expr->name instanceof PhpParser\Node\Name
+                    && strtolower($node->expr->name->getLast()) === 'extract' && \count($node->expr->getArgs()) === 1
+                    && ($keys = $this->sealedKeys($record->node_data->getType($node->expr->getArgs()[0]->value))) !== null
+                ) {
+                    $this->rewrites[$file][$pos] = ['extract', $keys];
+                    $added++;
+                }
             }
         }
+        if ($added > 0) {
+            fwrite(STDERR, "[closed-world] $added dynamic constructs resolved\n");
+        }
+        return $n + $added;
+    }
+
+    /** Whether every call of the function-like (or of its override group) passes exactly its parameters. */
+    private function hasExactArity(FunctionLikeStorage $storage): bool
+    {
+        $n = 0;
+        foreach ($storage->params as $param) {
+            if ($param->is_variadic) {
+                return false;
+            }
+            $n++;
+        }
+        $arity = $this->arities[spl_object_id($storage)] ?? null;
+        return $arity !== null && $arity[0] === $n && $arity[1] === $n
+            && !($storage instanceof MethodStorage && isset($this->unknown_method_args[strtolower((string) $storage->cased_name)]));
+    }
+
+    /**
+     * The keys of a sealed shape that are all definitely present and valid variable names.
+     *
+     * @return list<string>|null
+     */
+    private function sealedKeys(?Union $type): ?array
+    {
+        if ($type === null || !$type->isSingle()) {
+            return null;
+        }
+        $atomic = $type->getSingleAtomic();
+        if (!$atomic instanceof TKeyedArray || $atomic->fallback_params !== null) {
+            return null;
+        }
+        $keys = [];
+        foreach ($atomic->properties as $key => $value) {
+            if (!\is_string($key) || $value->possibly_undefined || $key === 'this'
+                || !\preg_match('/^[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/', $key)
+            ) {
+                return null;
+            }
+            $keys[] = $key;
+        }
+        return $keys;
+    }
+
+    /**
+     * The nodes of a body, not those of nested function-likes and classes.
+     *
+     * @param array<PhpParser\Node> $stmts
+     * @return list<PhpParser\Node>
+     */
+    private static function ownNodes(array $stmts): array
+    {
+        $found = [];
+        $visit = static function (PhpParser\Node $node) use (&$visit, &$found): void {
+            if ($node instanceof PhpParser\Node\FunctionLike || $node instanceof PhpParser\Node\Stmt\ClassLike) {
+                return;
+            }
+            $found[] = $node;
+            foreach ($node->getSubNodeNames() as $name) {
+                $sub = $node->$name;
+                if ($sub instanceof PhpParser\Node) {
+                    $visit($sub);
+                } elseif (\is_array($sub)) {
+                    foreach ($sub as $item) {
+                        if ($item instanceof PhpParser\Node) {
+                            $visit($item);
+                        }
+                    }
+                }
+            }
+        };
+        foreach ($stmts as $stmt) {
+            $visit($stmt);
+        }
+        return $found;
+    }
+
+    /** @param list<PhpParser\Node\Stmt> $stmts */
+    public function pruneStatements(string $file_path, array &$stmts): void
+    {
+        if (!isset($this->dead[$file_path]) && !isset($this->rewrites[$file_path])) {
+            return;
+        }
+        $traverser = new PhpParser\NodeTraverser();
+        $traverser->addVisitor(new ClosedWorldRewriter($file_path, $this->dead[$file_path] ?? [], $this->rewrites[$file_path] ?? []));
+        $stmts = $traverser->traverse($stmts);
     }
 
     // ------------------------------------------------------------------------------------------------------------

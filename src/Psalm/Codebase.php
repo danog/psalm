@@ -882,6 +882,7 @@ final class Codebase
         if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
             // branches the whole-program analysis proved dead are removed before they are analyzed
             $closed_world->pruneStatements($file_path, $stmts);
+            /** @var list<PhpParser\Node\Stmt> $stmts */
         }
         return $stmts;
     }
