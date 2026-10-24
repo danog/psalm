@@ -588,6 +588,37 @@ final class ClosedWorld
         return new Union($atomics);
     }
 
+    /**
+     * Whether reading `$array[$key]` may find no such key (PHP then gives null): any key of a generic array, a key
+     * of a shape that is not one of its definitely present keys.
+     */
+    public static function offsetMayBeMissing(Union $array, Union $key): bool
+    {
+        foreach ($array->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof TArray) {
+                return true;
+            }
+            if (!$atomic instanceof TKeyedArray) {
+                continue;
+            }
+            foreach ($key->getAtomicTypes() as $k) {
+                if ($k instanceof TLiteralInt || $k instanceof TLiteralString) {
+                    $prop = $atomic->properties[$k->value] ?? null;
+                    if ($prop === null || $prop->possibly_undefined) {
+                        return true;
+                    }
+                    continue;
+                }
+                if ($atomic->fallback_params !== null) {
+                    return true;
+                }
+                // a non-literal key of a sealed shape: present only if it is one of the definite keys
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Whether a parameter type takes callables. */
     public static function isCallableParam(Union $type): bool
     {

@@ -648,6 +648,13 @@ trait LValueTrait
             }
             $vt = $this->shapeValueType($bt);
             $b = $this->tmp('__b');
+            $inf = $this->inferred($e);
+            if ($inf !== null && $inf->kind === RustType::OPTION) {
+                // the analysis says the key may be missing: a missing key reads as null, as in PHP
+                $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; let ' . $b . ' = ' . ($base->place !== null ? '&' . $base->place : '&' . $base->code) . '; '
+                    . $this->shapeDynGet($b, '__k', $bt, $vt) . ' }';
+                return $this->narrow(new Val($code, RustType::option($vt)), $e);
+            }
             $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; let ' . $b . ' = ' . ($base->place !== null ? '&' . $base->place : '&' . $base->code) . '; '
                 . $this->shapeDynGet($b, '__k', $bt, $vt) . '.unwrap_or_else(|| panic!("Undefined array key {:?}", __k)) }';
             return $this->narrow(new Val($code, $vt), $e);

@@ -366,6 +366,17 @@ final class ArrayFetchAnalyzer
                 $stmt_type = $stmt_type->getBuilder()->addType(new TNull())->freeze();
             }
 
+            if (\Psalm\Internal\Codebase\ClosedWorld::isEnabled()
+                && !$context->inside_isset
+                && !$context->inside_unset
+                && ($stmt_type->possibly_undefined
+                    || ($stmt_var_type !== null
+                        && \Psalm\Internal\Codebase\ClosedWorld::offsetMayBeMissing($stmt_var_type, $used_key_type)))
+            ) {
+                // closed world (sound): reading a key the array may not have gives null
+                $stmt_type = Type::combineUnionTypes($stmt_type, Type::getNull());
+            }
+
             $stmt_type = $stmt_type->setPossiblyUndefined(false);
         }
 
