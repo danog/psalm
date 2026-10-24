@@ -1485,6 +1485,10 @@ final class Builtins
         if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
             return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => 'mixed_shift(&mut ' . $p . ')') . '; __r }', RustType::option(RustType::mixed())), $call);
         }
+        if ($vt->kind === RustType::OPTION) {
+            // nullable elements: an empty array and a null element both give null
+            return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.shift()') . '; __r.flatten() }', $vt), $call);
+        }
         return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.shift()') . '; __r }', RustType::option($vt)), $call);
     }
 

@@ -606,6 +606,32 @@ trait StmtTrait
     {
         $w = $this->w;
         $st = $subject->type;
+        if (($s->expr instanceof Expr\Variable || $s->expr instanceof Expr\PropertyFetch || $s->expr instanceof Expr\StaticPropertyFetch || $s->expr instanceof Expr\ArrayDimFetch)
+            && $st->kind === RustType::TUPLE && ($place = $this->place($s->expr))->type->kind === RustType::TUPLE
+        ) {
+            // a fixed-size list: each position is copied in and written back (`$v` takes the element types)
+            $val_place = $this->place($s->valueVar);
+            $n = count($place->type->params);
+            $get_arms = [];
+            $set_arms = [];
+            foreach ($place->type->params as $i => $et) {
+                $get_arms[] = $i . ' => ' . $this->casts->convert($place->read() . '.' . $i . '.clone()', $et, $val_place->type);
+                $set_arms[] = $i . ' => { ' . $place->modify(fn(string $p) => $p . '.' . $i . ' = ' . $this->casts->convert($val_place->read(), $val_place->type, $et) . ';') . ' }';
+            }
+            $set_arms[] = '_ => {}';
+            $store_back = 'match ' . $kv . ' { ' . implode(', ', $set_arms) . ' }';
+            $w->open($label . ': for ' . $kv . ' in 0..' . $n . 'usize {');
+            if ($s->keyVar !== null) {
+                $w->line($this->assignTo($s->keyVar, new Val($kv . ' as i64', RustType::int())));
+            }
+            $w->line($val_place->write('match ' . $kv . ' { ' . implode(', ', $get_arms) . ', _ => unreachable!() }'));
+            $this->pushLoop($label, $label, false, $store_back);
+            $this->block($s->stmts);
+            $this->popLoop();
+            $w->line($store_back);
+            $w->close();
+            return;
+        }
         if (!($s->expr instanceof Expr\Variable || $s->expr instanceof Expr\PropertyFetch || $s->expr instanceof Expr\StaticPropertyFetch || $s->expr instanceof Expr\ArrayDimFetch)
             || ($st->kind !== RustType::LIST && $st->kind !== RustType::MAP)
         ) {
