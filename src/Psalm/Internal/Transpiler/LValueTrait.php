@@ -234,6 +234,11 @@ trait LValueTrait
             $this->warn('property access on ' . $bt->toRust(), $e);
             return $this->deadPlace($this->inferredOrMixed($e));
         }
+        if ($e instanceof Expr\PropertyFetch && !$e->name instanceof Identifier
+            && ($place = $this->dynamicFieldPlace($e)) !== null
+        ) {
+            return $place;
+        }
         if (($e instanceof Expr\PropertyFetch || $e instanceof Expr\NullsafePropertyFetch) && !$e->name instanceof Identifier) {
             // `$obj->$name`: properties are never looked up by name (closed world)
             $this->warn('dynamic property name', $e);
@@ -273,6 +278,43 @@ trait LValueTrait
         }
         $this->warn('unsupported lvalue ' . $e->getType(), $e);
         return $this->deadPlace($this->inferredOrMixed($e));
+    }
+
+    /**
+     * `$obj->$name` on an object of a known class: a match over the names of its fields (in a closed world the
+     * class declares - or the inference added - every property the program can write).
+     */
+    private function dynamicFieldPlace(Expr\PropertyFetch $e): ?Place
+    {
+        $base = $this->receiver($e->var);
+        $bt = $base->type;
+        $cls = $bt->kind === RustType::CLASS_ ? $this->program->classOf($bt) : null;
+        if ($cls === null || $cls->fields === [] || !$cls->isLeaf()) {
+            return null;
+        }
+        $inside = $this->class !== null && $this->class->isSubclassOf($cls);
+        $inf = $this->inferredOrMixed($e);
+        $name = $this->exprTo($e->name, RustType::str());
+        $bc = $base->recv();
+        $gets = [];
+        $sets = [];
+        foreach ($cls->fields as $fname => $field) {
+            if (!$inside && $field->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
+                continue;
+            }
+            $lit = Names::byteStrLiteral((string) $fname);
+            $gets[] = $lit . ' => ' . $this->casts->convert($bc . '.' . $field->acc() . '_get()', $field->type, $inf);
+            $sets[] = $lit . ' => ' . $bc . '.set_' . $field->acc() . '(' . $this->casts->convert('__v', $inf, $field->type) . ')';
+        }
+        if ($gets === []) {
+            return null;
+        }
+        $miss = 'panic!("Cannot access undefined property {}::${}", ' . Names::rustStringLiteral($cls->fqcn) . ', __n)';
+        return new Place(
+            $inf,
+            fn() => '{ let __n: Str = ' . $name . '; match __n.as_bytes() { ' . implode(', ', $gets) . ', _ => ' . $miss . ' } }',
+            fn(string $v) => '{ let __v = ' . $v . '; let __n: Str = ' . $name . '; match __n.as_bytes() { ' . implode(', ', $sets) . ', _ => ' . $miss . ' } }',
+        );
     }
 
     private function deadPlace(RustType $t): Place

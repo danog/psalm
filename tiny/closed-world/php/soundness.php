@@ -2,7 +2,7 @@
 namespace Cw\Soundness;
 
 // writes the analysis must see for the inferred types to hold: by-reference out values, writes through
-// untyped parameters, static properties, references to array items, `$o->$name = v`
+// untyped parameters, static properties, by-reference array items, `$o->$name = v`
 class SBox { public $v; public static $count = 0; }
 class SOther { public $v = 0; }
 
@@ -22,8 +22,7 @@ function run_soundness() {
     SBox::$count .= 'x';
     $out .= SBox::$count . '|';
     $arr = [1, 2];
-    $r = &$arr[0];
-    $r = 'z';
+    s_set($arr[0], 'z');
     $out .= $arr[0] . '|';
     $o = new SOther();
     s_dyn($o, 'v', 3.5);
