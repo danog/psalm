@@ -91,6 +91,9 @@ final class CommentAnalyzer
         ?array $template_type_map = null,
         ?array $type_aliases = null,
     ): array {
+        if ($codebase->config->ignoresDocblockTypesIn($source->getFilePath())) {
+            return [];
+        }
         $var_id = null;
 
         $var_type_tokens = null;

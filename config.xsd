@@ -66,6 +66,7 @@
         <xs:attribute name="inferPropertyTypesFromConstructor" type="xs:boolean" default="true" />
         <xs:attribute name="memoizeMethodCallResults" type="xs:boolean" default="false" />
         <xs:attribute name="rememberPropertyAssignmentsAfterCall" type="xs:boolean" default="true" />
+        <xs:attribute name="closedWorld" type="xs:boolean" default="false" />
         <xs:attribute name="resolveFromConfigFile" type="xs:boolean" default="true" />
         <xs:attribute name="strictBinaryOperands" type="xs:boolean" default="true" />
         <xs:attribute name="allowBoolToLiteralBoolComparison" type="xs:boolean" default="true" />

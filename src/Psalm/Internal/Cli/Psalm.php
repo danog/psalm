@@ -188,6 +188,7 @@ final class Psalm
         'transpile-rust:',
         'transpile-rust-split:',
         'transpile-rust-data:',
+        'transpile-closed-world',
     ];
 
     /**
@@ -287,6 +288,16 @@ final class Psalm
 
         if (isset($options['no-cache'])) {
             $config->cache_directory = null;
+        }
+
+        if (isset($options['transpile-closed-world'])) {
+            $config->closed_world = true;
+        }
+        if ($config->closed_world) {
+            // whole-program inference must be sound: no property narrowing survives a call, no call result is
+            // memoized (a call may write anything the closed world contains)
+            $config->remember_property_assignments_after_call = false;
+            $config->memoize_method_calls = false;
         }
 
         $config->setIncludeCollector($include_collector);

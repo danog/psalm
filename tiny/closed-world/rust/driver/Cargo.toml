@@ -1,0 +1,12 @@
+[package]
+name = "driver"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "driver"
+path = "src/main.rs"
+
+[dependencies]
+tiny_cw = { path = "../generated/tiny_cw" }
+php-rt = { path = "../../../rust/php-rt" }

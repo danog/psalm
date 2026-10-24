@@ -261,7 +261,7 @@ final class FunctionLikeDocblockScanner
             }
         }
 
-        if (!$config->use_docblock_types) {
+        if (!$config->use_docblock_types || $config->ignoresDocblockTypesIn($file_scanner->getFilePath())) {
             return;
         }
 

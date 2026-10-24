@@ -334,6 +334,13 @@ final class Config
 
     public bool $remember_property_assignments_after_call = true;
 
+    /**
+     * Closed-world whole-program inference (transpiler): every file that will ever run is analyzed, so the
+     * types of parameters, returns and properties of project code are inferred from the whole program and
+     * project docblock types are ignored. See Internal\Transpiler\ClosedWorld.
+     */
+    public bool $closed_world = false;
+
     public bool $use_igbinary = false;
 
     /** @var 'lz4'|'deflate'|'off' */
@@ -984,6 +991,7 @@ final class Config
             'strictBinaryOperands' => 'strict_binary_operands',
             'allowBoolToLiteralBoolComparison' => 'allow_bool_to_literal_bool_comparison',
             'rememberPropertyAssignmentsAfterCall' => 'remember_property_assignments_after_call',
+            'closedWorld' => 'closed_world',
             'disableVarParsing' => 'disable_var_parsing',
             'allowStringToStandInForClass' => 'allow_string_standin_for_class',
             'disableSuppressAll' => 'disable_suppress_all',
@@ -1863,6 +1871,23 @@ final class Config
     public function isInProjectDirs(string $file_path): bool
     {
         return $this->project_files && $this->project_files->allows($file_path);
+    }
+
+    /** @var array<string, bool> */
+    private array $docblock_types_ignored = [];
+
+    /**
+     * Closed world: project code is typed by whole-program inference, never by its docblocks (which may lie).
+     * The transpiler's runtime stubs (trusted PHP implementations of builtins) and everything outside the
+     * project (stubs, vendor) keep their docblocks.
+     */
+    public function ignoresDocblockTypesIn(string $file_path): bool
+    {
+        if (!$this->closed_world) {
+            return false;
+        }
+        return $this->docblock_types_ignored[$file_path] ??= $this->isInProjectDirs($file_path)
+            && !\Psalm\Internal\Transpiler\Transpiler::isRuntimeStubFile($file_path);
     }
 
     /**
@@ -2817,6 +2842,7 @@ final class Config
             'strict_binary_operands' => $this->strict_binary_operands = $value,
             'allow_bool_to_literal_bool_comparison' => $this->allow_bool_to_literal_bool_comparison = $value,
             'remember_property_assignments_after_call' => $this->remember_property_assignments_after_call = $value,
+            'closed_world' => $this->closed_world = $value,
             'disable_var_parsing' => $this->disable_var_parsing = $value,
             'allow_string_standin_for_class' => $this->allow_string_standin_for_class = $value,
             'disable_suppress_all' => $this->disable_suppress_all = $value,

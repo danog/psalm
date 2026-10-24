@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<psalm
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    name="Closed-world transpile loop"
+    errorLevel="8"
+    throwExceptionOnError="0"
+    findUnusedCode="false"
+    xsi:schemaLocation="https://getpsalm.org/schema/config config.xsd"
+    closedWorld="true"
+    cacheDirectory="build/psalm-cache-cw"
+>
+    <stubs>
+        <file name="../../src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+    </stubs>
+    <projectFiles>
+        <directory name="../../src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="php"/>
+        <ignoreFiles>
+            <file name="../../src/Psalm/Internal/Transpiler/runtime-stubs/fork.php"/>
+            <file name="../../src/Psalm/Internal/Transpiler/runtime-stubs/plugin_instantiator.php"/>
+        </ignoreFiles>
+    </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
+</psalm>

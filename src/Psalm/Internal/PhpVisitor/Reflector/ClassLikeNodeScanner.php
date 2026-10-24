@@ -378,7 +378,7 @@ final class ClassLikeNodeScanner
         }
 
         $docblock_info = null;
-        $doc_comment = $node->getDocComment();
+        $doc_comment = $this->config->ignoresDocblockTypesIn($this->file_path) ? null : $node->getDocComment();
         if ($doc_comment) {
             try {
                 $docblock_info = ClassLikeDocblockParser::parse(
@@ -1169,7 +1169,7 @@ final class ClassLikeNodeScanner
             $this->file_storage->required_classes[strtolower($trait_fqcln)] = $trait_fqcln;
         }
 
-        if ($node_comment = $node->getDocComment()) {
+        if (!$this->config->ignoresDocblockTypesIn($this->file_path) && ($node_comment = $node->getDocComment())) {
             $comments = DocComment::parsePreservingLength($node_comment);
 
             if (isset($comments->combined_tags['use'])) {
