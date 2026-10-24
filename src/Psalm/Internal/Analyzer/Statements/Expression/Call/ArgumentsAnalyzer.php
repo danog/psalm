@@ -1026,8 +1026,10 @@ final class ArgumentsAnalyzer
             }
         }
 
+        $closed_world_deferred = [];
         if (($closed_world = ClosedWorld::get()) !== null) {
-            $closed_world->recordCall(
+            // closure arguments are analyzed by the matching below: theirs are recorded after it
+            $closed_world_deferred = $closed_world->recordCall(
                 $statements_analyzer,
                 $function_storage,
                 $args,
@@ -1090,6 +1092,17 @@ final class ArgumentsAnalyzer
                     return false;
                 }
             }
+        }
+
+        if ($closed_world_deferred && ($closed_world = ClosedWorld::get()) !== null) {
+            $closed_world->recordCall(
+                $statements_analyzer,
+                $function_storage,
+                $args,
+                $arg_function_params,
+                $has_packed_var,
+                $closed_world_deferred,
+            );
         }
 
         if (($closed_world = ClosedWorld::get()) !== null

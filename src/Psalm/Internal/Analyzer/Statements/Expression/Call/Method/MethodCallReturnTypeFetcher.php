@@ -76,6 +76,9 @@ final class MethodCallReturnTypeFetcher
                     $method_storage->params,
                     $method_storage->return_type,
                     $method_storage->capabilities,
+                    callable_id: $method_storage->defining_fqcln !== null && $method_storage->cased_name !== null
+                        ? strtolower($method_storage->defining_fqcln . '::' . $method_storage->cased_name)
+                        : null,
                 )]);
             }
 

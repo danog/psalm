@@ -59,6 +59,13 @@ final class ClosedWorldSlot
         $this->void_paths = $this->void_paths || $other->void_paths;
     }
 
+    /** Merge another slot into this one; returns this one. */
+    public function mergeFrom(ClosedWorldSlot $other): self
+    {
+        $this->merge($other);
+        return $this;
+    }
+
     public function isEmpty(): bool
     {
         return $this->type === null && !$this->mixed;

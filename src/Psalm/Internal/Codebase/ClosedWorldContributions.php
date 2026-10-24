@@ -51,10 +51,13 @@ final class ClosedWorldContributions
     /** @var array<string, ClosedWorldSlot> `$o->$name = v`: class lc (or `*`) => slot */
     public array $any_prop_writes = [];
 
-    /** @var array<int, ClosedWorldSlot> arguments of unresolved dynamic calls, by offset */
-    public array $dynamic_pool = [];
-
-    public ?ClosedWorldSlot $dynamic_pool_spread = null;
+    /**
+     * Unresolved dynamic calls, grouped by shape: key => [whether the callee is a Closure object, argument count,
+     * argument slots, slot of unpacked further arguments].
+     *
+     * @var array<string, array{bool, int, list<ClosedWorldSlot>, ?ClosedWorldSlot}>
+     */
+    public array $dynamic_sites = [];
 
     /**
      * `new static(...)` / `new $class(...)`: class lc (`*`: unknown) => offset => slot; the constructor of the
@@ -90,9 +93,17 @@ final class ClosedWorldContributions
             self::mergeSlots($all->unknown_prop_writes, $c->unknown_prop_writes);
             self::mergeSlots2($all->dynamic_props, $c->dynamic_props);
             self::mergeSlots($all->any_prop_writes, $c->any_prop_writes);
-            self::mergeSlots($all->dynamic_pool, $c->dynamic_pool);
-            if ($c->dynamic_pool_spread !== null) {
-                ($all->dynamic_pool_spread ??= new ClosedWorldSlot())->merge($c->dynamic_pool_spread);
+            foreach ($c->dynamic_sites as $key => [$closure, $argc, $slots, $spread]) {
+                if (!isset($all->dynamic_sites[$key])) {
+                    $all->dynamic_sites[$key] = [$closure, $argc, \array_map(static fn(ClosedWorldSlot $s): ClosedWorldSlot => (new ClosedWorldSlot())->mergeFrom($s), $slots), $spread !== null ? (new ClosedWorldSlot())->mergeFrom($spread) : null];
+                    continue;
+                }
+                foreach ($slots as $i => $slot) {
+                    $all->dynamic_sites[$key][2][$i]->merge($slot);
+                }
+                if ($spread !== null) {
+                    $all->dynamic_sites[$key][3]?->merge($spread);
+                }
             }
             self::mergeSlots2($all->polymorphic_new, $c->polymorphic_new);
             foreach ($c->branches as $file => $branches) {

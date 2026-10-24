@@ -238,6 +238,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $arg_types,
                     $spread,
                     !$codebase->config->ignoresDocblockTypesIn($statements_analyzer->getFilePath()),
+                    \basename($statements_analyzer->getFilePath()) . ':' . $stmt->getStartLine(),
                 );
             }
         }

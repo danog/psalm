@@ -249,6 +249,8 @@ final class ClosedWorld
      *
      * @param list<PhpParser\Node\Arg> $args
      * @param array<int, list<FunctionLikeParameter>> $arg_function_params argument offset => params it binds
+     * @param list<int>|null $only these arguments only (deferred ones)
+     * @return list<int> arguments not analyzed yet (closures): to record once they are
      */
     public function recordCall(
         StatementsAnalyzer $statements_analyzer,
@@ -256,9 +258,29 @@ final class ClosedWorld
         array $args,
         array $arg_function_params,
         bool $has_packed_var,
-    ): void {
+        ?array $only = null,
+    ): array {
         if ($storage === null || !$this->infers($this->storageFile($storage))) {
-            return;
+            return [];
+        }
+        $deferred = [];
+        if ($only !== null) {
+            $id = spl_object_id($storage);
+            $this->cur = $this->at($statements_analyzer->getRootFilePath());
+            $offsets = [];
+            foreach ($storage->params as $i => $param) {
+                $offsets[$param->name] = $i;
+            }
+            foreach ($only as $argument_offset) {
+                $arg = $args[$argument_offset];
+                $arg_type = $statements_analyzer->node_data->getType($arg->value) ?? Type::getMixed();
+                foreach ($arg_function_params[$argument_offset] ?? [] as $param) {
+                    if (($i = $offsets[$param->name] ?? null) !== null) {
+                        ($this->cur->args[$id][$i] ??= new ClosedWorldSlot())->add($arg_type, false);
+                    }
+                }
+            }
+            return [];
         }
         $id = spl_object_id($storage);
         $this->storages[$id] = $storage;
@@ -282,7 +304,19 @@ final class ClosedWorld
             if (!isset($arg_function_params[$argument_offset])) {
                 continue;
             }
-            $arg_type = $statements_analyzer->node_data->getType($arg->value) ?? Type::getMixed();
+            $arg_type = $statements_analyzer->node_data->getType($arg->value);
+            if ($arg_type === null && !$arg->unpack
+                && ($arg->value instanceof PhpParser\Node\Expr\Closure || $arg->value instanceof PhpParser\Node\Expr\ArrowFunction)
+            ) {
+                $deferred[] = $argument_offset;
+                foreach ($arg_function_params[$argument_offset] as $param) {
+                    if (($i = $offsets[$param->name] ?? null) !== null) {
+                        $bound[$i] = true;
+                    }
+                }
+                continue;
+            }
+            $arg_type ??= Type::getMixed();
             if ($arg->unpack) {
                 $arg_type = self::iterableValueType($arg_type);
             }
@@ -310,6 +344,7 @@ final class ClosedWorld
                 ($this->cur->args[$id][$i] ??= new ClosedWorldSlot())->add(Type::getMixed(), $recursive);
             }
         }
+        return $deferred;
     }
 
     /**
@@ -679,6 +714,12 @@ final class ClosedWorld
         ($this->cur->any_prop_writes[strtolower($fq_class_name)] ??= new ClosedWorldSlot())->add($type, false);
     }
 
+    /** @var array<string, true> lowercase names used in first-class callables (`f(...)`, `$o->m(...)`) */
+    private array $fcc_names = [];
+
+    /** Whether the program builds closures from callable values (`Closure::fromCallable`). */
+    private bool $from_callable_used = false;
+
     /** @var list<string> lowercase literal prefixes of concatenated strings (`'prefix_' . $x` may name a callable) */
     private array $string_prefixes = [];
 
@@ -710,9 +751,15 @@ final class ClosedWorld
                 || $n instanceof PhpParser\Node\Expr\BinaryOp\Concat
                 || $n instanceof PhpParser\Node\Scalar\InterpolatedString
                 || ($n instanceof PhpParser\Node\Expr\CallLike && $n->isFirstClassCallable())
+                || ($n instanceof PhpParser\Node\Expr\StaticCall && $n->name instanceof PhpParser\Node\Identifier
+                    && strtolower($n->name->name) === 'fromcallable')
                 || ($n instanceof PhpParser\Node\Expr\ArrayDimFetch && $n->var instanceof PhpParser\Node\Expr\Variable
                     && $n->var->name === 'GLOBALS')) as $node
             ) {
+                if ($node instanceof PhpParser\Node\Expr\StaticCall && !$node->isFirstClassCallable()) {
+                    $this->from_callable_used = true;
+                    continue;
+                }
                 if ($node instanceof PhpParser\Node\Expr\ArrayDimFetch) {
                     // `$GLOBALS['x']`: the global may be written without a `global` binding
                     $this->escaped_globals[$node->dim instanceof PhpParser\Node\Scalar\String_
@@ -734,12 +781,15 @@ final class ClosedWorld
                     $resolved = $node->name->getAttribute('resolvedName');
                     $this->strings[strtolower(\is_string($resolved) ? $resolved : $node->name->toString())] = true;
                     $this->strings[strtolower($node->name->getLast())] = true;
+                    $this->fcc_names[strtolower(\is_string($resolved) ? $resolved : $node->name->toString())] = true;
+                    $this->fcc_names[strtolower($node->name->getLast())] = true;
                 } elseif (($node instanceof PhpParser\Node\Expr\MethodCall
                         || $node instanceof PhpParser\Node\Expr\NullsafeMethodCall
                         || $node instanceof PhpParser\Node\Expr\StaticCall)
                     && $node->name instanceof PhpParser\Node\Identifier
                 ) {
                     $this->strings[strtolower($node->name->name)] = true;
+                    $this->fcc_names[strtolower($node->name->name)] = true;
                 }
             }
         }
@@ -830,7 +880,7 @@ final class ClosedWorld
         if ($known !== null) {
             [$offset, $arg_types] = $known;
             if (isset($args[$offset])) {
-                $this->recordDynamicCall($root, $type($offset), $arg_types, null, $trusted);
+                $this->recordDynamicCall($root, $type($offset), $arg_types, null, $trusted, \basename($statements_analyzer->getFilePath()) . ':' . ($args[$offset]->getStartLine()));
             }
             return;
         }
@@ -864,9 +914,9 @@ final class ClosedWorld
                 }
                 $callee = $statements_analyzer->node_data->getType($arg->value);
                 if ($arg_types === null) {
-                    $this->recordDynamicCall($root, $callee, [], Type::getMixed(), $trusted);
+                    $this->recordDynamicCall($root, $callee, [], Type::getMixed(), $trusted, \basename($statements_analyzer->getFilePath()) . ':' . $arg->getStartLine());
                 } else {
-                    $this->recordDynamicCall($root, $callee, $arg_types, null, $trusted);
+                    $this->recordDynamicCall($root, $callee, $arg_types, null, $trusted, \basename($statements_analyzer->getFilePath()) . ':' . $arg->getStartLine());
                 }
             }
         }
@@ -890,12 +940,14 @@ final class ClosedWorld
         array $arg_types,
         ?Union $spread,
         bool $trusted_site = false,
+        string $where = '',
     ): void {
         $this->cur = $this->at($file);
         $targets = [];
         $resolved = $callee !== null;
         foreach ($callee?->getAtomicTypes() ?? [] as $atomic) {
-            if ($atomic instanceof Atomic\TNull || $atomic instanceof Atomic\TFalse) {
+            if ($atomic instanceof Atomic\TNull || $atomic instanceof Atomic\TFalse || $atomic instanceof Atomic\TNever) {
+                // (a never callee - optimistically not inferred yet - calls nothing)
                 continue;
             }
             $found = $this->callableTargets($atomic);
@@ -934,17 +986,34 @@ final class ClosedWorld
         if (getenv('CW_DEBUG')) {
             fwrite(STDERR, '[closed-world] ' . ($resolved ? 'resolved (' . \count($targets) . ')' : 'unresolved') . ' dynamic call of ' . ($callee?->getId() ?? '?')
                 . ($trusted_site ? ' (trusted)' : '') . ' with (' . \implode(', ', \array_map(static fn(Union $t): string => $t->getId(), $arg_types))
-                . ($spread !== null ? ', ...' . $spread->getId() : '') . ")\n");
+                . ($spread !== null ? ', ...' . $spread->getId() : '') . ") $where\n");
         }
         if (!$resolved && !$trusted_site) {
             // (a call inside trusted code reaches only callables given to it through its typed callable
             // parameters: those were recorded with the parameter's signature where they were given)
             $this->cur->unknown_callables = true;
+            // a callee typed as a Closure object can only be a closure or a first-class callable
+            $closure_only = $callee !== null && $callee->getAtomicTypes() !== [];
+            foreach ($callee?->getAtomicTypes() ?? [] as $atomic) {
+                if (!$atomic instanceof Atomic\TClosure && !$atomic instanceof Atomic\TNull && !$atomic instanceof Atomic\TNever) {
+                    $closure_only = false;
+                }
+            }
+            $argc = \count($arg_types);
+            $key = ($closure_only ? 'c' : 'a') . $argc . ($spread !== null ? '+' : '');
+            if (!isset($this->cur->dynamic_sites[$key])) {
+                $this->cur->dynamic_sites[$key] = [
+                    $closure_only,
+                    $argc,
+                    \array_map(static fn(): ClosedWorldSlot => new ClosedWorldSlot(), $arg_types),
+                    $spread !== null ? new ClosedWorldSlot() : null,
+                ];
+            }
             foreach ($arg_types as $i => $t) {
-                ($this->cur->dynamic_pool[$i] ??= new ClosedWorldSlot())->add($t, false);
+                $this->cur->dynamic_sites[$key][2][$i]->add($t, false);
             }
             if ($spread !== null) {
-                ($this->cur->dynamic_pool_spread ??= new ClosedWorldSlot())->add($spread, false);
+                $this->cur->dynamic_sites[$key][3]?->add($spread, false);
             }
         }
     }
@@ -1302,6 +1371,10 @@ final class ClosedWorld
         // --- parameters and returns, grouped over method overrides -------------------------------------------
         $groups = $this->methodGroups();
         foreach ($this->storages as $id => $storage) {
+            if (!$this->infers($this->storageFile($storage))) {
+                // trusted code (runtime stubs) keeps its declared types
+                continue;
+            }
             $group = $groups[$id] ?? [$id];
             $escaped = $this->isEscaped($storage);
             $dynamic = !$escaped && $this->isDynamicTarget($storage);
@@ -1319,23 +1392,7 @@ final class ClosedWorld
                         }
                     }
                     if ($dynamic) {
-                        if ($param->is_variadic) {
-                            foreach ($this->all->dynamic_pool as $j => $pool) {
-                                if ($j >= $i) {
-                                    $slot->merge($pool);
-                                }
-                            }
-                        } elseif (isset($this->all->dynamic_pool[$i])) {
-                            $slot->merge($this->all->dynamic_pool[$i]);
-                        }
-                        if ($this->all->dynamic_pool_spread !== null) {
-                            $slot->merge($this->all->dynamic_pool_spread);
-                        }
-                        if (($this->all->dynamic_pool !== [] || $this->all->dynamic_pool_spread !== null)
-                            && $param->default_type instanceof Union
-                        ) {
-                            $slot->add($param->default_type, false);
-                        }
+                        $this->addDynamicSites($slot, $storage, $i, $param);
                     }
                     if ($storage instanceof MethodStorage && $storage->cased_name !== null
                         && isset($this->all->unknown_method_args[strtolower($storage->cased_name)][$i])
@@ -1343,6 +1400,9 @@ final class ClosedWorld
                         $slot->merge($this->all->unknown_method_args[strtolower($storage->cased_name)][$i]);
                     }
                     $new = $slot->value($mode, $declared) ?? $declared;
+                    if ($new !== null && $declared !== null && !$this->refines($new, $declared) && getenv('CW_DEBUG')) {
+                        fwrite(STDERR, '[closed-world] not a refinement: ' . $new->getId() . ' of ' . $declared->getId() . ' for ' . $this->describe($key) . "\n");
+                    }
                     if ($new !== null && $declared !== null && !$this->refines($new, $declared)) {
                         // a value the native type coerces (int into a float parameter, ...): the parameter
                         // holds the native type
@@ -1541,6 +1601,61 @@ final class ClosedWorld
             return \str_starts_with($lc, '__') && $lc !== '__construct';
         }
         return false;
+    }
+
+    /**
+     * The arguments unresolved dynamic calls may pass to this parameter of a dynamic target: those of the calls
+     * that can reach it (a Closure-typed callee only reaches closures and first-class callables; a call passing
+     * fewer arguments than the target requires is an error, not a call of it).
+     */
+    private function addDynamicSites(
+        ClosedWorldSlot $slot,
+        FunctionLikeStorage $storage,
+        int $i,
+        FunctionLikeParameter $param,
+    ): void {
+        $required = 0;
+        foreach ($storage->params as $j => $p) {
+            if (!$p->is_optional && !$p->is_variadic) {
+                $required = $j + 1;
+            }
+        }
+        $closure_like = self::isClosure($storage) || $this->isFirstClassCallableTarget($storage);
+        foreach ($this->all->dynamic_sites as [$closure_only, $argc, $slots, $spread]) {
+            if (($closure_only && !$closure_like) || ($spread === null && $argc < $required)) {
+                continue;
+            }
+            if ($param->is_variadic) {
+                foreach ($slots as $j => $s) {
+                    if ($j >= $i) {
+                        $slot->merge($s);
+                    }
+                }
+            } elseif (isset($slots[$i])) {
+                $slot->merge($slots[$i]);
+            } elseif ($spread === null && $param->default_type instanceof Union) {
+                $slot->add($param->default_type, false);
+            }
+            if ($spread !== null) {
+                $slot->merge($spread);
+                if ($param->default_type instanceof Union) {
+                    $slot->add($param->default_type, false);
+                }
+            }
+        }
+    }
+
+    /** Whether a function or method is named by a first-class callable (`f(...)`, `$o->m(...)`, `Closure::fromCallable`). */
+    private function isFirstClassCallableTarget(FunctionLikeStorage $storage): bool
+    {
+        $name = strtolower((string) $storage->cased_name);
+        if ($this->from_callable_used) {
+            return true;
+        }
+        if ($storage instanceof MethodStorage) {
+            return isset($this->fcc_names[$name]);
+        }
+        return isset($this->fcc_names[$name]) || isset($this->fcc_names[\substr((string) \strrchr('\\' . $name, '\\'), 1)]);
     }
 
     private static function isClosure(FunctionLikeStorage $storage): bool
