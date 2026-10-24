@@ -151,6 +151,10 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                 $context,
             );
 
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                $closed_world->recordCallableValue($statements_analyzer->node_data->getType($function_name));
+            }
+
             if ($function_call_info->function_exists === false) {
                 return true;
             }

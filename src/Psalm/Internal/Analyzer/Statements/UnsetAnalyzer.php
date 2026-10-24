@@ -52,6 +52,13 @@ final class UnsetAnalyzer
 
             $context->inside_general_use = $was_inside_general_use;
 
+            if ($var instanceof PhpParser\Node\Expr\PropertyFetch
+                && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+            ) {
+                // an unset property reads as null (with a warning) until it is written again
+                $closed_world->recordPropertyFetchWrite($statements_analyzer, $var, Type::getNull());
+            }
+
             $var_id = ExpressionIdentifier::getExtendedVarId(
                 $var,
                 $statements_analyzer->getFQCLN(),

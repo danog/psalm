@@ -1025,6 +1025,13 @@ final class ArgumentsAnalyzer
         }
 
         if (($closed_world = ClosedWorld::get()) !== null) {
+            foreach ($args as $argument_offset => $arg) {
+                foreach ($arg_function_params[$argument_offset] ?? [] as $function_param) {
+                    if ($function_param->type !== null && ClosedWorld::isCallableParam($function_param->type)) {
+                        $closed_world->recordCallableValue($statements_analyzer->node_data->getType($arg->value));
+                    }
+                }
+            }
             $closed_world->recordCall(
                 $statements_analyzer,
                 $function_storage,

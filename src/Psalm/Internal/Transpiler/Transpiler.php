@@ -238,11 +238,11 @@ final class Transpiler
         FunctionLikeStorage $storage,
         StatementsAnalyzer $statements_analyzer,
         Context $context,
-    ): void {
+    ): ?FunctionRecord {
         $file_path = $analyzer->getFilePath();
 
         if (!$this->config->isInProjectDirs($file_path)) {
-            return;
+            return null;
         }
 
         $fq_class_name = $analyzer->getFQCLN();
@@ -285,6 +285,7 @@ final class Transpiler
             fwrite(STDERR, "[rec] {$record->fq_class_name}::{$node->name->name} self={$context->self} key=" . spl_object_id($statements_analyzer) . " pending=" . (isset($pending) ? 'yes' : 'no') . " directory=" . implode('|', array_map(static fn($u) => $u->getId(), $t)) . " exit=" . (isset($context->vars_in_scope['$directory']) ? $context->vars_in_scope['$directory']->getId() : '-') . "\n");
         }
         $this->functions[spl_object_id($node) . '@' . strtolower((string) $record->fq_class_name)] = $record;
+        return $record;
     }
 
     public function recordStatement(StatementsAnalyzer $statements_analyzer, Stmt $stmt, Context $context): void

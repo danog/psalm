@@ -1091,6 +1091,11 @@ final class AssignmentAnalyzer
         // old reference, so it's no longer potentially from a confusing scope.
         unset($context->references_possibly_from_confusing_scope[$lhs_var_id]);
 
+        if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+            // writes through a reference to a property or an array item are not seen as writes to it
+            $closed_world->recordReferenceTo($statements_analyzer, $stmt->expr, $context);
+        }
+
         $context->vars_in_scope[$lhs_var_id] = &$context->vars_in_scope[$rhs_var_id];
         $context->hasVariable($lhs_var_id);
         $context->references_in_scope[$lhs_var_id] = $rhs_var_id;
@@ -1198,6 +1203,8 @@ final class AssignmentAnalyzer
                     true,
                     true,
                 );
+
+                \Psalm\Internal\Codebase\ClosedWorld::get()?->recordPropertyWrite($property_id, $by_ref_out_type);
 
                 // the property holds what the call leaves in it (see StaticPropertyAssignmentAnalyzer)
                 if (($graph = $statements_analyzer->getTaintFlowGraphWithSuppressed())
@@ -1917,6 +1924,15 @@ final class AssignmentAnalyzer
                 return;
             }
 
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                // `$o->$name = v`: any property of the object may be written
+                foreach (($statements_analyzer->node_data->getType($assign_var->var) ?? Type::getMixed())->getAtomicTypes() as $atomic) {
+                    $closed_world->recordAnyPropertyWrite(
+                        $atomic instanceof TNamedObject ? $atomic->value : '*',
+                        $assign_value_type,
+                    );
+                }
+            }
             if (($assign_var_type = $statements_analyzer->node_data->getType($assign_var->var))
                 && !$context->ignore_variable_property
             ) {

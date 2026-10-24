@@ -613,18 +613,19 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $param_ids,
         );
 
-        if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
-            && !$context->collect_initializations
-            && !$context->collect_mutations
-        ) {
-            $closed_world->recordBody($storage, $function_stmts, $statements_analyzer);
-        }
-
+        $record = null;
         if (Transpiler::isEnabled()
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
-            Transpiler::get()->recordFunctionLike($this, $this->function, $storage, $statements_analyzer, $context);
+            $record = Transpiler::get()->recordFunctionLike($this, $this->function, $storage, $statements_analyzer, $context);
+        }
+
+        if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+            && !$context->collect_initializations
+            && !$context->collect_mutations
+        ) {
+            $closed_world->recordBody($storage, $function_stmts, $statements_analyzer, $record?->var_types ?? []);
         }
 
         if ($statements_analyzer->owns_type_variable_tracker) {

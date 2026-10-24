@@ -103,6 +103,12 @@ final class ClosedWorld
      */
     private array $unknown_method_args = [];
 
+    /** @var array<int, array<int, ClosedWorldSlot>> what bodies leave in by-reference parameters: storage id => offset */
+    private array $outs = [];
+
+    /** Whether some callable value reaching a dynamic call or a callable parameter is not a known literal. */
+    private bool $unknown_callables = false;
+
     /** @var array<int, ClosedWorldSlot> body return contributions: storage id => slot */
     private array $returns = [];
 
@@ -284,11 +290,17 @@ final class ClosedWorld
         }
     }
 
-    /** The result of analyzing a function-like's body: its return contributions. */
+    /**
+     * The result of analyzing a function-like's body: its return contributions and what it leaves in its
+     * by-reference parameters.
+     *
+     * @param array<string, list<Union>> $var_types every type each variable had in the body
+     */
     public function recordBody(
         FunctionLikeStorage $storage,
         array $stmts,
         StatementsAnalyzer $statements_analyzer,
+        array $var_types,
     ): void {
         if (!$this->infers($this->storageFile($storage))) {
             return;
@@ -296,6 +308,15 @@ final class ClosedWorld
         $id = spl_object_id($storage);
         $this->storages[$id] = $storage;
         $this->analyzed[$id] = true;
+        foreach ($storage->params as $i => $param) {
+            if (!$param->by_ref) {
+                continue;
+            }
+            $slot = $this->outs[$id][$i] ??= new ClosedWorldSlot();
+            foreach ($var_types['$' . $param->name] ?? [Type::getMixed()] as $type) {
+                $slot->add($type, false);
+            }
+        }
         if ($storage->has_yield || ($storage instanceof MethodStorage && $storage->abstract)) {
             return;
         }
@@ -356,6 +377,122 @@ final class ClosedWorld
         ($this->dynamic_props[$class_lc][$name] ??= new ClosedWorldSlot())->add($type, false);
     }
 
+    /**
+     * A property bound by reference (`$r = &$o->p`, `foreach ($o->p as &$v)`...): writes through the reference
+     * are not seen, so the property may hold anything.
+     */
+    public function recordPropertyAliased(string $property_id): void
+    {
+        $this->recordPropertyWrite($property_id, Type::getMixed());
+    }
+
+    /** A write of a value to `$o->p` (by the types of `$o`). */
+    public function recordPropertyFetchWrite(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr\PropertyFetch|PhpParser\Node\Expr\StaticPropertyFetch $fetch,
+        Union $type,
+    ): void {
+        if (!$fetch->name instanceof PhpParser\Node\Identifier && !$fetch->name instanceof PhpParser\Node\VarLikeIdentifier) {
+            $this->recordAnyPropertyWrite('*', $type);
+            return;
+        }
+        $name = $fetch->name->name;
+        $receiver = $fetch instanceof PhpParser\Node\Expr\PropertyFetch ? $fetch->var : $fetch->class;
+        $receiver_type = $receiver instanceof PhpParser\Node\Expr ? $statements_analyzer->node_data->getType($receiver) : null;
+        if ($receiver instanceof PhpParser\Node\Name) {
+            $class = $receiver->getAttribute('resolvedName');
+            $lc = strtolower($receiver->toString());
+            if ($lc === 'self' || $lc === 'static' || $lc === 'parent') {
+                $class = $statements_analyzer->getFQCLN();
+                if ($lc === 'parent' && $class !== null) {
+                    $class = $this->codebase->classlike_storage_provider->get($class)->parent_class;
+                }
+            }
+            if (\is_string($class)) {
+                $this->recordPropertyWrite($class . '::$' . $name, $type);
+                return;
+            }
+        }
+        if ($receiver_type === null) {
+            $this->recordUnknownPropertyWrite($name, $type);
+            return;
+        }
+        foreach ($receiver_type->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof Atomic\TNamedObject
+                && $this->codebase->properties->propertyExists($atomic->value . '::$' . $name, false)
+            ) {
+                $this->recordPropertyWrite($atomic->value . '::$' . $name, $type);
+            } elseif ($atomic instanceof Atomic\TNamedObject) {
+                $this->recordDynamicPropertyWrite($atomic->value, $name, $type);
+            } elseif (!$atomic instanceof Atomic\TNull) {
+                $this->recordUnknownPropertyWrite($name, $type);
+            }
+        }
+    }
+
+    /**
+     * `$r = &<expr>`: a write through `$r` is not seen as a write of a property or array item it aliases. The
+     * property may then hold anything; the array's items too.
+     */
+    public function recordReferenceTo(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $target,
+        \Psalm\Context $context,
+    ): void {
+        $root = $target;
+        $through_item = false;
+        while ($root instanceof PhpParser\Node\Expr\ArrayDimFetch) {
+            $root = $root->var;
+            $through_item = true;
+        }
+        if ($root instanceof PhpParser\Node\Expr\PropertyFetch || $root instanceof PhpParser\Node\Expr\StaticPropertyFetch) {
+            $this->recordPropertyFetchWrite($statements_analyzer, $root, Type::getMixed());
+            return;
+        }
+        if (!$through_item) {
+            return;
+        }
+        $root_id = \Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier::getExtendedVarId(
+            $root,
+            $statements_analyzer->getFQCLN(),
+            $statements_analyzer,
+        );
+        if ($root_id !== null && isset($context->vars_in_scope[$root_id])) {
+            $context->vars_in_scope[$root_id] = self::withMixedItems($context->vars_in_scope[$root_id]);
+        }
+    }
+
+    private static function withMixedItems(Union $type): Union
+    {
+        $atomics = [];
+        foreach ($type->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof TKeyedArray) {
+                $atomic = $atomic->getGenericArrayType();
+            }
+            if ($atomic instanceof TArray) {
+                $atomic = new TArray([$atomic->type_params[0], Type::getMixed()]);
+            }
+            $atomics[] = $atomic;
+        }
+        return new Union($atomics);
+    }
+
+    /** Whether a parameter type takes callables. */
+    public static function isCallableParam(Union $type): bool
+    {
+        foreach ($type->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof Atomic\TCallable
+                || $atomic instanceof Atomic\TClosure
+                || $atomic instanceof Atomic\TCallableString
+                || $atomic instanceof Atomic\TCallableObject
+                || ($atomic instanceof TKeyedArray && $atomic->is_callable)
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** A property write on a receiver of unknown type. */
     public function recordUnknownPropertyWrite(string $name, Union $type): void
     {
@@ -368,9 +505,122 @@ final class ClosedWorld
         ($this->any_prop_writes[strtolower($fq_class_name)] ??= new ClosedWorldSlot())->add($type, false);
     }
 
-    public function recordString(string $value): void
+    /** @var list<string> lowercase literal prefixes of concatenated strings (`'prefix_' . $x` may name a callable) */
+    private array $string_prefixes = [];
+
+    private bool $strings_collected = false;
+
+    /**
+     * The names a callable may be built from: every string literal of the project, the literal prefixes of
+     * concatenations and the names of first-class callables (`f(...)`, `$o->m(...)`). A function-like named by
+     * one of them may be called from where the analysis cannot see its arguments.
+     */
+    private function collectStrings(): void
     {
-        $this->strings[strtolower($value)] = true;
+        if ($this->strings_collected) {
+            return;
+        }
+        $this->strings_collected = true;
+        $finder = new PhpParser\NodeFinder();
+        foreach ($this->codebase->file_storage_provider->getAll() as $file_storage) {
+            if (!$this->infers($file_storage->file_path)) {
+                continue;
+            }
+            try {
+                $stmts = $this->codebase->getStatementsForFile($file_storage->file_path);
+            } catch (\Throwable) {
+                continue;
+            }
+            foreach ($finder->find($stmts, static fn(PhpParser\Node $n): bool =>
+                $n instanceof PhpParser\Node\Scalar\String_
+                || $n instanceof PhpParser\Node\Expr\BinaryOp\Concat
+                || $n instanceof PhpParser\Node\Scalar\InterpolatedString
+                || ($n instanceof PhpParser\Node\Expr\CallLike && $n->isFirstClassCallable())) as $node
+            ) {
+                if ($node instanceof PhpParser\Node\Scalar\String_) {
+                    $this->strings[strtolower(\ltrim($node->value, '\\'))] = true;
+                } elseif ($node instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
+                    $left = $node->left;
+                    while ($left instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
+                        $left = $left->left;
+                    }
+                    $prefix = $left instanceof PhpParser\Node\Scalar\String_ ? $left->value : '';
+                    $this->string_prefixes[] = strtolower(\ltrim($prefix, '\\'));
+                } elseif ($node instanceof PhpParser\Node\Scalar\InterpolatedString) {
+                    $first = $node->parts[0] ?? null;
+                    $prefix = $first instanceof PhpParser\Node\InterpolatedStringPart ? $first->value : '';
+                    $this->string_prefixes[] = strtolower(\ltrim($prefix, '\\'));
+                } elseif ($node instanceof PhpParser\Node\Expr\FuncCall && $node->name instanceof PhpParser\Node\Name) {
+                    $resolved = $node->name->getAttribute('resolvedName');
+                    $this->strings[strtolower(\is_string($resolved) ? $resolved : $node->name->toString())] = true;
+                    $this->strings[strtolower($node->name->getLast())] = true;
+                } elseif (($node instanceof PhpParser\Node\Expr\MethodCall
+                        || $node instanceof PhpParser\Node\Expr\NullsafeMethodCall
+                        || $node instanceof PhpParser\Node\Expr\StaticCall)
+                    && $node->name instanceof PhpParser\Node\Identifier
+                ) {
+                    $this->strings[strtolower($node->name->name)] = true;
+                }
+            }
+        }
+    }
+
+    /**
+     * A value used as a callable (called dynamically, or passed where a callable is expected). A string that is
+     * not a known literal may name any function-like whose name the program can build.
+     */
+    public function recordCallableValue(?Union $type): void
+    {
+        if ($type === null) {
+            $this->unknown_callables = true;
+            return;
+        }
+        foreach ($type->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof TLiteralString
+                || $atomic instanceof Atomic\TClosure
+                || $atomic instanceof Atomic\TNull
+                || $atomic instanceof Atomic\TFalse
+            ) {
+                continue;
+            }
+            if ($atomic instanceof TKeyedArray && $atomic->is_list && isset($atomic->properties[1])
+                && $atomic->properties[1]->isSingleStringLiteral()
+            ) {
+                continue;
+            }
+            if ($atomic instanceof Atomic\TNamedObject && !$atomic instanceof Atomic\TClosure) {
+                // an invokable object: its __invoke is magic, hence escaped
+                continue;
+            }
+            $this->unknown_callables = true;
+        }
+    }
+
+    /** A method called by a name the analysis does not know (`$o->$name()`, `[$o, $name]`). */
+    public function recordUnknownMethodName(): void
+    {
+        $this->unknown_callables = true;
+    }
+
+    /**
+     * Whether a lowercase name may be the value of a string the program builds and uses as a callable: a string
+     * literal of the program, or (when some callable value is not a known literal) a concatenation starting with
+     * a literal prefix of the name. A name built without any literal part (from input) is outside this model.
+     */
+    private function nameMayBeBuilt(string $lc): bool
+    {
+        if (isset($this->strings[$lc])) {
+            return true;
+        }
+        if (!$this->unknown_callables) {
+            return false;
+        }
+        foreach ($this->string_prefixes as $prefix) {
+            if ($prefix !== '' && \str_starts_with($lc, $prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function callerStorage(StatementsAnalyzer $statements_analyzer): ?FunctionLikeStorage
@@ -440,6 +690,8 @@ final class ClosedWorld
     {
         $this->pass++;
         $this->args = [];
+        $this->outs = [];
+        $this->unknown_callables = false;
         $this->unknown_method_args = [];
         $this->returns = [];
         $this->always_exits = [];
@@ -458,6 +710,7 @@ final class ClosedWorld
     public function apply(): int
     {
         $this->collectProjectStorages();
+        $this->collectStrings();
         if ($this->phase === 'optimistic' && $this->pass >= self::OPTIMISTIC_PASSES) {
             $this->phase = 'sound';
         }
@@ -510,6 +763,31 @@ final class ClosedWorld
                     $param->type = $new;
                     $param->type_location = null;
                     $changed++;
+                }
+                if ($param->by_ref) {
+                    $key = 'o:' . $id . ':' . $i;
+                    $this->declared_params[$key] ??= [$param, $param->out_type];
+                    if ($escaped) {
+                        $out = $this->declared_params[$key][1];
+                    } else {
+                        $slot = new ClosedWorldSlot();
+                        foreach ($group as $member) {
+                            if (isset($this->outs[$member][$i])) {
+                                $slot->merge($this->outs[$member][$i]);
+                            }
+                        }
+                        // what the caller passed stays when the body leaves the parameter alone
+                        $out = $slot->value($mode === 'sound' ? 'sound' : 'optimistic', null);
+                        if ($out !== null && $new !== null) {
+                            $out = Type::combineUnionTypes($out, $new, $this->codebase);
+                        }
+                        $out ??= $mode === 'sound' ? Type::getMixed() : $new;
+                    }
+                    $out = $this->settle($key, $out);
+                    if ($this->assign($key, $out)) {
+                        $param->out_type = $out;
+                        $changed++;
+                    }
                 }
             }
 
@@ -583,12 +861,13 @@ final class ClosedWorld
     private function describe(string $key): string
     {
         $parts = \explode(':', $key);
-        if (($parts[0] === 'p' || $parts[0] === 'r') && isset($this->storages[(int) $parts[1]])) {
+        if (($parts[0] === 'p' || $parts[0] === 'r' || $parts[0] === 'o') && isset($this->storages[(int) $parts[1]])) {
             $storage = $this->storages[(int) $parts[1]];
             $name = ($storage instanceof MethodStorage ? $storage->defining_fqcln . '::' : '')
                 . ($storage->cased_name ?? '?');
-            if ($parts[0] === 'p') {
-                return $name . '($' . ($storage->params[(int) $parts[2]]->name ?? '?') . ')';
+            if ($parts[0] === 'p' || $parts[0] === 'o') {
+                return $name . '(' . ($parts[0] === 'o' ? 'out ' : '') . '$'
+                    . ($storage->params[(int) $parts[2]]->name ?? '?') . ')';
             }
             return $name . '(): return';
         }
@@ -665,8 +944,8 @@ final class ClosedWorld
                 return true;
             }
             // `[$obj, 'name']`, `'Class::name'`, `[Class::class, 'name']`
-            return isset($this->strings[$lc])
-                || isset($this->strings[strtolower((string) $storage->defining_fqcln) . '::' . $lc]);
+            return $this->nameMayBeBuilt($lc)
+                || $this->nameMayBeBuilt(strtolower((string) $storage->defining_fqcln) . '::' . $lc);
         }
         if (\str_contains($name, 'closure') || $storage->cased_name === '{closure}') {
             return true;
@@ -678,7 +957,7 @@ final class ClosedWorld
                 break;
             }
         }
-        return isset($this->strings[$fq]) || isset($this->strings['\\' . $fq]);
+        return $this->nameMayBeBuilt($fq);
     }
 
     /** Make sure every project function-like is known (also those never called). */
@@ -782,9 +1061,10 @@ final class ClosedWorld
                     $slot->merge($this->unknown_prop_writes[$name]);
                 }
                 foreach ($this->any_prop_writes as $writer_class => $any) {
-                    if ($writer_class === strtolower($class_storage->name)
+                    if ($writer_class === '*' || $writer_class === strtolower($class_storage->name)
                         || isset($class_storage->parent_classes[$writer_class])
-                        || $this->codebase->classExtendsOrImplements($writer_class, $class_storage->name)
+                        || ($this->codebase->classlike_storage_provider->has($writer_class)
+                            && $this->codebase->classExtendsOrImplements($writer_class, $class_storage->name))
                     ) {
                         $slot->merge($any);
                     }

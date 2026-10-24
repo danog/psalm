@@ -924,6 +924,9 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if ($lhs_type->hasMixed()) {
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                $closed_world->recordUnknownPropertyWrite($prop_name, $assignment_value_type);
+            }
             if (!$context->collect_initializations
                 && !$context->collect_mutations
                 && $statements_analyzer->getFilePath() === $statements_analyzer->getRootFilePath()
@@ -1394,6 +1397,10 @@ final class InstancePropertyAssignmentAnalyzer
             && $codebase->properties->getStorage($property_id)->is_static
         )
         ) {
+            if (!$has_magic_setter && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                // PHP creates the property on the object: it becomes a declared one in the next pass
+                $closed_world->recordDynamicPropertyWrite($fq_class_name, $prop_name, $assignment_value_type);
+            }
             if ($stmt->var instanceof PhpParser\Node\Expr\Variable && $stmt->var->name === 'this') {
                 // if this is a proper error, we'll see it on the first pass
                 if ($context->collect_mutations) {
