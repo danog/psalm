@@ -295,6 +295,61 @@ final class TaintTest extends TestCase
         );
     }
 
+    /**
+     * What a plugin removes from one returned expression is not removed from the other returns of the function, nor
+     * from what its calls give.
+     */
+    public function testTaintRemovedFromOneReturnedExpressionOnly(): void
+    {
+        $this->testConfig->throw_exception = false;
+        $file_path = self::$src_dir_path . 'somefile.php';
+        $this->addFile($file_path, '<?php
+            function encodeOrRaw(string $s, bool $encode): string|false {
+                if ($encode) {
+                    return json_encode($s, JSON_HEX_TAG | JSON_HEX_AMP);
+                }
+                return $s;
+            }
+
+            final class A {
+                public function escapeOrRaw(string $s, bool $escape): string {
+                    if ($escape) {
+                        return htmlspecialchars($s, ENT_QUOTES);
+                    }
+                    return $s;
+                }
+
+                public function escape(string $s): string {
+                    return htmlspecialchars($s, ENT_QUOTES);
+                }
+            }
+
+            echo encodeOrRaw((string) $_GET["x"], false);
+            echo (new A)->escapeOrRaw((string) $_GET["x"], false);
+            echo (new A)->escape((string) $_GET["x"]);
+        ');
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->project_analyzer->trackTaintedInputs();
+        $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
+
+        $this->analyzeFile($file_path, new Context(), false);
+
+        $issues = array_values(array_filter(
+            IssueBuffer::getIssuesDataForFile($file_path),
+            static fn(IssueData $issue): bool => !in_array($issue->type, self::IGNORE, true),
+        ));
+
+        self::assertEqualsCanonicalizing(
+            [
+                [22, 'TaintedHtml'],
+                [22, 'TaintedTextWithQuotes'],
+                [23, 'TaintedHtml'],
+                [23, 'TaintedTextWithQuotes'],
+            ],
+            array_map(static fn(IssueData $issue): array => [$issue->line_from, $issue->type], $issues),
+        );
+    }
+
     public function testTaintFlowThroughNestedSpecializedCallsAndStaticProperty(): void
     {
         $depth = 20;
@@ -4296,6 +4351,39 @@ final class TaintTest extends TestCase
                         echo $identity->get($value);
                     }',
             ],
+            'conditionalSinkOfAnEscapingMode' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                    function render(string $content, int $mode = 0): void {}
+
+                    final class Component {
+                        /**
+                         * @param array{render_way?: int, ...} $options
+                         * @psalm-taint-sink ($options is array{render_way?: 0|1|2, ...} ? null : \'html\') $content
+                         */
+                        public function __construct(string $content, array $options = []) {}
+
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        public function show(string $content, int $mode): void {}
+
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        public static function format(string $content, int $mode): void {}
+                    }
+
+                    $input = (string) $_GET["x"];
+                    render($input, 1);
+                    render($input);
+                    new Component($input, ["render_way" => 2, "class" => "title"]);
+                    new Component($input);
+                    (new Component("safe"))->show($input, 0);
+                    Component::format($input, 1);
+                    $render = render(...);
+                    $render($input, 1);
+                    $closure =
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        function (string $content, int $mode = 0): void {};
+                    $closure($input, 2);',
+            ],
             'lateBoundKeyedStoreKeepsTheStoresOfUnrelatedClassesApart' => [
                 'code' => '<?php
                     abstract class Model {
@@ -4362,6 +4450,90 @@ final class TaintTest extends TestCase
                     $other->set("title", "safe");
                     echo $other->get("title");
                     echo $tainted->get("body");',
+            ],
+            'propertiesSetByKeyDoNotTaintTheOtherProperties' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+
+                        /** @psalm-flow $this->$name -> return */
+                        public function get(string $name): string {
+                            return "";
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->setProperties(["title" => (string) $_GET["x"], "body" => "safe"]);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->body;
+                        echo $model->toArray()["body"];
+                        echo $model->get("body");
+                    }',
+            ],
+            'propertiesReturnedByKeyKeepTheOtherKeysApart' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->title = (string) $_GET["x"];
+                        $model->setProperties(["undeclared" => (string) $_GET["x"]]);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->toArray()["body"];
+                    }',
+            ],
+            'cliOnlyCodePrintsToATerminal' => [
+                'code' => '<?php
+                    /** @psalm-cli-only */
+                    function import(): void {
+                        $file = (string) $_GET["file"];
+                        echo $file;
+                        print $file;
+                        printf("%s", $file);
+                        vprintf("%s", [$file]);
+                        var_dump($file);
+                        print_r($file);
+                        var_export($file, false);
+                        array_map(function (string $line): void {
+                            echo $line;
+                        }, [$file]);
+                    }
+
+                    /** @psalm-cli-only */
+                    final class ImportCommand {
+                        public function run(): void {
+                            echo (string) $_GET["file"];
+                        }
+                    }',
             ],
         ];
     }
@@ -5635,6 +5807,95 @@ final class TaintTest extends TestCase
                     }',
                 'error_message' => 'TaintedHtml',
             ],
+            'conditionalSinkOfARawMode' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                    function render(string $content, int $mode = 0): void {}
+
+                    render((string) $_GET["x"], 3);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAModeNotKnown' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                    function render(string $content, int $mode = 0): void {}
+
+                    function show(int $mode): void {
+                        render((string) $_GET["x"], $mode);
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfARawDefaultMode' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                    function render(string $content, int $mode = 3): void {}
+
+                    render((string) $_GET["x"]);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAMethod' => [
+                'code' => '<?php
+                    final class Component {
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        public function show(string $content, int $mode): void {}
+                    }
+
+                    (new Component())->show((string) $_GET["x"], 3);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAStaticMethod' => [
+                'code' => '<?php
+                    final class Component {
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        public static function format(string $content, int $mode): void {}
+                    }
+
+                    Component::format((string) $_GET["x"], 3);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAKeyOfTheOptionsOfAConstructor' => [
+                'code' => '<?php
+                    final class Component {
+                        /**
+                         * @param array{render_way?: int, ...} $options
+                         * @psalm-taint-sink ($options is array{render_way?: 0|1|2, ...} ? null : \'html\') $content
+                         */
+                        public function __construct(string $content, array $options = []) {}
+                    }
+
+                    new Component((string) $_GET["x"], ["render_way" => 3]);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAFirstClassCallable' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                    function render(string $content, int $mode = 0): void {}
+
+                    $render = render(...);
+                    $render((string) $_GET["x"], 3);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAClosure' => [
+                'code' => '<?php
+                    $render =
+                        /** @psalm-taint-sink ($mode is 0|1|2 ? null : \'html\') $content */
+                        function (string $content, int $mode = 0): void {};
+
+                    $render((string) $_GET["x"], 3);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'conditionalSinkOfAParameterThatDoesNotExist' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink ($mode is 0 ? null : \'html\') $text */
+                    function render(string $content, int $mode): void {}',
+                'error_message' => 'names $text, which is not a parameter',
+            ],
+            'conditionalSinkThatIsNotAConditional' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink (string) $content */
+                    function render(string $content): void {}',
+                'error_message' => 'must be a conditional',
+            ],
             'propertySetByNameIsReadByAFetchOfIt' => [
                 'code' => '<?php
                     /** @property string $title */
@@ -5892,6 +6153,297 @@ final class TaintTest extends TestCase
                         public function set(string $name, callable $compute): void {}
                     }',
                 'error_message' => 'is neither',
+            ],
+            'propertySetByKeyIsReadByAFetchOfIt' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->setProperties(["title" => (string) $_GET["x"], "body" => "safe"]);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->title;
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertiesSetFromAnArrayOfKeysNotKnownAreEachProperty' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->setProperties($_GET);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->body;
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertyReturnedByKeyIsReadUnderItsKey' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->title = (string) $_GET["x"];
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->toArray()["title"];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertiesReturnedByKeyAreEachReadUnderAKeyNotKnown' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->title = (string) $_GET["x"];
+                    }
+
+                    function show(Model $model, string $key): void {
+                        echo $model->toArray()[$key];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertySetByKeyNamingNoPropertyIsReturnedUnderIt' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    function save(Model $model): void {
+                        $model->setProperties(["undeclared" => (string) $_GET["x"]]);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->toArray()["undeclared"];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertySetByANameOfNoPropertyIsReturnedUnderIt' => [
+                'code' => '<?php
+                    final class Model {
+                        public string $title = "";
+                        public string $body = "";
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+
+                        /** @psalm-flow ($value) -> $this->$name */
+                        public function set(string $name, string $value): void {}
+                    }
+
+                    function save(Model $model): void {
+                        $model->set("undeclared", (string) $_GET["x"]);
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->toArray()["undeclared"];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertiesSetByKeyThroughAParentClassAreReadThroughTheSubclassWithItsTag' => [
+                'code' => '<?php
+                    abstract class Model {
+                        abstract public function __get(string $name): mixed;
+
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        abstract public function setProperties(array $values): void;
+                    }
+
+                    /** @property string $title */
+                    abstract class Article extends Model {}
+
+                    function save(Model $model): void {
+                        $model->setProperties(["title" => (string) $_GET["x"]]);
+                    }
+
+                    function show(Article $article): void {
+                        echo $article->title;
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertySetThroughASubclassIsReturnedByKeyByTheParentClass' => [
+                'code' => '<?php
+                    class Model {
+                        public string $title = "";
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    final class Article extends Model {}
+
+                    function save(Article $article): void {
+                        $article->title = (string) $_GET["x"];
+                    }
+
+                    function show(Model $model): void {
+                        echo $model->toArray()["title"];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertiesReturnedByKeyOfAnObjectSpecialized' => [
+                'code' => '<?php
+                    /** @psalm-taint-specialize */
+                    final class Model {
+                        /** @psalm-flow ($values) -> $this->{key} */
+                        public function setProperties(array $values): void {}
+
+                        /**
+                         * @return array<string, string>
+                         * @psalm-flow $this->{key} -> return[key]
+                         */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }
+
+                    $model = new Model();
+                    $model->setProperties(["title" => (string) $_GET["x"]]);
+                    echo $model->toArray()["title"];',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertiesReadByKeyIntoAReturnWithoutKey' => [
+                'code' => '<?php
+                    final class Model {
+                        /** @psalm-flow $this->{key} -> return */
+                        public function toArray(): array {
+                            return [];
+                        }
+                    }',
+                'error_message' => 'is neither',
+            ],
+            'propertiesSetByKeyWithAPathType' => [
+                'code' => '<?php
+                    final class Model {
+                        /** @psalm-flow ($values) -(arrayvalue-fetch)-> $this->{key} */
+                        public function setProperties(array $values): void {}
+                    }',
+                'error_message' => 'is neither',
+            ],
+            'cliOnlyCodeReturnsWhatPrintRWouldPrint' => [
+                'code' => '<?php
+                    /** @psalm-cli-only */
+                    function dump(): string {
+                        return print_r((string) $_GET["x"], true);
+                    }
+
+                    echo dump();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'cliOnlyCodeStillPrintsSecretsToTheTerminal' => [
+                'code' => '<?php
+                    /** @psalm-taint-source system_secret */
+                    function systemSecret(): string { return ""; }
+
+                    /** @psalm-cli-only */
+                    function show(): void {
+                        echo systemSecret();
+                    }',
+                'error_message' => 'TaintedSystemSecret',
+            ],
+            'cliOnlyCodeKeepsTheTaintsOfItsValuesForTheOtherSinks' => [
+                'code' => '<?php
+                    /** @psalm-cli-only */
+                    function run(): void {
+                        exec((string) $_GET["cmd"]);
+                    }',
+                'error_message' => 'TaintedShell',
+            ],
+            'codeCalledFromCliOnlyCodeIsNotCliOnly' => [
+                'code' => '<?php
+                    function show(string $text): void {
+                        echo $text;
+                    }
+
+                    /** @psalm-cli-only */
+                    function run(): void {
+                        show((string) $_GET["x"]);
+                    }',
+                'error_message' => 'TaintedHtml',
             ],
             'keyedStoreExactKey' => [
                 'code' => '<?php

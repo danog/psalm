@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\CastAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\CliOutput;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -445,20 +446,22 @@ final class ArgumentAnalyzer
                             [$template_type->param_name]
                             [$template_type->defining_class],
                     )) {
-                        $template_result->lower_bounds[$template_type->param_name][$template_type->defining_class] = [
-                            new TemplateBound(
-                                $template_result->upper_bounds
-                                    [$template_type->param_name]
-                                    [$template_type->defining_class]->type,
-                            ),
-                        ];
+                        $fallback_bound = new TemplateBound(
+                            $template_result->upper_bounds
+                                [$template_type->param_name]
+                                [$template_type->defining_class]->type,
+                        );
                     } else {
-                        $template_result->lower_bounds[$template_type->param_name][$template_type->defining_class] = [
-                            new TemplateBound(
-                                $template_type->as,
-                            ),
-                        ];
+                        $fallback_bound = new TemplateBound(
+                            $template_type->as,
+                        );
                     }
+
+                    $fallback_bound->from_constraint_fallback = true;
+
+                    $template_result->lower_bounds[$template_type->param_name][$template_type->defining_class] = [
+                        $fallback_bound,
+                    ];
                 }
             }
 
@@ -1015,6 +1018,7 @@ final class ArgumentAnalyzer
                 $union_comparison_results->type_variable_lower_bounds,
                 $union_comparison_results->type_variable_upper_bounds,
                 $arg_location,
+                $statements_analyzer->getSuppressedIssues(),
             );
         }
 
@@ -1838,6 +1842,11 @@ final class ArgumentAnalyzer
         $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
         $removed_taints |= $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
 
+        // printed by code only running from the command line: to a terminal
+        if ($expr->getAttribute(CliOutput::PRINTED_ATTRIBUTE) === true) {
+            $removed_taints |= CliOutput::HTML_TAINTS;
+        }
+
         if ($function_param->type && $function_param->type->isString() && !$input_type->isString()) {
             $input_type = CastAnalyzer::castStringAttempt(
                 $statements_analyzer,
@@ -2195,7 +2204,8 @@ final class ArgumentAnalyzer
             return $param_type;
         }
 
-        return new Union($resolved_atomic_types);
+        // keep the union's own properties (from_docblock, possibly_undefined, ...)
+        return $param_type->getBuilder()->setTypes($resolved_atomic_types)->freeze();
     }
 
     /**
