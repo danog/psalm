@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Codebase\ClosedWorld;
 use InvalidArgumentException;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -1021,6 +1022,16 @@ final class ArgumentsAnalyzer
                 $arg_function_params[$argument_offset] = [$last_param];
                 $matched_args[$last_param->name] = true;
             }
+        }
+
+        if (($closed_world = ClosedWorld::get()) !== null) {
+            $closed_world->recordCall(
+                $statements_analyzer,
+                $function_storage,
+                $args,
+                $arg_function_params,
+                $has_packed_var,
+            );
         }
 
         foreach ($args as $argument_offset => $arg) {

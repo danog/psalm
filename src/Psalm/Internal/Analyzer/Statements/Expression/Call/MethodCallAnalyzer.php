@@ -380,7 +380,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
         if ($stmt_type) {
             $statements_analyzer->node_data->setType($stmt, $stmt_type);
 
-            if ($stmt_type->isNever()) {
+            if ($stmt_type->isNever() && !\Psalm\Internal\Codebase\ClosedWorld::optimistic()) {
                 $context->has_returned = true;
             }
         }
@@ -408,6 +408,12 @@ final class MethodCallAnalyzer extends CallAnalyzer
         }
 
         if (!$result->existent_method_ids) {
+            if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null
+                && $stmt->name instanceof PhpParser\Node\Identifier
+                && !$stmt->isFirstClassCallable()
+            ) {
+                $closed_world->recordUnknownMethodCall($statements_analyzer, $stmt->name->name, $stmt->getArgs());
+            }
             return $stmt->isFirstClassCallable() || self::checkMethodArgs(
                 null,
                 $stmt->getArgs(),

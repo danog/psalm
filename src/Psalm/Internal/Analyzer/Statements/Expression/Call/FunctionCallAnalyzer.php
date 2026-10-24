@@ -303,7 +303,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
 
             $statements_analyzer->node_data->setType($real_stmt, $stmt_type);
 
-            if ($stmt_type->isNever()) {
+            if ($stmt_type->isNever() && !\Psalm\Internal\Codebase\ClosedWorld::optimistic()) {
                 $context->has_returned = true;
             }
 

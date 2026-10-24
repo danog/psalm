@@ -168,6 +168,12 @@ final class InstancePropertyAssignmentAnalyzer
             return;
         }
 
+        if (($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+            foreach ($assigned_properties as $assigned_property) {
+                $closed_world->recordPropertyWrite($assigned_property->id, $assigned_property->assignment_type);
+            }
+        }
+
         if ($assignment_value_type->hasMixed()) {
             return;
         }

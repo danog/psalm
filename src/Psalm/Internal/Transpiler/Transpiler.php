@@ -323,6 +323,10 @@ final class Transpiler
 
     public function recordInferredReturnType(FunctionLikeStorage $storage, Union $type): void
     {
+        if (\Psalm\Internal\Codebase\ClosedWorld::isEnabled()) {
+            // closed world: return types are part of the whole-program fixpoint
+            return;
+        }
         if ($type->isVoid() || $type->isNever() || $type->hasMixed() || $type->possibly_undefined) {
             return;
         }

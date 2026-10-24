@@ -29,6 +29,7 @@ use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\IssueBuffer;
 use Psalm\Progress\DebugProgress;
@@ -441,6 +442,9 @@ final class Psalm
         if (Transpiler::isEnabled()) {
             Transpiler::phase('scan+analysis start');
         }
+        if ($config->closed_world) {
+            ClosedWorld::enable($project_analyzer->getCodebase());
+        }
         if ($paths_to_check === null) {
             $project_analyzer->check($current_dir, $is_diff);
         } elseif ($paths_to_check) {
@@ -450,7 +454,18 @@ final class Psalm
         if (Transpiler::isEnabled()) {
             try {
                 Transpiler::phase('analysis pass 1 done');
-                $completed = Transpiler::get()->applyInferredReturnTypes();
+                if (($closed_world = ClosedWorld::get()) !== null) {
+                    // whole-program inference: re-analyze until the inferred types are a fixpoint
+                    while ($closed_world->apply() > 0) {
+                        $closed_world->startPass();
+                        Transpiler::get()->resetRecords();
+                        $project_analyzer->reanalyzeForTranspiler();
+                        Transpiler::phase('closed-world pass ' . $closed_world->pass . ' done');
+                    }
+                    $completed = 0;
+                } else {
+                    $completed = Transpiler::get()->applyInferredReturnTypes();
+                }
                 // a parallel first pass recorded nothing in this process: the second pass always runs
                 if ($completed > 0 || $project_analyzer->threads > 1) {
                     fwrite(STDERR, "\n[transpiler] $completed inferred return types declared, re-analyzing\n");

@@ -62,7 +62,9 @@ final class ScopeAnalyzer
                     }
 
                     // don't consider a return if the expression never returns (e.g. a throw inside a short closure)
-                    if ($stmt_return_type && $stmt_return_type->isNever()) {
+                    if ($stmt_return_type && $stmt_return_type->isNever()
+                        && !\Psalm\Internal\Codebase\ClosedWorld::optimistic()
+                    ) {
                         return array_values(array_unique([...$control_actions, self::ACTION_END]));
                     }
 
@@ -77,6 +79,7 @@ final class ScopeAnalyzer
                 if ($nodes
                     && ($stmt_expr_type = $nodes->getType($stmt->expr))
                     && $stmt_expr_type->isNever()
+                    && !\Psalm\Internal\Codebase\ClosedWorld::optimistic()
                 ) {
                     return array_values(array_unique([...$control_actions, self::ACTION_END]));
                 }
@@ -410,7 +413,7 @@ final class ScopeAnalyzer
             if ($stmt instanceof PhpParser\Node\Stmt\Expression) {
                 $stmt_type = $type_provider->getType($stmt->expr);
 
-                if ($stmt_type && $stmt_type->isNever()) {
+                if ($stmt_type && $stmt_type->isNever() && !\Psalm\Internal\Codebase\ClosedWorld::optimistic()) {
                     return true;
                 }
             }
