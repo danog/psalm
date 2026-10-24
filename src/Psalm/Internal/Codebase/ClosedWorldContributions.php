@@ -56,6 +56,14 @@ final class ClosedWorldContributions
 
     public ?ClosedWorldSlot $dynamic_pool_spread = null;
 
+    /**
+     * `new static(...)` / `new $class(...)`: class lc (`*`: unknown) => offset => slot; the constructor of the
+     * class or of any subclass receives them.
+     *
+     * @var array<string, array<int, ClosedWorldSlot>>
+     */
+    public array $polymorphic_new = [];
+
     /** @var array<string, array<int, bool>> file => branch start => whether it was ever reachable */
     public array $branches = [];
 
@@ -86,6 +94,7 @@ final class ClosedWorldContributions
             if ($c->dynamic_pool_spread !== null) {
                 ($all->dynamic_pool_spread ??= new ClosedWorldSlot())->merge($c->dynamic_pool_spread);
             }
+            self::mergeSlots2($all->polymorphic_new, $c->polymorphic_new);
             foreach ($c->branches as $file => $branches) {
                 foreach ($branches as $pos => $reachable) {
                     $all->branches[$file][$pos] = ($all->branches[$file][$pos] ?? false) || $reachable;

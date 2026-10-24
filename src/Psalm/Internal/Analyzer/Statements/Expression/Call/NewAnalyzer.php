@@ -293,6 +293,11 @@ final class NewAnalyzer extends CallAnalyzer
                     $can_extend,
                     $template_result,
                 );
+                if ($can_extend && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+                    // the class may be a subclass with a constructor of its own
+                    [$arg_types, $spread] = \Psalm\Internal\Codebase\ClosedWorld::argTypes($statements_analyzer, $stmt->getArgs());
+                    $closed_world->recordPolymorphicNew($statements_analyzer->getRootFilePath(), $fq_class_name, $arg_types, $spread);
+                }
             } else {
                 ArgumentsAnalyzer::analyze(
                     $statements_analyzer,
@@ -311,6 +316,12 @@ final class NewAnalyzer extends CallAnalyzer
                     ));
                 }
             }
+        }
+
+        if (!$fq_class_name && ($closed_world = \Psalm\Internal\Codebase\ClosedWorld::get()) !== null) {
+            // an instantiation of a class the types do not name: any constructor may run
+            [$arg_types, $spread] = \Psalm\Internal\Codebase\ClosedWorld::argTypes($statements_analyzer, $stmt->getArgs());
+            $closed_world->recordPolymorphicNew($statements_analyzer->getRootFilePath(), null, $arg_types, $spread);
         }
 
         if (!$config->remember_property_assignments_after_call && !$context->collect_initializations) {

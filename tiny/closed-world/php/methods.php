@@ -23,9 +23,20 @@ function m_total($shapes) {
     return $t;
 }
 
+// `new static` may run a subclass' constructor: it receives the arguments too
+class MBase {
+    public $v;
+    public function __construct($v) { $this->v = $v; }
+    public static function make($x) { return new static($x); }
+}
+class MChild extends MBase {
+    public function __construct($w) { parent::__construct($w . '!'); }
+}
+
 function run_methods() {
     $shapes = [new MSquare(3), new MCircle(2)];
     $out = m_total($shapes) . ' ';
     foreach ($shapes as $s) { $out .= $s->describe('s') . ' '; }
+    $out .= MBase::make(1)->v . ' ' . MChild::make('a')->v;
     return $out . "\n";
 }

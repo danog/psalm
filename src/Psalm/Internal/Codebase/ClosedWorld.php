@@ -1041,6 +1041,61 @@ final class ClosedWorld
         return $this->function_by_id[$id] ?? null;
     }
 
+    /**
+     * An instantiation whose class may be a subclass of the one the types name (`new static`, `new $class`), or
+     * any class (null): every constructor it may run receives the arguments.
+     *
+     * @param list<Union> $arg_types
+     */
+    public function recordPolymorphicNew(string $file, ?string $fq_class_name, array $arg_types, ?Union $spread): void
+    {
+        $this->cur = $this->at($file);
+        $key = $fq_class_name === null ? '*' : strtolower($fq_class_name);
+        foreach ($arg_types as $i => $t) {
+            ($this->cur->polymorphic_new[$key][$i] ??= new ClosedWorldSlot())->add($t, false);
+        }
+        if ($spread !== null) {
+            ($this->cur->polymorphic_new[$key][-1] ??= new ClosedWorldSlot())->add($spread, false);
+        }
+        $this->cur->polymorphic_new[$key] ??= [];
+    }
+
+    /** The arguments of polymorphic instantiations, given to every constructor they may run. */
+    private function expandPolymorphicNew(): void
+    {
+        foreach ($this->all->polymorphic_new as $key => $slots) {
+            foreach ($this->codebase->classlike_storage_provider->getAll() as $class_lc => $class_storage) {
+                if (!$this->infers($class_storage->location?->file_path)
+                    || ($key !== '*' && $class_lc !== $key && !isset($class_storage->parent_classes[$key]))
+                ) {
+                    continue;
+                }
+                $declaring = $class_storage->declaring_method_ids['__construct'] ?? null;
+                if ($declaring === null) {
+                    continue;
+                }
+                try {
+                    $ctor = $this->codebase->methods->getStorage($declaring);
+                } catch (\Throwable) {
+                    continue;
+                }
+                $id = spl_object_id($ctor);
+                $this->storages[$id] = $ctor;
+                foreach ($ctor->params as $i => $param) {
+                    $slot = $this->all->args[$id][$i] ??= new ClosedWorldSlot();
+                    if (isset($slots[$i])) {
+                        $slot->merge($slots[$i]);
+                    } elseif (isset($slots[-1])) {
+                        $slot->merge($slots[-1]);
+                    }
+                    if (!isset($slots[$i]) && $param->default_type instanceof Union) {
+                        $slot->add($param->default_type, false);
+                    }
+                }
+            }
+        }
+    }
+
     /** A method called by a name the analysis does not know (`$o->$name()`, `[$o, $name]`). */
     public function recordUnknownMethodName(string $file): void
     {
@@ -1209,6 +1264,7 @@ final class ClosedWorld
     {
         $this->all = ClosedWorldContributions::merge($this->by_file);
         $this->collectProjectStorages();
+        $this->expandPolymorphicNew();
         $this->collectStrings();
         if ($this->phase === 'optimistic' && $this->pass >= self::OPTIMISTIC_PASSES) {
             $this->phase = 'sound';

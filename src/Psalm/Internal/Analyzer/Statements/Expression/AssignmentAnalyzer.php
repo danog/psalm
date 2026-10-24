@@ -2116,6 +2116,23 @@ final class AssignmentAnalyzer
 
             $context->inside_general_use = $was_inside_general_use;
 
+            if (\Psalm\Internal\Codebase\ClosedWorld::isEnabled()) {
+                // `$$name = v`: the variable the name holds; when the name is not known, any local may be it
+                $name_type = $statements_analyzer->node_data->getType($assign_var->name);
+                if ($name_type !== null && $name_type->isSingleStringLiteral()) {
+                    $named_id = '$' . $name_type->getSingleStringLiteral()->value;
+                    $context->vars_in_scope[$named_id] = $assign_value_type;
+                    $context->vars_possibly_in_scope[$named_id] = true;
+                } else {
+                    foreach ($context->vars_in_scope as $local_id => $local_type) {
+                        if ($local_id !== '$this' && !\strpbrk($local_id, '[->:')) {
+                            $context->vars_in_scope[$local_id] = Type::combineUnionTypes($local_type, $assign_value_type);
+                        }
+                    }
+                    $context->check_variables = false;
+                }
+            }
+
             if ($statements_analyzer->data_flow_graph
                 && $assign_value_type->parent_nodes
             ) {
