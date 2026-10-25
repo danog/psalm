@@ -579,3 +579,23 @@ pub fn lz4_uncompress(_s: &Str) -> Option<Str> {
     None
 }
 pub fn clearstatcache(_clear_realpath_cache: bool, _filename: &Str) {}
+
+/// `__rt_run_command`: run a shell command with inherited stdio; its exit status (-1 if it could not run).
+pub fn rt_run_command(cmd: &Str) -> i64 {
+    use std::os::unix::ffi::OsStrExt;
+    match std::process::Command::new("/bin/sh").arg("-c").arg(std::ffi::OsStr::from_bytes(cmd.as_bytes())).status() {
+        Ok(s) => s.code().map(|c| c as i64).unwrap_or(-1),
+        Err(_) => -1,
+    }
+}
+
+/// `__rt_copy_executable`: copy a file and make the copy executable (0755).
+pub fn rt_copy_executable(from: &Str, to: &Str) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::PermissionsExt;
+    let (from, to) = (std::ffi::OsStr::from_bytes(from.as_bytes()), std::ffi::OsStr::from_bytes(to.as_bytes()));
+    if std::fs::copy(from, to).is_err() {
+        return false;
+    }
+    std::fs::set_permissions(to, std::fs::Permissions::from_mode(0o755)).is_ok()
+}
