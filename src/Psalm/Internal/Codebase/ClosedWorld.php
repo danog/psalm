@@ -595,7 +595,7 @@ final class ClosedWorld
         }
         foreach ($receiver_type->getAtomicTypes() as $atomic) {
             if ($atomic instanceof Atomic\TNamedObject
-                && $this->codebase->properties->propertyExists($atomic->value . '::$' . $name, false)
+                && $this->codebase->propertyExists($atomic->value . '::$' . $name, false)
             ) {
                 $this->recordPropertyWrite($statements_analyzer->getRootFilePath(), $atomic->value . '::$' . $name, $type);
             } elseif ($atomic instanceof Atomic\TNamedObject) {
