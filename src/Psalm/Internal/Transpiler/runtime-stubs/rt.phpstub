@@ -29,3 +29,9 @@ function __rt_str_id(string $string): int {}
 /** A plugin class compiled into the program, built from its name; null for a name the program does not know (a table the crate emitter generates). */
 function __rt_instantiate_plugin(string $class): \Psalm\Plugin\PluginInterface|\Psalm\Plugin\HookInterface|null {}
 
+
+/** Run a shell command with inherited stdin/stdout/stderr; returns its exit status (-1 when it cannot run). */
+function __rt_run_command(string $cmd): int {}
+
+/** Copy a file and make the copy executable. */
+function __rt_copy_executable(string $from, string $to): bool {}

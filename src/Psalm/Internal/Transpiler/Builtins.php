@@ -378,6 +378,8 @@ final class Builtins
         '__rt_class_file' => ['crate::names::class_file', ['&s'], 'os'],
         '__rt_function_is_builtin' => ['rt_function_is_builtin', ['&s'], 'b'],
         '__rt_str_id' => ['rt_str_id', ['&s'], 'i'],
+        '__rt_run_command' => ['rt_run_command', ['&s'], 'i'],
+        '__rt_copy_executable' => ['rt_copy_executable', ['&s', '&s'], 'b'],
         '__rt_class_is_trait' => ['crate::names::class_is_trait', ['&s'], 'b'],
         'lz4_compress' => ['lz4_compress', ['&s'], 'os'],
         'lz4_uncompress' => ['lz4_uncompress', ['&s'], 'os'],
