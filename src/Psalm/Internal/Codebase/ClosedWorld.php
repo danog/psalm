@@ -1369,13 +1369,15 @@ final class ClosedWorld
         $changed = 0;
 
         // --- parameters and returns, grouped over method overrides -------------------------------------------
-        $groups = $this->methodGroups();
+        [$param_groups, $return_groups] = $this->methodGroups();
+        $this->param_groups = $param_groups;
         foreach ($this->storages as $id => $storage) {
             if (!$this->infers($this->storageFile($storage))) {
                 // trusted code (runtime stubs) keeps its declared types
                 continue;
             }
-            $group = $groups[$id] ?? [$id];
+            $group = $param_groups[$id] ?? [$id];
+            $return_group = $return_groups[$id] ?? [$id];
             $escaped = $this->isEscaped($storage);
             $dynamic = !$escaped && $this->isDynamicTarget($storage);
             foreach ($storage->params as $i => $param) {
@@ -1422,7 +1424,7 @@ final class ClosedWorld
                         $out = $this->declared_params[$key][1];
                     } else {
                         $slot = new ClosedWorldSlot();
-                        foreach ($group as $member) {
+                        foreach ($return_group as $member) {
                             if (isset($this->all->outs[$member][$i])) {
                                 $slot->merge($this->all->outs[$member][$i]);
                             }
@@ -1455,7 +1457,7 @@ final class ClosedWorld
             $slot = new ClosedWorldSlot();
             $any = false;
             $always_exits = true;
-            foreach ($group as $member) {
+            foreach ($return_group as $member) {
                 if (isset($this->all->returns[$member])) {
                     $slot->merge($this->all->returns[$member]);
                     $any = true;
@@ -1715,63 +1717,78 @@ final class ClosedWorld
     }
 
     /**
-     * Methods whose calls may dispatch to one another (overrides, in both directions) share parameter and
-     * return slots: storage id => ids of the group.
+     * Methods whose calls may dispatch to one another, by direction. A call the analysis resolves to a method
+     * (by the receiver's type) runs that method or an override of it in a subclass: an override receives the
+     * arguments of calls of the methods it overrides, and a method returns (and leaves in its by-reference
+     * parameters) what any of its overrides may. Storage id => ids of the methods it overrides, itself included
+     * (`[0]`: parameter contributions), and => ids of the methods overriding it, itself included (`[1]`: return
+     * and by-reference out contributions).
      *
-     * @return array<int, list<int>>
+     * @return array{array<int, list<int>>, array<int, list<int>>}
      */
     private function methodGroups(): array
     {
-        $parent = [];
-        $find = static function (int $x) use (&$parent, &$find): int {
-            while (($parent[$x] ?? $x) !== $x) {
-                $x = $parent[$x] = $parent[$parent[$x]] ?? $parent[$x];
-            }
-            return $x;
-        };
-        foreach ($this->storages as $id => $storage) {
-            if (!$storage instanceof MethodStorage || $storage->cased_name === null || $storage->defining_fqcln === null) {
-                continue;
-            }
-            $lc = strtolower($storage->cased_name);
-            if ($lc === '__construct') {
-                continue;
-            }
-            $parent[$id] ??= $id;
+        /** @var array<int, array<int, true>> $overrides storage id => ids of the methods it directly overrides */
+        $overrides = [];
+        $storage_id = function (\Psalm\Internal\MethodIdentifier $method_id): ?int {
             try {
-                $class_storage = $this->codebase->classlike_storage_provider->get($storage->defining_fqcln);
+                $id = spl_object_id($this->codebase->methods->getStorage($method_id));
             } catch (\Throwable) {
-                continue;
+                return null;
             }
-            foreach ($class_storage->overridden_method_ids[$lc] ?? [] as $overridden) {
-                try {
-                    $other = $this->codebase->methods->getStorage($overridden);
-                } catch (\Throwable) {
+            return isset($this->storages[$id]) ? $id : null;
+        };
+        // from every class: the method it has under a name (its own or inherited) overrides the ones its
+        // ancestors and interfaces declare under that name (an inherited method may implement an interface of
+        // the subclass only)
+        foreach ($this->codebase->classlike_storage_provider->getAll() as $class_storage) {
+            foreach ($class_storage->overridden_method_ids as $lc => $overridden_ids) {
+                if ($lc === '__construct') {
                     continue;
                 }
-                $oid = spl_object_id($other);
-                if (!isset($this->storages[$oid])) {
+                $declaring = $class_storage->declaring_method_ids[$lc] ?? null;
+                if ($declaring === null || ($id = $storage_id($declaring)) === null) {
                     continue;
                 }
-                $parent[$oid] ??= $oid;
-                $a = $find($id);
-                $b = $find($oid);
-                if ($a !== $b) {
-                    $parent[$a] = $b;
+                $storage = $this->storages[$id];
+                if (!$storage instanceof MethodStorage || $storage->cased_name === null) {
+                    continue;
+                }
+                foreach ($overridden_ids as $overridden) {
+                    $oid = $storage_id($overridden);
+                    if ($oid !== null && $oid !== $id) {
+                        $overrides[$id][$oid] = true;
+                    }
                 }
             }
         }
-        $members = [];
-        foreach (array_keys($parent) as $id) {
-            $members[$find($id)][] = $id;
-        }
-        $groups = [];
-        foreach ($members as $list) {
-            foreach ($list as $id) {
-                $groups[$id] = $list;
+        $overridden_by = [];
+        foreach ($overrides as $id => $targets) {
+            foreach ($targets as $oid => $_) {
+                $overridden_by[$oid][$id] = true;
             }
         }
-        return $groups;
+        $closure = static function (array $edges): array {
+            $out = [];
+            foreach ($edges as $start => $_) {
+                $seen = [$start => true];
+                $stack = [$start];
+                while ($stack !== []) {
+                    $x = \array_pop($stack);
+                    foreach ($edges[$x] ?? [] as $y => $_2) {
+                        if (!isset($seen[$y])) {
+                            $seen[$y] = true;
+                            $stack[] = $y;
+                        }
+                    }
+                }
+                $list = array_keys($seen);
+                \sort($list);
+                $out[$start] = $list;
+            }
+            return $out;
+        };
+        return [$closure($overrides), $closure($overridden_by)];
     }
 
     private function applyProperties(string $mode): int
@@ -2124,7 +2141,10 @@ final class ClosedWorld
         return $n + $added;
     }
 
-    /** Whether every call of the function-like (or of its override group) passes exactly its parameters. */
+    /** @var array<int, list<int>> method storage id => ids of the methods it overrides, itself included */
+    private array $param_groups = [];
+
+    /** Whether every call of the function-like (or of the methods it overrides) passes exactly its parameters. */
     private function hasExactArity(FunctionLikeStorage $storage): bool
     {
         $n = 0;
@@ -2134,8 +2154,19 @@ final class ClosedWorld
             }
             $n++;
         }
-        $arity = $this->all->arities[spl_object_id($storage)] ?? null;
-        return $arity !== null && $arity[0] === $n && $arity[1] === $n
+        // calls of the methods it overrides may run it too
+        $any = false;
+        foreach ($this->param_groups[spl_object_id($storage)] ?? [spl_object_id($storage)] as $member) {
+            $arity = $this->all->arities[$member] ?? null;
+            if ($arity === null) {
+                continue;
+            }
+            if ($arity[0] !== $n || $arity[1] !== $n) {
+                return false;
+            }
+            $any = true;
+        }
+        return $any
             && !($storage instanceof MethodStorage && isset($this->all->unknown_method_args[strtolower((string) $storage->cased_name)]));
     }
 
