@@ -2270,15 +2270,25 @@ final class ClosedWorld
     // ------------------------------------------------------------------------------------------------------------
 
     /**
-     * Drop the refinements that make iteration slow or endless: literal ints and floats, int ranges (and literal
-     * strings too, when widening). The parent data-flow nodes are dropped as well.
+     * Arrays nested this deep in a slot's type are widened to arrays of anything (k-limiting): the values a
+     * program builds recursively (a parser's stack of nodes and arrays of nodes and arrays...) would otherwise
+     * gain one level of nesting per pass and never reach a fixpoint.
      */
-    public static function generalize(Union $type, bool $strings = false): Union
+    private const MAX_ARRAY_DEPTH = 3;
+
+    /**
+     * Drop the refinements that make iteration slow or endless: literal ints and floats, int ranges, arrays
+     * nested deeper than MAX_ARRAY_DEPTH (and literal strings too, when widening). The parent data-flow nodes are
+     * dropped as well.
+     *
+     * @param int $depth number of arrays enclosing the type
+     */
+    public static function generalize(Union $type, bool $strings = false, int $depth = 0): Union
     {
         $atomics = [];
         $changed = false;
         foreach ($type->getAtomicTypes() as $atomic) {
-            $new = self::generalizeAtomic($atomic, $strings);
+            $new = self::generalizeAtomic($atomic, $strings, $depth);
             $changed = $changed || $new !== $atomic;
             $atomics[] = $new;
         }
@@ -2371,8 +2381,11 @@ final class ClosedWorld
         return isset(self::$function_names[$lc]) || (!\str_contains($lc, '\\') && \function_exists($lc));
     }
 
-    private static function generalizeAtomic(Atomic $atomic, bool $strings): Atomic
+    private static function generalizeAtomic(Atomic $atomic, bool $strings, int $depth): Atomic
     {
+        if (($atomic instanceof TKeyedArray || $atomic instanceof TArray) && $depth >= self::MAX_ARRAY_DEPTH) {
+            return $atomic instanceof TKeyedArray && $atomic->is_list ? Type::getListAtomic(Type::getMixed()) : new TArray([Type::getArrayKey(), Type::getMixed()]);
+        }
         if ($atomic instanceof TLiteralInt || $atomic instanceof TIntRange) {
             return new TInt();
         }
@@ -2391,13 +2404,13 @@ final class ClosedWorld
             $props = [];
             $changed = false;
             foreach ($atomic->properties as $k => $p) {
-                $props[$k] = self::generalize($p, $strings);
+                $props[$k] = self::generalize($p, $strings, $depth + 1);
                 $changed = $changed || $props[$k] !== $p;
             }
             $fallback = $atomic->fallback_params;
             if ($fallback !== null) {
-                $f0 = self::generalize($fallback[0], $strings);
-                $f1 = self::generalize($fallback[1], $strings);
+                $f0 = self::generalize($fallback[0], $strings, $depth + 1);
+                $f1 = self::generalize($fallback[1], $strings, $depth + 1);
                 $changed = $changed || $f0 !== $fallback[0] || $f1 !== $fallback[1];
                 $fallback = [$f0, $f1];
             }
@@ -2410,7 +2423,7 @@ final class ClosedWorld
             $params = [];
             $changed = false;
             foreach ($atomic->type_params as $k => $p) {
-                $params[$k] = self::generalize($p, $strings);
+                $params[$k] = self::generalize($p, $strings, $depth + ($atomic instanceof TArray ? 1 : 0));
                 $changed = $changed || $params[$k] !== $p;
             }
             return $changed ? $atomic->setTypeParams($params) : $atomic;
