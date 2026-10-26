@@ -1319,16 +1319,21 @@ final class TypeCombiner
                         && $combination->value_types['string']::class === TNonEmptyString::class
                     ) {
                         // do nothing
-                    } elseif (($type::class === TNonEmptyString::class
-                            || $type::class === TNumericString::class)
+                    } elseif ($type::class === TNonEmptyString::class
                         && $combination->value_types['string']::class === TNonFalsyString::class
                     ) {
                         $combination->value_types['string'] = $type;
                     } elseif ($type::class === TNonFalsyString::class
-                        && ($combination->value_types['string']::class === TNonEmptyString::class
-                            || $combination->value_types['string']::class === TNumericString::class)
+                        && $combination->value_types['string']::class === TNonEmptyString::class
                     ) {
                         // do nothing
+                    } elseif (($type::class === TNumericString::class
+                            && $combination->value_types['string']::class === TNonFalsyString::class)
+                        || ($type::class === TNonFalsyString::class
+                            && $combination->value_types['string']::class === TNumericString::class)
+                    ) {
+                        // neither contains the other ('0' is numeric, 'a' is non-falsy): both are non-empty
+                        $combination->value_types['string'] = new TNonEmptyString();
                     } elseif (($type::class === TNonEmptyString::class
                             || $type::class === TNonFalsyString::class)
                         && $combination->value_types['string']::class === TNonEmptyLowercaseString::class
