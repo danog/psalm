@@ -2277,9 +2277,16 @@ final class ClosedWorld
     private const MAX_ARRAY_DEPTH = 3;
 
     /**
+     * List shapes with more entries than this are widened to lists of the union of their entries: a list a loop
+     * appends to gains one (optional) entry per pass otherwise.
+     */
+    private const MAX_LIST_SHAPE = 8;
+
+    /**
      * Drop the refinements that make iteration slow or endless: literal ints and floats, int ranges, arrays
-     * nested deeper than MAX_ARRAY_DEPTH (and literal strings too, when widening). The parent data-flow nodes are
-     * dropped as well.
+     * nested deeper than MAX_ARRAY_DEPTH, list shapes longer than MAX_LIST_SHAPE, intersections of object types
+     * (narrowings combine into ever longer ones; the first type of an intersection is a supertype of it), and
+     * literal strings too when widening. The parent data-flow nodes are dropped as well.
      *
      * @param int $depth number of arrays enclosing the type
      */
@@ -2385,6 +2392,16 @@ final class ClosedWorld
     {
         if (($atomic instanceof TKeyedArray || $atomic instanceof TArray) && $depth >= self::MAX_ARRAY_DEPTH) {
             return $atomic instanceof TKeyedArray && $atomic->is_list ? Type::getListAtomic(Type::getMixed()) : new TArray([Type::getArrayKey(), Type::getMixed()]);
+        }
+        if ($atomic instanceof TKeyedArray && $atomic->is_list && \count($atomic->properties) > self::MAX_LIST_SHAPE) {
+            $value = self::generalize($atomic->getGenericValueType(), $strings, $depth + 1);
+            $first = $atomic->properties[0] ?? null;
+            return $first !== null && !$first->possibly_undefined
+                ? Type::getNonEmptyListAtomic($value)
+                : Type::getListAtomic($value);
+        }
+        if ($atomic instanceof Atomic\TNamedObject && $atomic->extra_types) {
+            $atomic = $atomic->setIntersectionTypes([]);
         }
         if ($atomic instanceof TLiteralInt || $atomic instanceof TIntRange) {
             return new TInt();
