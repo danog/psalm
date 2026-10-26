@@ -117,6 +117,13 @@ use function substr;
 final class ClassAnalyzer extends ClassLikeAnalyzer
 {
     /**
+     * Expanded property types (closed world): stored type => class context => expanded type.
+     *
+     * @var \WeakMap<Union, array<string, Union>>|null
+     */
+    private static ?\WeakMap $expanded_property_types = null;
+
+    /**
      * @var array<string, Union>
      */
     public array $inferred_property_types = [];
@@ -693,6 +700,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         string $fq_class_name,
         ?string $parent_fq_class_name,
         array $stmts = [],
+        bool $report_issues = true,
     ): void {
         $codebase = $statements_source->getCodebase();
 
@@ -710,7 +718,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             $property_storage = $property_class_storage->properties[$property_name];
 
-            if ($property_class_storage->isPure() && $property_storage->location) {
+            if ($report_issues && $property_class_storage->isPure() && $property_storage->location) {
                 IssueBuffer::maybeAdd(
                     new InaccessibleProperty(
                         'Property ' . $property_class_name . '::$' . $property_name
@@ -721,7 +729,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if (isset($storage->overridden_property_ids[$property_name])) {
+            if ($report_issues && isset($storage->overridden_property_ids[$property_name])) {
                 foreach ($storage->overridden_property_ids[$property_name] as $overridden_property_id) {
                     [$guide_class_name] = explode('::$', $overridden_property_id);
                     $guide_class_storage = $codebase->classlike_storage_provider->get($guide_class_name);
@@ -941,8 +949,18 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             $property_type_location = $property_storage->type_location;
 
-            $fleshed_out_type = !$property_type->isMixed()
-                ? TypeExpander::expandUnion(
+            if ($property_type->isMixed()) {
+                $fleshed_out_type = $property_type;
+            } elseif (\Psalm\Internal\Codebase\ClosedWorld::isEnabled()) {
+                // closed world: inferred property types can be large unions and every closure of the class adds
+                // them all to its context. The type is the stored one or a copy marked not initialized (a new
+                // object each time): cache by the stored type, whose expansion in a class does not change.
+                self::$expanded_property_types ??= new \WeakMap();
+                $stored_type = $property_storage->type ?? $property_type;
+                $cache_key = $fq_class_name . '|' . ($parent_fq_class_name ?? '') . '|' . ($storage->final ? 1 : 0)
+                    . '|' . ($property_type === $stored_type ? '' : 'u' . ($property_storage->is_static ? 's' : ''));
+                $cached = self::$expanded_property_types[$stored_type] ?? [];
+                $fleshed_out_type = $cached[$cache_key] ??= TypeExpander::expandUnion(
                     $codebase,
                     $property_type,
                     $fq_class_name,
@@ -951,8 +969,20 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     true,
                     false,
                     $storage->final,
-                )
-                : $property_type;
+                );
+                self::$expanded_property_types[$stored_type] = $cached;
+            } else {
+                $fleshed_out_type = TypeExpander::expandUnion(
+                    $codebase,
+                    $property_type,
+                    $fq_class_name,
+                    $fq_class_name,
+                    $parent_fq_class_name,
+                    true,
+                    false,
+                    $storage->final,
+                );
+            }
 
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
@@ -988,7 +1018,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if ($property_type_location && !$fleshed_out_type->isMixed()) {
+            if ($report_issues && $property_type_location && !$fleshed_out_type->isMixed()) {
                 $stmt = array_filter(
                     $stmts,
                     static fn($stmt): bool => $stmt instanceof PhpParser\Node\Stmt\Property

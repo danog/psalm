@@ -197,6 +197,7 @@ final class ClosedWorld
 
     public static function enable(Codebase $codebase): self
     {
+        \Psalm\Internal\Type\TypeExpander::resetClosedWorldCache();
         return self::$instance = new self($codebase);
     }
 
@@ -386,6 +387,18 @@ final class ClosedWorld
         $this->cur = $this->at($root);
         $this->body_roots[$id][$root] = true;
         $this->cur->analyzed[$id] = true;
+        if (getenv('CW_LOCALS')) {
+            // diagnostics: the types each local had (what the transpiler picks the local's storage from)
+            foreach ($var_types as $var_id => $types) {
+                if ($types === [] || !\preg_match('/^\$[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*$/D', $var_id)) {
+                    continue;
+                }
+                $all = Type::combineUnionTypeArray($types, $this->codebase);
+                $this->cur->locals[$id][$var_id] = isset($this->cur->locals[$id][$var_id])
+                    ? Type::combineUnionTypes($this->cur->locals[$id][$var_id], $all, $this->codebase)
+                    : $all;
+            }
+        }
         foreach ($storage->params as $i => $param) {
             if (!$param->by_ref) {
                 continue;
@@ -1273,6 +1286,7 @@ final class ClosedWorld
     public function startPass(?array $files): void
     {
         $this->pass++;
+        \Psalm\Internal\Type\TypeExpander::resetClosedWorldCache();
         if ($files === null) {
             $this->by_file = [];
         }
@@ -1509,6 +1523,17 @@ final class ClosedWorld
         if (getenv('CW_DEBUG')) {
             foreach ($this->values as $key => $value) {
                 fwrite(STDERR, '  ' . $this->describe($key) . " = $value\n");
+            }
+            if ($changed === 0 && getenv('CW_LOCALS')) {
+                foreach ($this->all->locals as $id => $vars) {
+                    if (!isset($this->storages[$id])) {
+                        continue;
+                    }
+                    $name = \substr($this->describe('r:' . $id), 0, -\strlen('(): return'));
+                    foreach ($vars as $var_id => $type) {
+                        fwrite(STDERR, '  L:' . $name . ' ' . $var_id . ' = ' . $type->getId() . "\n");
+                    }
+                }
             }
         }
     }

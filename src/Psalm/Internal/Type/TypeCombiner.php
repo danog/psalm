@@ -6,6 +6,7 @@ namespace Psalm\Internal\Type;
 
 use InvalidArgumentException;
 use Psalm\Codebase;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -76,6 +77,42 @@ use function substr;
  */
 final class TypeCombiner
 {
+    /**
+     * Closed world: how a named object type being added relates to one already in a union, by the added type's
+     * key and the present one's (see objectRelation()).
+     *
+     * @var array<string, array<string, int>>
+     */
+    private static array $closed_world_relations = [];
+
+    /**
+     * How a named object type being added to a union relates to one already in it: 1 when the added type is a
+     * supertype of the present one (which goes), 2 when the present one is a supertype of the added one (which is
+     * dropped), 0 otherwise. The same tests as the generic combination makes.
+     */
+    private static function objectRelation(Codebase $codebase, string $present_key, string $added_key): int
+    {
+        $is_class = $codebase->classExists($added_key);
+        if ($codebase->classExists($present_key)) {
+            if ($codebase->classExtendsOrImplements($present_key, $added_key)) {
+                return 1;
+            }
+            if ($is_class && $codebase->classExtends($added_key, $present_key)) {
+                return 2;
+            }
+            return 0;
+        }
+        if ($codebase->interfaceExtends($present_key, $added_key)) {
+            return 1;
+        }
+        if ($is_class ? $codebase->classImplements($added_key, $present_key)
+            : $codebase->interfaceExtends($added_key, $present_key)
+        ) {
+            return 2;
+        }
+        return 0;
+    }
+
     /**
      * Combines types together
      *  - so `int + string = int|string`
@@ -904,6 +941,25 @@ final class TypeCombiner
             if (!$codebase->classlikes->classOrInterfaceOrEnumExists($type_key)) {
                 // write this to the main list
                 $combination->value_types[$type_key] = $type;
+
+                return null;
+            }
+
+            if (ClosedWorld::isEnabled()) {
+                // closed world: unions of many classes are common and the class hierarchy is fixed, so the
+                // relation of each pair of classes is computed once
+                $relations = self::$closed_world_relations[$type_key] ?? [];
+                foreach ($combination->named_object_types as $key => $_) {
+                    $relation = $relations[$key] ??= self::objectRelation($codebase, $key, $type_key);
+                    if ($relation === 1) {
+                        unset($combination->named_object_types[$key]);
+                    } elseif ($relation === 2) {
+                        self::$closed_world_relations[$type_key] = $relations;
+                        return null;
+                    }
+                }
+                self::$closed_world_relations[$type_key] = $relations;
+                $combination->named_object_types[$type_key] = $type;
 
                 return null;
             }

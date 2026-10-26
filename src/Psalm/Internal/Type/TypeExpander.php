@@ -56,6 +56,22 @@ use function strtolower;
 final class TypeExpander
 {
     /**
+     * Expanded unions by type and expansion context (closed world, one pass; null: not caching).
+     *
+     * @var \WeakMap<Union, array<string, Union>>|null
+     */
+    private static ?\WeakMap $closed_world_cache = null;
+
+    /** @var \WeakMap<Union, array<string, Union>>|null */
+    private static ?\WeakMap $closed_world_cache_map = null;
+
+    /** Closed world: start caching expansions anew (the storages' types may have changed). */
+    public static function resetClosedWorldCache(): void
+    {
+        self::$closed_world_cache = self::$closed_world_cache_map = new \WeakMap();
+    }
+
+    /**
      * @psalm-suppress InaccessibleProperty We just created the type
      */
     public static function expandUnion(
@@ -71,6 +87,39 @@ final class TypeExpander
         bool $expand_templates = false,
         bool $throw_on_unresolvable_constant = false,
     ): Union {
+        if (self::$closed_world_cache !== null) {
+            // closed world: inferred types can be large unions of classes (combining them is quadratic) and the
+            // same storage types are expanded at every access; within a pass the codebase does not change
+            $key = ($self_class ?? '') . '|' . (\is_string($static_class_type) || $static_class_type === null
+                    ? (string) $static_class_type : $static_class_type->getId())
+                . '|' . ($parent_class ?? '') . '|' . (int) $evaluate_class_constants . (int) $evaluate_conditional_types
+                . (int) $final . (int) $expand_generic . (int) $expand_templates . (int) $throw_on_unresolvable_constant;
+            $cached = self::$closed_world_cache[$return_type] ?? [];
+            if (isset($cached[$key])) {
+                return $cached[$key];
+            }
+            self::$closed_world_cache = null;
+            try {
+                $cached[$key] = self::expandUnion(
+                    $codebase,
+                    $return_type,
+                    $self_class,
+                    $static_class_type,
+                    $parent_class,
+                    $evaluate_class_constants,
+                    $evaluate_conditional_types,
+                    $final,
+                    $expand_generic,
+                    $expand_templates,
+                    $throw_on_unresolvable_constant,
+                );
+            } finally {
+                self::$closed_world_cache = self::$closed_world_cache_map;
+            }
+            self::$closed_world_cache[$return_type] = $cached;
+            return $cached[$key];
+        }
+
         $new_return_type_parts = [];
 
         foreach ($return_type->getAtomicTypes() as $return_type_part) {

@@ -9,6 +9,7 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -225,6 +226,9 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
                 $use_context,
                 $context->self,
                 $statements_analyzer->getParentFQCLN(),
+                [],
+                // the class reports its properties' issues; closed world: not again for each of its closures
+                !ClosedWorld::isEnabled(),
             );
         }
 

@@ -15,6 +15,7 @@ use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumeric;
 use Psalm\Type\Atomic\TTemplateParam;
@@ -73,7 +74,26 @@ final class UnionTypeComparator
 
         $input_atomic_types = array_reverse(self::getTypeParts($codebase, $input_type));
 
+        // a plain object type that the container has as such is contained in it, with no coercion: the other
+        // parts of the container cannot change that (large unions of classes compare quadratically otherwise)
+        $container_objects = [];
+        if (!$container_has_template) {
+            foreach ($container_type->getAtomicTypes() as $container_type_part) {
+                if ($container_type_part::class === TNamedObject::class && !$container_type_part->extra_types) {
+                    $container_objects[$container_type_part->getId()] = true;
+                }
+            }
+        }
+
         while ($input_type_part = array_pop($input_atomic_types)) {
+            if ($container_objects !== []
+                && $input_type_part::class === TNamedObject::class
+                && !$input_type_part->extra_types
+                && isset($container_objects[$input_type_part->getId()])
+            ) {
+                continue;
+            }
+
             if ($input_type_part instanceof TNull && $ignore_null) {
                 continue;
             }
@@ -509,7 +529,18 @@ final class UnionTypeComparator
             return false;
         }
 
-        foreach (self::getTypeParts($codebase, $container_type) as $container_type_part) {
+        $input_type_parts = self::getTypeParts($codebase, $input_type);
+        $container_type_parts = self::getTypeParts($codebase, $container_type);
+        // an object type found as such in the container is contained in it (large unions of classes compare
+        // quadratically otherwise)
+        $container_objects = [];
+        foreach ($container_type_parts as $container_type_part) {
+            if ($container_type_part::class === TNamedObject::class && !$container_type_part->extra_types) {
+                $container_objects[$container_type_part->getId()] = true;
+            }
+        }
+
+        foreach ($container_type_parts as $container_type_part) {
             if ($container_type_part instanceof TNull && $ignore_null) {
                 continue;
             }
@@ -518,7 +549,16 @@ final class UnionTypeComparator
                 continue;
             }
 
-            foreach (self::getTypeParts($codebase, $input_type) as $input_type_part) {
+            foreach ($input_type_parts as $input_type_part) {
+                if ($container_objects !== []
+                    && $input_type_part::class === TNamedObject::class
+                    && !$input_type_part->extra_types
+                    && isset($container_objects[$input_type_part->getId()])
+                ) {
+                    $matching_input_keys[$input_type_part->getKey()] = true;
+                    continue;
+                }
+
                 if ($input_type_part instanceof TTypeVariable) {
                     // an unresolved type variable can still become anything
                     // its bounds allow, so it can be contained here; the

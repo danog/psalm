@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Type\Union;
+
 /**
  * What the analysis of one file (a root file: the file Psalm analyzed, trait bodies included) contributed to the
  * closed-world slots. Kept per file so that only re-analyzed files replace theirs.
@@ -67,6 +69,9 @@ final class ClosedWorldContributions
      */
     public array $polymorphic_new = [];
 
+    /** @var array<int, array<string, Union>> diagnostics (CW_LOCALS): storage id => local => every type it had */
+    public array $locals = [];
+
     /** @var array<string, array<int, bool>> file => branch start => whether it was ever reachable */
     public array $branches = [];
 
@@ -106,6 +111,13 @@ final class ClosedWorldContributions
                 }
             }
             self::mergeSlots2($all->polymorphic_new, $c->polymorphic_new);
+            foreach ($c->locals as $id => $vars) {
+                foreach ($vars as $var => $type) {
+                    $all->locals[$id][$var] = isset($all->locals[$id][$var])
+                        ? \Psalm\Type::combineUnionTypes($all->locals[$id][$var], $type)
+                        : $type;
+                }
+            }
             foreach ($c->branches as $file => $branches) {
                 foreach ($branches as $pos => $reachable) {
                     $all->branches[$file][$pos] = ($all->branches[$file][$pos] ?? false) || $reachable;

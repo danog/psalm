@@ -24,8 +24,16 @@ final class ClosedWorldSlot
     public bool $mixed = false;
     public bool $void_paths = false;
 
+    /** @var array<string, true> contributions added already (`r`/`n` + type id): adding one again changes nothing */
+    private array $added = [];
+
     public function add(Union $type, bool $recursive): void
     {
+        $id = ($recursive ? 'r' : 'n') . ($type->possibly_undefined ? 'u' : '') . $type->getId();
+        if (isset($this->added[$id])) {
+            return;
+        }
+        $this->added[$id] = true;
         if (ClosedWorld::hasMixed($type)) {
             $this->mixed = true;
             return;

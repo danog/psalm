@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\NullsafeChainState;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
@@ -732,6 +733,7 @@ final class ArrayFetchAnalyzer
 
         $types = $array_type->getAtomicTypes();
         $changed = false;
+        $named_object_access_analyzed = false;
         foreach ($types as $type_string => $type) {
             $original_type_real = $type;
             $original_type = $type;
@@ -883,7 +885,16 @@ final class ArrayFetchAnalyzer
                 continue;
             }
 
-            if ($type instanceof TNamedObject) {
+            if ($type instanceof TNamedObject && $named_object_access_analyzed
+                && ClosedWorld::isEnabled()
+                && !self::hasSpecialArrayAccess($codebase, $type)
+            ) {
+                // closed world (receivers can be large unions of classes): the offsetGet/offsetSet call made for
+                // a named object is analyzed on the whole receiver expression, so it covers every other named
+                // object of the union already
+            } elseif ($type instanceof TNamedObject) {
+                $named_object_access_analyzed = $named_object_access_analyzed
+                    || !self::hasSpecialArrayAccess($codebase, $type);
                 self::handleArrayAccessOnNamedObject(
                     $statements_analyzer,
                     $stmt,
@@ -1954,6 +1965,15 @@ final class ArrayFetchAnalyzer
         )) {
             // fall through
         }
+    }
+
+    /** Whether array access on objects of this class is not (only) a call of its ArrayAccess methods. */
+    private static function hasSpecialArrayAccess(Codebase $codebase, TNamedObject $type): bool
+    {
+        $lc = strtolower($type->value);
+        return $lc === 'simplexmlelement' || $lc === 'domnodelist'
+            || ($codebase->classExists($type->value)
+                && $codebase->classExtendsOrImplements($type->value, 'SimpleXMLElement'));
     }
 
     private static function handleArrayAccessOnNamedObject(

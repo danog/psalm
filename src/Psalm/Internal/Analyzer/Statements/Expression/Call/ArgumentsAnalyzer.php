@@ -71,6 +71,7 @@ use function is_string;
 use function max;
 use function min;
 use function reset;
+use function spl_object_id;
 use function str_contains;
 use function strtolower;
 use function strtoupper;
@@ -80,6 +81,72 @@ use function strtoupper;
  */
 final class ArgumentsAnalyzer
 {
+    /**
+     * Arguments of a call whose callee is resolved once per receiver type (`$a->m($x)` with `$a` a union or an
+     * intersection): spl_object_id(Arg) => whether it was analyzed already during this call's analysis.
+     *
+     * @var array<int, bool>
+     */
+    private static array $once_per_call = [];
+
+    /**
+     * Closed world: analyze the arguments of a call once, not once per receiver type. Each receiver type
+     * re-runs the argument checks against its method's parameters, but the argument expressions themselves
+     * evaluate the same way (they do not depend on the callee); re-evaluating them is exponential in the
+     * nesting depth of calls whose receivers are unions (`$b->add($b->add($b->add(...)))`).
+     *
+     * @param array<PhpParser\Node\Arg|PhpParser\Node\VariadicPlaceholder> $args
+     * @return list<int> the registered arguments: give them to endAnalyzeOnce()
+     */
+    public static function beginAnalyzeOnce(array $args): array
+    {
+        if (!ClosedWorld::isEnabled()) {
+            return [];
+        }
+        $ids = [];
+        foreach ($args as $arg) {
+            if ($arg instanceof PhpParser\Node\Arg && !isset(self::$once_per_call[$id = spl_object_id($arg)])) {
+                self::$once_per_call[$id] = false;
+                $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    /** @param list<int> $ids */
+    public static function endAnalyzeOnce(array $ids): void
+    {
+        foreach ($ids as $id) {
+            unset(self::$once_per_call[$id]);
+        }
+    }
+
+    /**
+     * Whether an argument's expression was evaluated already for another receiver type of the same call (then
+     * its type stands); marks it evaluated otherwise. Closures are analyzed per callee (their parameters may
+     * take the callee's parameter types), as are arguments whose type a callable parameter infers.
+     */
+    private static function analyzedForAnotherReceiver(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Arg $arg,
+        bool $callee_dependent,
+    ): bool {
+        $id = spl_object_id($arg);
+        if (!isset(self::$once_per_call[$id])) {
+            return false;
+        }
+        if (self::$once_per_call[$id]
+            && !$callee_dependent
+            && !$arg->value instanceof PhpParser\Node\Expr\Closure
+            && !$arg->value instanceof PhpParser\Node\Expr\ArrowFunction
+            && $statements_analyzer->node_data->getType($arg->value) !== null
+        ) {
+            return true;
+        }
+        self::$once_per_call[$id] = true;
+        return false;
+    }
+
     /**
      * @see self::getByRefFlowInputs()
      * @var array<lowercase-string, array<string, list<string>>>|null
@@ -278,15 +345,17 @@ final class ArgumentsAnalyzer
             $was_inside_isset = $context->inside_isset;
             $context->inside_isset = false;
 
-            if (ExpressionAnalyzer::analyze(
-                $statements_analyzer,
-                $arg->value,
-                $context,
-                false,
-                null,
-                null,
-                $high_order_template_result,
-            ) === false) {
+            if (!self::analyzedForAnotherReceiver($statements_analyzer, $arg, $high_order_callable_info !== null)
+                && ExpressionAnalyzer::analyze(
+                    $statements_analyzer,
+                    $arg->value,
+                    $context,
+                    false,
+                    null,
+                    null,
+                    $high_order_template_result,
+                ) === false
+            ) {
                 $context->inside_isset = $was_inside_isset;
                 $context->inside_call = $was_inside_call;
 
@@ -1635,7 +1704,9 @@ final class ArgumentsAnalyzer
             $was_inside_call = $context->inside_call;
             $context->inside_call = true;
 
-            if (ExpressionAnalyzer::analyze($statements_analyzer, $arg->value, $context) === false) {
+            if (!self::analyzedForAnotherReceiver($statements_analyzer, $arg, false)
+                && ExpressionAnalyzer::analyze($statements_analyzer, $arg->value, $context) === false
+            ) {
                 $context->inside_call = $was_inside_call;
 
                 return false;

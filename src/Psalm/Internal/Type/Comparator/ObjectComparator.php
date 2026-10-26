@@ -6,6 +6,7 @@ namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TIterable;
@@ -33,6 +34,62 @@ final class ObjectComparator
      * @param  TNamedObject|TTemplateParam|TIterable  $container_type_part
      */
     public static function isShallowlyContainedBy(
+        Codebase $codebase,
+        Atomic $input_type_part,
+        Atomic $container_type_part,
+        bool $allow_interface_equality,
+        ?TypeComparisonResult $atomic_comparison_result,
+    ): bool {
+        if ($input_type_part::class === TNamedObject::class
+            && $container_type_part::class === TNamedObject::class
+            && !$input_type_part->extra_types
+            && !$container_type_part->extra_types
+            && ClosedWorld::isEnabled()
+        ) {
+            // closed world: unions of many classes are compared pairwise over and over, and the class hierarchy is
+            // fixed: the outcome for a pair of plain object types (and what it notes in the comparison result) is
+            // computed once
+            $key = $input_type_part->getId() . '|' . $container_type_part->getId() . '|' . (int) $allow_interface_equality
+                . (int) $input_type_part->definite_class . (int) $container_type_part->definite_class;
+            if (!isset(self::$closed_world_cache[$key])) {
+                $result = new TypeComparisonResult();
+                $contained = self::isShallowlyContainedByUncached(
+                    $codebase,
+                    $input_type_part,
+                    $container_type_part,
+                    $allow_interface_equality,
+                    $result,
+                );
+                $noted = [];
+                foreach (\get_object_vars($result) as $name => $value) {
+                    if ($value !== null && $value !== []) {
+                        $noted[$name] = $value;
+                    }
+                }
+                self::$closed_world_cache[$key] = [$contained, $noted];
+            }
+            [$contained, $noted] = self::$closed_world_cache[$key];
+            if ($atomic_comparison_result !== null) {
+                foreach ($noted as $name => $value) {
+                    $atomic_comparison_result->$name = $value;
+                }
+            }
+            return $contained;
+        }
+
+        return self::isShallowlyContainedByUncached(
+            $codebase,
+            $input_type_part,
+            $container_type_part,
+            $allow_interface_equality,
+            $atomic_comparison_result,
+        );
+    }
+
+    /** @var array<string, array{bool, array<string, mixed>}> */
+    private static array $closed_world_cache = [];
+
+    private static function isShallowlyContainedByUncached(
         Codebase $codebase,
         Atomic $input_type_part,
         Atomic $container_type_part,

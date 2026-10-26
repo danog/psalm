@@ -8,6 +8,7 @@ use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
+use Psalm\Internal\Codebase\ClosedWorld;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\AtomicMethodCallAnalysisResult;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\AtomicMethodCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
@@ -209,28 +210,33 @@ final class MethodCallAnalyzer extends CallAnalyzer
         $result = new AtomicMethodCallAnalysisResult();
 
         $possible_new_class_types = [];
-        foreach ($lhs_types as $lhs_type_part) {
-            AtomicMethodCallAnalyzer::analyze(
-                $statements_analyzer,
-                $stmt,
-                $codebase,
-                $context,
-                $class_type,
-                $lhs_type_part,
-                $lhs_type_part instanceof TNamedObject
-                    || $lhs_type_part instanceof TTemplateParam
-                    ? $lhs_type_part
-                    : null,
-                false,
-                $lhs_var_id,
-                $result,
-                $template_result,
-            );
-            if ($lhs_var_id !== null && isset($context->vars_in_scope[$lhs_var_id])
-                && ($possible_new_class_type = $context->vars_in_scope[$lhs_var_id]) instanceof Union
-                && !$possible_new_class_type->equals($class_type)) {
-                $possible_new_class_types[] = $context->vars_in_scope[$lhs_var_id];
+        $once = ArgumentsAnalyzer::beginAnalyzeOnce($stmt->isFirstClassCallable() ? [] : $stmt->getArgs());
+        try {
+            foreach ($lhs_types as $lhs_type_part) {
+                AtomicMethodCallAnalyzer::analyze(
+                    $statements_analyzer,
+                    $stmt,
+                    $codebase,
+                    $context,
+                    $class_type,
+                    $lhs_type_part,
+                    $lhs_type_part instanceof TNamedObject
+                        || $lhs_type_part instanceof TTemplateParam
+                        ? $lhs_type_part
+                        : null,
+                    false,
+                    $lhs_var_id,
+                    $result,
+                    $template_result,
+                );
+                if ($lhs_var_id !== null && isset($context->vars_in_scope[$lhs_var_id])
+                    && ($possible_new_class_type = $context->vars_in_scope[$lhs_var_id]) instanceof Union
+                    && !$possible_new_class_type->equals($class_type)) {
+                    $possible_new_class_types[] = $context->vars_in_scope[$lhs_var_id];
+                }
             }
+        } finally {
+            ArgumentsAnalyzer::endAnalyzeOnce($once);
         }
         if (!$stmt->isFirstClassCallable()
             && !$stmt->getArgs()
@@ -459,6 +465,11 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 }
             }
             if (!$types) {
+                if (ClosedWorld::isEnabled()) {
+                    // closed world: the variable may be a global whose slot has no object type yet (the iteration
+                    // has not inferred it) while the call was made on the type of its expression
+                    return true;
+                }
                 throw new AssertionError("We must have some types here!");
             }
 

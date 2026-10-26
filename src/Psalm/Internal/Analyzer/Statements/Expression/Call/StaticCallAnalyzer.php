@@ -232,18 +232,23 @@ final class StaticCallAnalyzer extends CallAnalyzer
             ? NullsafeChainState::of($stmt->class)
             : NullsafeChainState::None;
 
-        foreach ($lhs_type->getAtomicTypes() as $lhs_type_part) {
-            AtomicStaticCallAnalyzer::analyze(
-                $statements_analyzer,
-                $stmt,
-                $context,
-                $lhs_type_part,
-                $lhs_type->ignore_nullable_issues || $class_state === NullsafeChainState::ShortCircuit,
-                $moved_call,
-                $has_mock,
-                $has_existing_method,
-                $template_result,
-            );
+        $once = ArgumentsAnalyzer::beginAnalyzeOnce($stmt->isFirstClassCallable() ? [] : $stmt->getArgs());
+        try {
+            foreach ($lhs_type->getAtomicTypes() as $lhs_type_part) {
+                AtomicStaticCallAnalyzer::analyze(
+                    $statements_analyzer,
+                    $stmt,
+                    $context,
+                    $lhs_type_part,
+                    $lhs_type->ignore_nullable_issues || $class_state === NullsafeChainState::ShortCircuit,
+                    $moved_call,
+                    $has_mock,
+                    $has_existing_method,
+                    $template_result,
+                );
+            }
+        } finally {
+            ArgumentsAnalyzer::endAnalyzeOnce($once);
         }
 
         if ($class_state !== NullsafeChainState::None) {
