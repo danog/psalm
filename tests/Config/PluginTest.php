@@ -1378,6 +1378,15 @@ final class PluginTest extends TestCase
         );
     }
 
+    public function testTaintNodesOfInheritedMethodOfPlugin(): void
+    {
+        $this->analyzePageComponents(
+            '$other = new OtherBanner((string) ($_GET["text"] ?? ""));
+            (new Page())->add(new HomeBanner("Welcome"));',
+            '(new Page())->add(new HomeBanner((string) ($_GET["text"] ?? "")));',
+        );
+    }
+
     public function testTaintPropertyAssignmentOfPlugin(): void
     {
         $print_title = 'function printTitle(Page $page): void {
@@ -1443,6 +1452,18 @@ final class PluginTest extends TestCase
                     return "<h1>" . $title . "</h1>";
                 }
             }
+
+            class Banner extends Component {
+                public function __construct(public string $text) {}
+
+                public function render(string $title): string {
+                    return "<div>" . $this->text . "</div>";
+                }
+            }
+
+            final class HomeBanner extends Banner {}
+
+            final class OtherBanner extends Banner {}
 
             class Page {
                 protected string $title = "";

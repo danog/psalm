@@ -24,6 +24,7 @@ use Psalm\Exception\UnanalyzedFileException;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
+use Psalm\Internal\Analyzer\InheritedMethodTaints;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Block\ForeachAnalyzer;
@@ -2996,8 +2997,6 @@ final class Codebase
      * location of a call, the node of the call there if Psalm tells the calls of the function-like apart (see
      * `@psalm-taint-specialize`), which its arguments and object given at the same location flow into (see
      * getTaintArgumentNode() and getTaintReceiverNode()). Null if there is no such function-like.
-     *
-     * @psalm-capabilities read-props|write-props
      */
     public function getTaintReturnNode(
         StatementsSource $source,
@@ -3010,11 +3009,15 @@ final class Codebase
         }
 
         [$cased_function_id, $storage] = $body;
+        $specialization_location = $this->getTaintSpecializationLocation($source, $storage, $call_location);
 
-        return DataFlowNode::getForMethodReturn(
-            $cased_function_id,
-            $storage,
-            $this->getTaintSpecializationLocation($source, $storage, $call_location),
+        return self::createTaintBodyNode(
+            $body,
+            static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
+                $cased_function_id,
+                $storage,
+                $specialization_location,
+            ),
         );
     }
 
@@ -3022,8 +3025,6 @@ final class Codebase
      * The taint node of the parameter at $offset (0 for the first) of $function, for a call at $call_location if
      * given (see getTaintReturnNode()): what flows into it is what the body gets in that parameter, and reaches its
      * sinks. Null if there is no such function-like or parameter.
-     *
-     * @psalm-capabilities read-props|write-props
      */
     public function getTaintArgumentNode(
         StatementsSource $source,
@@ -3043,11 +3044,16 @@ final class Codebase
             return null;
         }
 
-        return DataFlowNode::getForMethodArgument(
-            $cased_function_id,
-            $offset,
-            $storage,
-            $this->getTaintSpecializationLocation($source, $storage, $call_location),
+        $specialization_location = $this->getTaintSpecializationLocation($source, $storage, $call_location);
+
+        return self::createTaintBodyNode(
+            $body,
+            static fn(): DataFlowNode => DataFlowNode::getForMethodArgument(
+                $cased_function_id,
+                $offset,
+                $storage,
+                $specialization_location,
+            ),
         );
     }
 
@@ -3056,8 +3062,6 @@ final class Codebase
      * the objects of the method apart (see `@psalm-taint-specialize`): what flows into it is the `$this` of the body
      * for that call, whose return node (see getTaintReturnNode()) then holds what this object gives it. Null for other
      * methods, whose body takes from what every object of the class holds.
-     *
-     * @psalm-capabilities read-props
      */
     public function getTaintReceiverNode(
         StatementsSource $source,
@@ -3070,14 +3074,20 @@ final class Codebase
         }
 
         $storage = $body[1];
-        if (!$storage instanceof MethodStorage || !$storage->specialize_call || $storage->location === null) {
+        $method_location = $storage->location;
+        if (!$storage instanceof MethodStorage || !$storage->specialize_call || $method_location === null) {
             return null;
         }
 
-        return DataFlowNode::getForAssignment(
-            '$this in ' . (string) FunctionLikeAnalyzer::getBodyMethodId($this, MethodIdentifier::wrap($method_id)),
-            $storage->location,
-            DataFlowNode::getSpecializationKey($call_location),
+        $body_method_id = FunctionLikeAnalyzer::getBodyMethodId($this, MethodIdentifier::wrap($method_id));
+
+        return self::createTaintBodyNode(
+            $body,
+            static fn(): DataFlowNode => DataFlowNode::getForAssignment(
+                '$this in ' . (string) $body_method_id,
+                $method_location,
+                DataFlowNode::getSpecializationKey($call_location),
+            ),
         );
     }
 
@@ -3085,8 +3095,6 @@ final class Codebase
      * Adds the paths of an assignment of $value to the instance property $property_id (`Class::$name`) of an object of
      * the class, as `$object->name = $value` does: what the class and the parent classes sharing the property read of
      * it gets the value, and so does what its subclasses read, as the object may be one of theirs.
-     *
-     * @psalm-capabilities read-props|write-props
      */
     public function addTaintPropertyAssignment(
         StatementsSource $source,
@@ -3120,10 +3128,11 @@ final class Codebase
     }
 
     /**
-     * The cased id the taint nodes of the body of $function are keyed by, and its storage (see getTaintReturnNode())
+     * The cased id the taint nodes of the body of $function are keyed by, its storage (see getTaintReturnNode()) and,
+     * for a method, its declaring method and the suffix of the nodes of its body analyzed for the class inheriting it
+     * (see InheritedMethodTaints), as a call of the method on an object of that class runs it
      *
-     * @return array{string, FunctionLikeStorage}|null
-     * @psalm-capabilities read-props
+     * @return array{string, FunctionLikeStorage, ?MethodIdentifier, ?string}|null
      */
     private function getTaintBody(
         StatementsSource $source,
@@ -3136,7 +3145,7 @@ final class Codebase
                 . ':-:closure';
 
             try {
-                return [$closure_id, $this->getClosureStorage($source->getFilePath(), $closure_id)];
+                return [$closure_id, $this->getClosureStorage($source->getFilePath(), $closure_id), null, null];
             } catch (UnexpectedValueException) {
                 return null;
             }
@@ -3150,19 +3159,32 @@ final class Codebase
             }
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
+            if ($declaring_method_id === null) {
+                return null;
+            }
 
-            return $declaring_method_id === null
-                ? null
-                : [
-                    FunctionLikeAnalyzer::getCasedBodyMethodId($this, $method_id),
-                    $this->methods->getStorage($declaring_method_id),
-                ];
+            $body_suffix = (string) FunctionLikeAnalyzer::getBodyMethodId($this, $method_id) !== (string) $method_id
+                && $source instanceof StatementsAnalyzer
+                    ? InheritedMethodTaints::getBodySuffix($source, $method_id->fq_class_name, $declaring_method_id)
+                    : null;
+
+            return [
+                FunctionLikeAnalyzer::getCasedBodyMethodId($this, $method_id),
+                $this->methods->getStorage($declaring_method_id),
+                $declaring_method_id,
+                $body_suffix,
+            ];
+        }
+
+        $function_id = ltrim($function, '\\');
+        if ($function_id === '') {
+            return null;
         }
 
         try {
             $storage = $this->functions->getStorage(
                 null,
-                strtolower(ltrim($function, '\\')),
+                strtolower($function_id),
                 $source->getRootFilePath(),
                 $source->getFilePath(),
             );
@@ -3170,13 +3192,22 @@ final class Codebase
             return null;
         }
 
-        return [$storage->cased_name ?? $function, $storage];
+        return [$storage->cased_name ?? $function, $storage, null, null];
+    }
+
+    /**
+     * A node of the body of getTaintBody(), created by $create with the suffix of the body if it has one
+     *
+     * @param array{string, FunctionLikeStorage, ?MethodIdentifier, ?string} $body
+     * @param callable(): DataFlowNode $create
+     */
+    private static function createTaintBodyNode(array $body, callable $create): DataFlowNode
+    {
+        return $body[2] === null ? $create() : InheritedMethodTaints::withMethodSuffix($body[2], $body[3], $create);
     }
 
     /**
      * $call_location if the call there of the function-like of $storage has nodes of its own
-     *
-     * @psalm-capabilities read-props|write-props
      */
     private function getTaintSpecializationLocation(
         StatementsSource $source,
