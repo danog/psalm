@@ -219,9 +219,107 @@ function show(Model $model): void {
   `$model->toArray()['title']` are tainted. What is under a key the analysis doesn't know (an array whose keys aren't
   literals, or a key read with a variable) may be any property, and a key that names no property of the class is
   still returned under that key.
-+ When `$name` isn't a literal string, the call sets or returns every property it may name.
++ When `$name` isn't a literal string, the call sets or returns every property it may name. A copy loop,
+  `foreach ($values as $name => $value) { $model->set($name, $value); }`, sets each property to what is under its
+  name in `$values`, as `($values) -> $this->{key}` does, when `$name` and `$value` are still the key and the value of
+  the loop.
 + For a class with [`@psalm-taint-specialize`](avoiding_false_positives.md#specializing-taints-in-classes), properties
   are tracked per object.
+
+### Properties held in an array property
+
+Models often hold their properties in an array property under their names, and their methods read and write them
+there. `@psalm-taint-property-bag` on the class names that array property: in the methods of the class and of the
+classes extending it, an element of it under a literal key is the property of that name.
+
+```php
+<?php // --taint-analysis
+/** @psalm-taint-property-bag $properties */
+abstract class Model
+{
+    /** @var array<string, mixed> */
+    protected array $properties = [];
+
+    abstract public function __get(string $name): mixed;
+}
+
+/**
+ * @property string $title
+ * @property string $body
+ */
+final class Article extends Model
+{
+    public function setTitle(string $title): void {
+        $this->properties['title'] = $title;
+    }
+
+    public function getBody(): string {
+        return (string) $this->properties['body'];
+    }
+}
+
+function save(Article $article): void {
+    $article->setTitle($_GET['title'] ?? '');
+}
+
+function show(Article $article): void {
+    echo $article->title;     // TaintedHtml
+    echo $article->getBody(); // no issue
+}
+```
+
++ `$this->properties['title']` reads `$this->title`, and `$this->properties['title'] = $value` sets it, also under
+  further keys (`$this->properties['tags']['main'] = $tag`). They meet `$object->title`, `@property` tags and the
+  flows of [properties set and got by name](#properties-set-and-got-by-name).
++ An element under a key that isn't a literal, and the whole array, are only the array property: declare the flows
+  of the methods setting and getting properties by name with `@psalm-flow`.
+
+### A property and its elements
+
+A method can also say which property it sets or returns by naming it, and which element of an array property by the
+parameter giving its key, for request objects and other containers holding their values in an array property:
+
+```php
+<?php // --taint-analysis
+abstract class Request
+{
+    /** @var array<string, string> */
+    protected array $vars = [];
+
+    /** @psalm-flow ($vars) -> $this->vars */
+    abstract public function __construct(array $vars);
+
+    /** @psalm-flow ($value) -> $this->vars[$name] */
+    abstract public function set(string $name, string $value): void;
+
+    /** @psalm-flow $this->vars[$name] -> return */
+    abstract public function get(string $name): string;
+
+    /** @psalm-flow $this->vars -> return */
+    abstract public function toArray(): array;
+}
+
+function save(Request $request): void {
+    $request->set('title', $_GET['title'] ?? '');
+}
+
+function show(Request $request): void {
+    echo $request->get('title');            // TaintedHtml
+    echo $request->get('body');             // no issue
+    echo $request->toArray()['title'];      // TaintedHtml
+}
+```
+
++ `($value) -> $this->vars` sets the property `vars`, like `$object->vars = $value`, and `$this->vars -> return`
+  returns it. The arrays set keep their keys.
++ `($value) -> $this->vars[$name]` sets the element of `vars` under the key given to `$name`, like
+  `$object->vars[$name] = $value`, and `$this->vars[$name] -> return` returns it. Keys are told apart as for
+  [keyed stores](#keyed-stores).
++ `$this->vars[*]` is any element: `($value) -> $this->vars[*]` for a method like `add()`, `$this->vars[*] -> return`
+  for one returning any of them.
++ The flows into the properties of a constructor set them on the object it constructs: `new Request(['title' =>
+  $_GET['title']])` taints `get('title')` of the requests. They also apply to `($values) -> $this->$name`,
+  `($values) -> $this->*` and `($values) -> $this->{key}`.
 
 ### Combined proxy & return value hint
 
