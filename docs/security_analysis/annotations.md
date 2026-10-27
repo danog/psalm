@@ -41,6 +41,11 @@ The taints the native types of a value can't hold are still removed from it: a `
 
 See [Output of command-line code](avoiding_false_positives.md#output-of-command-line-code).
 
+## `@psalm-taint-property-bag $<property>`
+
+On a class: the array property `$<property>` holds the properties of its objects under their names.
+See [Properties held in an array property](taint_flow.md#properties-held-in-an-array-property)
+
 ## `@psalm-taint-specialize`
 
 See [Specializing taints in functions](avoiding_false_positives.md#specializing-taints-in-functions) and [Specializing taints in classes](avoiding_false_positives.md#specializing-taints-in-classes).
@@ -67,3 +72,9 @@ See [Properties set and got by name](taint_flow.md#properties-set-and-got-by-nam
 
 Each property is set to, or returned under, its name as a key of the array.
 See [Properties set and got by name](taint_flow.md#properties-set-and-got-by-name)
+
+## `@psalm-flow ( <arg>, [ <arg>, ] ) -> $this-><property>[<key>]` and `@psalm-flow $this-><property>[<key>] -> return`
+
+`<property>` is the name of the property, like `vars`. The optional `[<key>]` is the element of that array property
+under the key given to a parameter, like `[$name]`, or `[*]` for any element.
+See [A property and its elements](taint_flow.md#a-property-and-its-elements)
