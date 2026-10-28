@@ -2594,6 +2594,27 @@ final class TaintTest extends TestCase
 
                     query((bool) $_GET["username"]);',
             ],
+            'nosqlSinkNotTaintedByTheEqualityOperandOfAField' => [
+                'code' => '<?php
+                    final class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+                    }
+
+                    /** @psalm-taint-sink nosql $filter */
+                    function query(array $filter): void {}
+
+                    final class Users {
+                        private const NAME = "name";
+
+                        public static function search(Collection $users): void {
+                            // MongoDB compares the field with what $eq is given as it is, operators and regexes included
+                            $users->find(["name" => [\'$eq\' => $_GET["name"]]]);
+                            $users->find([self::NAME => [\'$eq\' => $_GET["name"]], "age" => [\'$gt\' => 18]]);
+                            query(["name" => [\'$eq\' => $_GET["name"]]]);
+                        }
+                    }',
+            ],
             'nosqlFilterEscapedByIntCast' => [
                 'code' => '<?php
                     function getUser(): MongoDB\Driver\Query {
@@ -4431,6 +4452,30 @@ final class TaintTest extends TestCase
                         echo $model->get("body");
                     }',
             ],
+            'propertySetUnderANameNotKnownStaysInTheClassOfTheObject' => [
+                'code' => '<?php
+                    abstract class Bag {
+                        /** @psalm-flow ($value) -> $this->$name */
+                        public function set(string $name, string $value): void {}
+
+                        /** @psalm-flow $this->$name -> return */
+                        public function get(string $name): string {
+                            return "";
+                        }
+                    }
+
+                    final class Query extends Bag {}
+
+                    final class Options extends Bag {}
+
+                    function save(Options $options, string $name): void {
+                        $options->set($name, (string) $_GET["x"]);
+                    }
+
+                    function show(Query $query): void {
+                        echo $query->get("other");
+                    }',
+            ],
             'propertySetByNameOfAnObjectSpecializedStaysInIt' => [
                 'code' => '<?php
                     /** @psalm-taint-specialize */
@@ -6211,6 +6256,60 @@ final class TaintTest extends TestCase
                     }',
                 'error_message' => 'TaintedHtml',
             ],
+            'propertySetUnderANameNotKnownThroughAParentTypeIsReadThroughASubclass' => [
+                'code' => '<?php
+                    abstract class Bag {
+                        /** @psalm-flow ($value) -> $this->$name */
+                        public function set(string $name, string $value): void {}
+
+                        /** @psalm-flow $this->$name -> return */
+                        public function get(string $name): string {
+                            return "";
+                        }
+                    }
+
+                    final class Query extends Bag {}
+
+                    function save(Bag $bag, string $name): void {
+                        $bag->set($name, (string) $_GET["x"]);
+                    }
+
+                    function show(Query $query): void {
+                        echo $query->get("other");
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'propertySetUnderANameNotKnownThroughASubclassIsReadThroughAnInterface' => [
+                'code' => '<?php
+                    interface PropertyObject {
+                        /** @psalm-flow ($value) -> $this->$name */
+                        public function set(string $name, string $value): void;
+
+                        /** @psalm-flow $this->$name -> return */
+                        public function get(string $name): string;
+                    }
+
+                    abstract class Bag implements PropertyObject {
+                        /** @psalm-flow ($value) -> $this->$name */
+                        public function set(string $name, string $value): void {}
+
+                        /** @psalm-flow $this->$name -> return */
+                        public function get(string $name): string {
+                            return "";
+                        }
+                    }
+
+                    final class Query extends Bag {}
+
+                    function save(Query $query, string $name): void {
+                        $query->set($name, (string) $_GET["x"]);
+                    }
+
+                    function show(PropertyObject $object): void {
+                        echo $object->get("other");
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
             'propertySetUnderAKnownStartIsThePropertiesStartingWithIt' => [
                 'code' => '<?php
                     final class Model {
@@ -7059,6 +7158,77 @@ final class TaintTest extends TestCase
                         show((string) $_GET["x"]);
                     }',
                 'error_message' => 'TaintedHtml',
+            ],
+            'nosqlSinkTaintedByAnEqualityOperandInExpr' => [
+                'code' => '<?php
+                    final class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+                    }
+
+                    function search(Collection $users): void {
+                        // in $expr, an operand like "$name" is a field path
+                        $users->find([\'$expr\' => [\'$eq\' => [\'$name\', $_GET["name"]]]]);
+                    }',
+                'error_message' => 'TaintedNosql',
+            ],
+            'nosqlSinkTaintedByAnEqualityOperandBelowTheFieldDocument' => [
+                'code' => '<?php
+                    final class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+                    }
+
+                    function search(Collection $users): void {
+                        $users->find(["name" => [\'$not\' => [\'$eq\' => $_GET["name"]]]]);
+                    }',
+                'error_message' => 'TaintedNosql',
+            ],
+            'nosqlSinkTaintedByAnotherOperatorOfTheFieldDocument' => [
+                'code' => '<?php
+                    final class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+                    }
+
+                    function search(Collection $users): void {
+                        $users->find(["name" => [\'$eq\' => "a", \'$in\' => $_GET["names"]]]);
+                    }',
+                'error_message' => 'TaintedNosql',
+            ],
+            'nosqlSinkTaintedByAnEqualityOperandOfAFieldNotLiteral' => [
+                'code' => '<?php
+                    final class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+                    }
+
+                    function search(Collection $users, string $field): void {
+                        $users->find([$field => [\'$eq\' => $_GET["name"]]]);
+                    }',
+                'error_message' => 'TaintedNosql',
+            ],
+            'nosqlSinkTaintedByAnEqualityOperandAnOverrideMayTakeAnywhere' => [
+                'code' => '<?php
+                    class Collection {
+                        /** @psalm-taint-sink nosql $filter */
+                        public function find(array $filter): void {}
+
+                        /** @psalm-taint-sink nosql $pipeline */
+                        public function aggregate(array $pipeline): void {}
+                    }
+
+                    final class ExprCollection extends Collection {
+                        #[Override]
+                        public function find(array $filter): void {
+                            $this->aggregate([[\'$match\' => [\'$expr\' => $filter]]]);
+                        }
+                    }
+
+                    function search(Collection $users): void {
+                        $users->find(["name" => [\'$eq\' => $_GET["name"]]]);
+                    }',
+                'error_message' => 'TaintedNosql',
             ],
             'keyedStoreExactKey' => [
                 'code' => '<?php
