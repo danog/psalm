@@ -24,6 +24,36 @@ final class FunctionCallTest extends TestCase
     public static function providerValidCodeParse(): iterable
     {
         return [
+            'filterVarIntWithFloatLiteralsOutsideTheRangeOfAnInt' => [
+                'code' => '<?php
+                    $big = filter_var(1e30, FILTER_VALIDATE_INT);
+                    $notANumber = filter_var(NAN, FILTER_VALIDATE_INT);
+                    $whole = filter_var(5.0, FILTER_VALIDATE_INT);
+                    $bigMin = filter_var(5, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1e30]]);
+                    $notANumberMax = filter_var(5, FILTER_VALIDATE_INT, ["options" => ["max_range" => NAN]]);
+                    $knownMinAndNotANumberMax = filter_var(
+                        5,
+                        FILTER_VALIDATE_INT,
+                        ["options" => ["min_range" => 0, "max_range" => NAN]],
+                    );
+                    $bigMinAndKnownMax = filter_var(
+                        5,
+                        FILTER_VALIDATE_INT,
+                        ["options" => ["min_range" => 1e30, "max_range" => 10]],
+                    );
+                    $knownRange = filter_var(5, FILTER_VALIDATE_INT, ["options" => ["min_range" => 0, "max_range" => 10]]);',
+                'assertions' => [
+                    '$big===' => 'false',
+                    '$notANumber===' => 'false',
+                    '$whole===' => '5',
+                    '$bigMin===' => 'false|int',
+                    '$notANumberMax===' => 'false|int',
+                    '$knownMinAndNotANumberMax===' => 'false|int',
+                    '$bigMinAndKnownMax===' => 'false|int',
+                    '$knownRange===' => '5',
+                ],
+            ],
+
             'multibyteLiteralArgument' => [
                 'code' => '<?php
                     function startsWithGreeting(string $s): bool {
@@ -50,6 +80,72 @@ final class FunctionCallTest extends TestCase
                 ],
                 'ignored_issues' => [],
                 'php_version' => '8.4',
+            ],
+            'peclFunctionsOfExtensionsThePhp86ImageLacks' => [
+                'code' => '<?php
+                    $session = ssh2_connect("example.com", 22);
+                    $version = swoole_version();
+                    $string = _string("abc");
+                    $serialized = igbinary_serialize([1]);',
+                'assertions' => [
+                    '$version===' => 'string',
+                    '$string===' => 'Swoole\StringObject',
+                ],
+                'ignored_issues' => ['MixedAssignment'],
+                'php_version' => '8.6',
+            ],
+            'clampOfIntegers' => [
+                'code' => '<?php
+                    /** @var int $i */;
+                    $result = clamp($i, 0, 100);',
+                'assertions' => [
+                    '$result===' => 'int',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.6',
+            ],
+            'clampOfFloats' => [
+                'code' => '<?php
+                    /** @var float $f */;
+                    $result = clamp($f, 0.0, 1.0);',
+                'assertions' => [
+                    '$result===' => 'float',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.6',
+            ],
+            'clampOfMixedIntAndFloat' => [
+                'code' => '<?php
+                    /** @var int $i */;
+                    /** @var float $f */;
+                    $result = clamp($i, 0.5, $f);',
+                'assertions' => [
+                    '$result===' => 'float|int',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.6',
+            ],
+            'clampOfObjects' => [
+                'code' => '<?php
+                    $d = new DateTimeImmutable();
+                    $min = new DateTimeImmutable("yesterday");
+                    $max = new DateTimeImmutable("tomorrow");
+                    $result = clamp($d, $min, $max);',
+                'assertions' => [
+                    '$result===' => 'DateTimeImmutable',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.6',
+            ],
+            'clampOfStrings' => [
+                'code' => '<?php
+                    /** @var string $s */;
+                    $result = clamp($s, "a", "z");',
+                'assertions' => [
+                    '$result===' => 'string',
+                ],
+                'ignored_issues' => [],
+                'php_version' => '8.6',
             ],
             'callTemplatedFunctionWithUnionArgument' => [
                 'code' => '<?php
@@ -2749,6 +2845,13 @@ final class FunctionCallTest extends TestCase
                     'MixedArrayAccess',
                     'RedundantConditionGivenDocblockType',
                 ],
+            ],
+            'clampIsUndefinedBeforePhp86' => [
+                'code' => '<?php
+                    $result = clamp(5, 0, 10);',
+                'error_message' => 'UndefinedFunction',
+                'error_levels' => [],
+                'php_version' => '8.5',
             ],
             'undefinedFunctionInArrayMap' => [
                 'code' => '<?php
