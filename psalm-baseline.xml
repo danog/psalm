@@ -2397,7 +2397,6 @@
       <code><![CDATA[$existing_file_contents]]></code>
       <code><![CDATA[$existing_statements]]></code>
       <code><![CDATA[$file_changes]]></code>
-      <code><![CDATA[$file_path]]></code>
       <code><![CDATA[self::$parser->parse($file_contents, $error_handler)]]></code>
       <code><![CDATA[self::$parser->parse($file_contents, $error_handler)]]></code>
       <code><![CDATA[strpos($file_path, 'vendor')]]></code>
@@ -3007,9 +3006,6 @@
     <PossiblyInvalidArgument>
       <code><![CDATA[$this->link_format]]></code>
     </PossiblyInvalidArgument>
-    <PossiblyInvalidCast>
-      <code><![CDATA[$this->link_format]]></code>
-    </PossiblyInvalidCast>
     <PossiblyInvalidPropertyAssignmentValue>
       <code><![CDATA[(
                 ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format')
@@ -3026,9 +3022,6 @@
     <PossiblyInvalidArgument>
       <code><![CDATA[$this->link_format]]></code>
     </PossiblyInvalidArgument>
-    <PossiblyInvalidCast>
-      <code><![CDATA[$this->link_format]]></code>
-    </PossiblyInvalidCast>
     <PossiblyInvalidPropertyAssignmentValue>
       <code><![CDATA[(
                 ini_get('xdebug.file_link_format') ?: get_cfg_var('xdebug.file_link_format')
