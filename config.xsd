@@ -195,9 +195,10 @@
     </xs:complexType>
 
     <xs:complexType name="StubsType">
-        <xs:sequence>
+        <xs:choice maxOccurs="unbounded">
             <xs:element name="file" maxOccurs="unbounded" type="StubsAttributeType" />
-        </xs:sequence>
+            <xs:element name="directory" maxOccurs="unbounded" type="StubsAttributeType" />
+        </xs:choice>
         <xs:anyAttribute processContents="skip" />
     </xs:complexType>
 
@@ -283,6 +284,7 @@
             <xs:element name="FalsableReturnStatement" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="FalseOperand" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="ForbiddenCode" type="IssueHandlerType" minOccurs="0" />
+            <xs:element name="HiddenGeneratorReturn" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="IfThisIsMismatch" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="ImplementationRequirementViolation" type="IssueHandlerType" minOccurs="0" />
             <xs:element name="ImplementedParamTypeMismatch" type="IssueHandlerType" minOccurs="0" />

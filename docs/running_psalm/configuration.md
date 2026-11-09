@@ -422,7 +422,6 @@ When `true`, Psalm enables these plugins without listing them in [`<plugins>`](p
 | `psalm/plugin-mockery` | `composer.json` requires `mockery/mockery` |
 | `psalm/plugin-symfony` | `composer.json` requires `symfony/framework-bundle` |
 | `psalm/plugin-laravel` | `composer.json` requires `laravel/framework` or `orchestra/testbench` |
-| `psalm/plugin-sabre-event` | `composer.json` requires `sabre/event` |
 | the plugin of `webmozart/assert` (2.4 and later) | `webmozart/assert` is installed |
 
 Psalm itself requires the `psalm/*` plugins, so they don't need installing.
@@ -802,6 +801,16 @@ or interfaces defined in a stub file, this stub should be configured with attrib
 <stubs>
   <file name="path/to/file.php" />
   <file name="path/to/abstract-class.php" preloadClasses="true" />
+</stubs>
+```
+
+A `<directory name="path/to/stubs" />` adds every `.php` and `.phpstub` file below it, in alphabetical order, and takes
+the same `preloadClasses` attribute:
+
+```xml
+<stubs>
+  <directory name="path/to/stubs" />
+  <directory name="path/to/base-classes" preloadClasses="true" />
 </stubs>
 ```
 
