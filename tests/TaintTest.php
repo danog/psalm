@@ -89,6 +89,75 @@ final class TaintTest extends TestCase
     }
 
     /**
+     * Taint must travel from a by-reference call through its local alias to the sink.
+     */
+    public function testReturnedReferenceAssignmentToVariablePreservesTaint(): void
+    {
+        $code = <<<'PHP'
+            <?php
+            final class ReferenceSource {
+                public static string $value = '';
+            }
+
+            /** @psalm-taint-source html */
+            function &getReferenceSource(): string {
+                return ReferenceSource::$value;
+            }
+
+            $reference = &getReferenceSource();
+            echo $reference;
+            PHP;
+
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessageMatches('/\bTaintedHtml\b/');
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->addFile($file_path, $code);
+        $this->project_analyzer->trackTaintedInputs();
+
+        foreach (self::IGNORE as $issue_name) {
+            Config::getInstance()->setCustomErrorLevel($issue_name, Config::REPORT_SUPPRESS);
+        }
+
+        $this->analyzeFile($file_path, new Context(), false);
+    }
+
+    /**
+     * A reference assignment used as an expression must retain the taint of the returned value.
+     */
+    public function testReturnedReferenceAssignmentExpressionPreservesTaint(): void
+    {
+        $code = <<<'PHP'
+            <?php
+            final class TaintedReference {
+                public static string $value = '';
+            }
+
+            /** @psalm-taint-source html */
+            function &referenceSource(): string {
+                return TaintedReference::$value;
+            }
+
+            echo ($value = &referenceSource());
+            PHP;
+
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessageMatches('/\bTaintedHtml\b/');
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->addFile($file_path, $code);
+        $this->project_analyzer->trackTaintedInputs();
+
+        foreach (self::IGNORE as $issue_name) {
+            Config::getInstance()->setCustomErrorLevel($issue_name, Config::REPORT_SUPPRESS);
+        }
+
+        $this->analyzeFile($file_path, new Context(), false);
+    }
+
+    /**
      * A taint flow longer than the old hard-coded resolution depth of 40 hops is
      * now detected: resolution runs to a fixed point rather than stopping at an
      * arbitrary nesting level.
@@ -6037,9 +6106,7 @@ final class TaintTest extends TestCase
                 'code' => '<?php // --taint-analysis
                     /** @param mixed $m */
                     function f($m): void {
-                        /** @psalm-suppress MixedArrayAccess */
                         preg_match("/(.*)/", (string) $_GET["x"], $m["k"]);
-                        /** @psalm-suppress MixedArrayAccess, MixedArgument */
                         echo $m["k"][1];
                     }',
                 'error_message' => 'TaintedHtml',
@@ -12066,19 +12133,16 @@ final class TaintTest extends TestCase
             ],
             'taintedHtmlWrittenToAPhpOutputStream' => [
                 'code' => '<?php
-                    /** @psalm-suppress PossiblyFalseArgument */
                     fwrite(fopen("php://output", "w"), (string) $_GET["x"]);',
                 'error_message' => 'TaintedHtml',
             ],
             'taintedHtmlWrittenToAPhpStdoutStream' => [
                 'code' => '<?php
-                    /** @psalm-suppress PossiblyFalseArgument */
                     fwrite(fopen("php://stdout", "w"), (string) $_GET["x"]);',
                 'error_message' => 'TaintedHtml',
             ],
             'taintedTextWithQuotesWrittenToAPhpOutputStream' => [
                 'code' => '<?php
-                    /** @psalm-suppress PossiblyFalseArgument */
                     fwrite(fopen("php://output", "w"), strip_tags((string) $_GET["x"]));',
                 'error_message' => 'TaintedTextWithQuotes',
             ],
@@ -13083,10 +13147,6 @@ final class TaintTest extends TestCase
             ],
             'taintOverMixed' => [
                 'code' => '<?php
-                    /**
-                     * @psalm-suppress MixedAssignment
-                     * @psalm-suppress MixedArgument
-                     */
                     function foo() : void {
                         $a = $_GET["bad"];
                         echo $a;
@@ -13096,7 +13156,6 @@ final class TaintTest extends TestCase
             'taintStrConversion' => [
                 'code' => '<?php
                     function foo() : void {
-                        /** @psalm-suppress PossiblyInvalidCast */
                         $a = strtoupper(strtolower((string) $_GET["bad"]));
                         echo $a;
                     }',
@@ -13889,13 +13948,11 @@ final class TaintTest extends TestCase
             ],
             'taintThroughArrayMapUntypedClosureOverMixedArray' => [
                 'code' => '<?php
-                    /** @psalm-suppress MissingClosureParamType, MissingClosureReturnType */
                     echo implode(",", array_map(fn($s) => $s, $_GET["a"]));',
                 'error_message' => 'TaintedHtml',
             ],
             'taintThroughArrayMapUntypedClosureIntoItsElements' => [
                 'code' => '<?php
-                    /** @psalm-suppress MissingClosureParamType, MissingClosureReturnType */
                     foreach (array_map(fn($s) => $s, $_GET["a"]) as $value) {
                         echo (string) $value;
                     }',
@@ -14088,10 +14145,8 @@ final class TaintTest extends TestCase
             'taintExit' => [
                 'code' => '<?php
                     if (rand(0, 1)) {
-                        /** @psalm-suppress PossiblyInvalidArgument */
                         exit($_GET[\'a\']);
                     } else {
-                        /** @psalm-suppress PossiblyInvalidArgument */
                         die($_GET[\'b\']);
                     }',
                 'error_message' => 'TaintedHtml',
@@ -14301,7 +14356,6 @@ final class TaintTest extends TestCase
                         echo $b[0];
                     }
 
-                    /** @psalm-suppress MixedArgumentTypeCoercion */
                     spread($_GET["a"]);',
                 'error_message' => 'TaintedHtml',
             ],
@@ -14809,10 +14863,8 @@ final class TaintTest extends TestCase
                         }
                     }
 
-                    /** @psalm-suppress InvalidReturnType */
                     function stub(): Unsafe { }
 
-                    /** @psalm-suppress MixedArgument */
                     echo stub()->isUnsafe();',
                 'error_message' => 'TaintedHtml',
             ],
@@ -14949,7 +15001,6 @@ final class TaintTest extends TestCase
             ],
             'taintPopen' => [
                 'code' => '<?php
-                    /** @psalm-suppress PossiblyInvalidCast */
                     $cb = popen($_POST[\'x\'], \'r\');',
                 'error_message' => 'TaintedShell',
             ],
@@ -15816,7 +15867,6 @@ final class TaintTest extends TestCase
                  * We arbitrarily chose system() to test this.
                  */
                 'code' => '<?php
-                    /** @psalm-suppress PossiblyInvalidArgument */
                     system(urlencode($_GET["bad"]));
                 ',
                 'error_message' => 'TaintedShell',
