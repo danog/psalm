@@ -20,12 +20,15 @@ use Psalm\Storage\Assertion\IsNotType;
 use Psalm\Storage\Assertion\NotInArray;
 use Psalm\Type\Atomic\TNull;
 
-use function array_intersect_key;
+use function array_filter;
 use function array_key_first;
 use function array_keys;
 use function array_unique;
+use function array_values;
 use function count;
 use function implode;
+use function preg_match;
+use function preg_quote;
 use function reset;
 use function sort;
 use function spl_object_id;
@@ -90,6 +93,30 @@ final class AlgebraAnalyzer
     }
 
     /**
+     * Whether the clause tests one of the variables, an item or property of one, or an item whose key is one
+     * (`$a[$i]` for `$i`)
+     *
+     * @param array<string, int> $var_ids
+     * @psalm-pure
+     */
+    private static function testsAnyVar(Clause $clause, array $var_ids): bool
+    {
+        foreach ($clause->possibilities as $key => $_) {
+            if (isset($var_ids[$key])) {
+                return true;
+            }
+
+            foreach ($var_ids as $var_id => $_) {
+                if (preg_match('/' . preg_quote($var_id, '/') . '[\]\[\-]/', $key)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * `in-array-X` doesn't say which array the value was looked up in: two equal ones are not a repetition
      *
      * @psalm-pure
@@ -127,7 +154,7 @@ final class AlgebraAnalyzer
         array $new_assigned_var_ids,
     ): void {
         try {
-            $negated_formula2 = Algebra::negateFormula($formula_2);
+            $negated_formula2 = Algebra::negateFormula($formula_2, true);
         } catch (ComplicatedExpressionException) {
             return;
         }
@@ -162,7 +189,7 @@ final class AlgebraAnalyzer
                     || isset($formula_2_hashes[$hash])
                     // isset($x) already says that $x is not null
                     || ($not_null_var_id !== null && isset($isset_var_ids[$not_null_var_id])))
-                && !array_intersect_key($new_assigned_var_ids, $formula_2_clause->possibilities)
+                && !self::testsAnyVar($formula_2_clause, $new_assigned_var_ids)
                 && !self::hasInArrayPossibility($formula_2_clause)
             ) {
                 IssueBuffer::maybeAdd(
@@ -216,7 +243,7 @@ final class AlgebraAnalyzer
                     $statements_analyzer,
                     $statements_analyzer->getCodebase(),
                 );
-                $operand_formulas[] = [$operand, Algebra::negateFormula($operand_formula)];
+                $operand_formulas[] = [$operand, Algebra::negateFormula($operand_formula, true)];
             } catch (ComplicatedExpressionException) {
                 return;
             }
@@ -235,8 +262,28 @@ final class AlgebraAnalyzer
             return;
         }
 
+        $assigned_var_ids = [];
+
         foreach ($operand_formulas as [$operand, $negated_operand_formula]) {
-            $operand_implication = self::findImplication($formula_1, $negated_operand_formula);
+            // an operand reads the variables it and the operands before it assign as assigned, not as established
+            $assigned_var_ids += FormulaGenerator::getAssignedVarIds($operand, $statements_analyzer->getFQCLN());
+
+            $operand_formula_1 = $assigned_var_ids === [] ? $formula_1 : array_values(array_filter(
+                $formula_1,
+                static function (Clause $clause) use ($assigned_var_ids): bool {
+                    foreach ($clause->possibilities as $key => $_) {
+                        foreach (array_keys($assigned_var_ids) as $assigned_var_id) {
+                            if (preg_match('/^' . preg_quote($assigned_var_id, '/') . '(\[|-|$)/', $key)) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    return true;
+                },
+            ));
+
+            $operand_implication = self::findImplication($operand_formula_1, $negated_operand_formula);
 
             if ($operand_implication !== null) {
                 self::reportParadox($statements_analyzer, $operand, $operand_implication[0], $operand_implication[1]);
@@ -335,7 +382,7 @@ final class AlgebraAnalyzer
         Clause $negated_clause_2,
         Clause $clause_1,
     ): void {
-        $mini_formula_2 = Algebra::negateFormula([$negated_clause_2]);
+        $mini_formula_2 = Algebra::negateFormula([$negated_clause_2], true);
 
         if (!$mini_formula_2[0]->wedge) {
             if (count($mini_formula_2) > 1) {
