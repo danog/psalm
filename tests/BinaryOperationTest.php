@@ -746,6 +746,132 @@ final class BinaryOperationTest extends TestCase
     public static function providerValidCodeParse(): iterable
     {
         return [
+            'comparisonNarrowsTheBoundOfATemplateInTheTypeOfTheVariable' => [
+                'code' => '<?php
+                    /** @param int<1, max> $n */
+                    function positive(int $n): void {}
+
+                    /** @param int<min, 0> $n */
+                    function nonPositive(int $n): void {}
+
+                    /** @param int<min, 4> $n */
+                    function belowFive(int $n): void {}
+
+                    /** @param int<5, max> $n */
+                    function fiveOrMore(int $n): void {}
+
+                    /**
+                     * @template T of int
+                     * @param T $n
+                     */
+                    function f(int $n): void {
+                        if ($n > 0) {
+                            positive($n);
+                        } else {
+                            nonPositive($n);
+                        }
+
+                        if ($n < 5) {
+                            belowFive($n);
+                        } else {
+                            fiveOrMore($n);
+                        }
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
+            ],
+            'shiftOfAnIntRangeInALoopIsNotBounded' => [
+                'code' => <<<'PHP'
+                    <?php
+                    /**
+                     * @param int<1, 2> $x
+                     * @param int<0, 3> $shift
+                     */
+                    function f(int $x, int $shift): void {
+                        $outside = $x << $shift;
+
+                        for ($i = 0; $i < 70; $i++) {
+                            $x <<= 1;
+                        }
+
+                        /** @psalm-check-type-exact $outside = int<1, 16> */
+                        /** @psalm-check-type-exact $x = int */
+                    }
+                    PHP,
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
+            ],
+            'comparisonNarrowsTheBoundOfATemplate' => [
+                'code' => '<?php
+                    /**
+                     * @template T of int<0, max>
+                     * @param T $n
+                     * @return int<2, max>
+                     */
+                    function greater(int $n): int {
+                        return $n > 1 ? $n : 2;
+                    }
+
+                    /**
+                     * @template T of int<0, max>
+                     * @param T $n
+                     * @return int<3, max>
+                     */
+                    function greaterOrEqual(int $n): int {
+                        return $n >= 3 ? $n : 3;
+                    }
+
+                    /**
+                     * @template T of int<0, max>
+                     * @param T $n
+                     * @return int<0, 4>
+                     */
+                    function smaller(int $n): int {
+                        return $n < 5 ? $n : 4;
+                    }
+
+                    /**
+                     * @template T of int<0, max>
+                     * @param T $n
+                     * @return int<0, 6>
+                     */
+                    function smallerOrEqual(int $n): int {
+                        return $n <= 6 ? $n : 6;
+                    }',
+            ],
+            'arithmeticOnATemplateBoundedByAnIntRange' => [
+                'code' => '<?php
+                    /**
+                     * @template T of positive-int|0
+                     * @param T $depth
+                     */
+                    function recursiveFn(int $depth = 1): int {
+                        if ($depth > 1) {
+                            return recursiveFn($depth - 1);
+                        }
+
+                        return 0;
+                    }
+
+                    /**
+                     * @template T of int<0, max>
+                     * @param T $n
+                     * @return array{int<-1, max>, int<1, max>, int<0, max>, int<0, max>}
+                     */
+                    function ops(int $n): array {
+                        return [$n - 1, $n + 1, $n * 2, 2 * $n];
+                    }
+
+                    /**
+                     * @template T of float
+                     * @param T $n
+                     */
+                    function floats(float $n): float {
+                        return $n * 2;
+                    }',
+            ],
             'assignmentInTheRightOperandOfAndMayNotHaveRun' => [
                 'code' => '<?php
                     function fetch(): ?float {
@@ -774,6 +900,295 @@ final class BinaryOperationTest extends TestCase
                         $value = 0;
                         $matched = $enabled && null !== ($value = fetch());
                         /** @psalm-check-type-exact $value = 0|float|null */;
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfAndMayHaveChangedAfterTheIf' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($c && !$this->load()) {
+                                return;
+                            }
+                            /** @psalm-check-type-exact $this->foo = int|null */;
+                        }
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfAndMayHaveChangedInTheElse' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($c && !$this->load()) {
+                                echo "a";
+                            } else {
+                                /** @psalm-check-type-exact $this->foo = int|null */;
+                            }
+                        }
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfNestedAndsMayHaveChanged' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c, bool $d): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($c && $d && !$this->load()) {
+                                return;
+                            }
+                            /** @psalm-check-type-exact $this->foo = int|null */;
+                        }
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfAndInAnElseIfMayHaveChanged' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c, bool $d): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($d) {
+                                echo "a";
+                            } elseif ($c && !$this->load()) {
+                                return;
+                            }
+                            /** @psalm-check-type-exact $this->foo = int|null */;
+                        }
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfXorHasChanged' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function xorRight(bool $c): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($c xor $this->load()) {
+                                return;
+                            }
+                            /** @psalm-check-type-exact $this->foo = int|null */;
+                        }
+                    }',
+            ],
+            'propertyWrittenInTheRightOperandOfAndExpressionMayHaveChanged' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c): bool {
+                            if ($this->foo === null) {
+                                return false;
+                            }
+                            $loaded = $c && $this->load();
+                            /** @psalm-check-type-exact $this->foo = int|null */;
+                            return $loaded;
+                        }
+                    }',
+            ],
+            'getterResultForgottenInTheRightOperandOfAndIsForgottenAfterTheIf' => [
+                'code' => '<?php
+                    final class A {
+                        private ?int $foo = 1;
+
+                        public function getFoo(): ?int {
+                            return $this->foo;
+                        }
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+                    }
+
+                    function f(A $a, bool $c): void {
+                        if ($a->getFoo() === null) {
+                            return;
+                        }
+                        if ($c && !$a->load()) {
+                            return;
+                        }
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int|null */;
+                    }',
+            ],
+            'getterResultForgottenInTheRightOperandOfAndExpressionIsForgotten' => [
+                'code' => '<?php
+                    final class A {
+                        private ?int $foo = 1;
+
+                        public function getFoo(): ?int {
+                            return $this->foo;
+                        }
+
+                        public function load(): bool {
+                            $this->foo = null;
+                            return true;
+                        }
+                    }
+
+                    function f(A $a, bool $c): bool {
+                        if ($a->getFoo() === null) {
+                            return false;
+                        }
+                        $loaded = $c && $a->load();
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int|null */;
+                        return $loaded;
+                    }',
+            ],
+            'mixedArgumentCoercedInTheRightOperandOfAndStaysMixed' => [
+                'code' => '<?php
+                    function takesArray(array $_a): bool {
+                        return true;
+                    }
+
+                    /** @param array|null $_a */
+                    function takesNullableArray($_a): void {}
+
+                    /** @param mixed $element */
+                    function f($element, bool $c): void {
+                        $ok = $c && takesArray($element);
+                        if (isset($element["v"])) {
+                            takesNullableArray($element);
+                        }
+                    }
+
+                    /** @param mixed $element */
+                    function g($element, bool $c): void {
+                        if ($c && !takesArray($element)) {
+                            return;
+                        }
+                        if (isset($element["v"])) {
+                            takesNullableArray($element);
+                        }
+                    }',
+                'assertions' => [],
+                'ignored_issues' => ['MixedArgument'],
+            ],
+            'variableExtractedInTheRightOperandOfAndMayHaveChanged' => [
+                'code' => '<?php
+                    function f(bool $c): bool {
+                        $x = 1;
+                        $ok = $c && extract(["x" => null]);
+                        /** @psalm-check-type-exact $x = 1|null */;
+                        return $ok;
+                    }',
+            ],
+            'getterResultKeptWhenTheRightOperandOfAndOrOrNeverReturns' => [
+                'code' => '<?php
+                    final class A {
+                        private ?int $foo = 1;
+
+                        public function getFoo(): ?int {
+                            return $this->foo;
+                        }
+
+                        public function abort(): never {
+                            $this->foo = null;
+                            throw new Exception();
+                        }
+                    }
+
+                    function f(A $a, bool $c): void {
+                        if ($a->getFoo() === null) {
+                            return;
+                        }
+                        $ok = $c && $a->abort();
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int */;
+                        if ($c && $a->abort()) {
+                            return;
+                        }
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int */;
+                        $ok = $c || $a->abort();
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int */;
+                        if ($c || $a->abort()) {
+                            echo "a";
+                        }
+                        $foo = $a->getFoo();
+                        /** @psalm-check-type-exact $foo = int */;
+                    }',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.1',
+            ],
+            'propertyNotWrittenInTheRightOperandOfAndKeepsItsNarrowedType' => [
+                'code' => '<?php
+                    final class A {
+                        /** @var int|null */
+                        public $foo = 1;
+                        /** @var int|null */
+                        public $bar = 1;
+
+                        public function load(): bool {
+                            $this->bar = null;
+                            return true;
+                        }
+
+                        public function andRight(bool $c): void {
+                            if ($this->foo === null) {
+                                return;
+                            }
+                            if ($c && !$this->load()) {
+                                return;
+                            }
+                            /** @psalm-check-type-exact $this->foo = int */;
+                            $loaded = $c && $this->load();
+                            /** @psalm-check-type-exact $this->foo = int */;
+                        }
                     }',
             ],
             'coalesceOfAStaticAndASelfPropertyOffset' => [
@@ -2203,6 +2618,23 @@ final class BinaryOperationTest extends TestCase
                     '$b===' => 'non-falsy-string',
                 ],
             ],
+            'coalesceOnSeveralCallsOfOneExpressionKeepsTheirOwnTypes' => [
+                'code' => '<?php
+                    function getInt(): ?int {
+                        return null;
+                    }
+
+                    function getString(): ?string {
+                        return null;
+                    }
+
+                    $a = getInt() ?? getString() ?? 1.5;
+                    $b = [getInt() ?? "x", getString() ?? 2];',
+                'assertions' => [
+                    '$a===' => 'float(1.5)|int|string',
+                    '$b===' => 'list{\'x\'|int, 2|string}',
+                ],
+            ],
             'concatMixedWithNonFalsyLiteralReturnsNonFalsyString' => [
                 'code' => '<?php
                     /** @var mixed $m */
@@ -2272,6 +2704,77 @@ final class BinaryOperationTest extends TestCase
                     PHP,
                 'assertions' => [
                     '$a===' => 'float(9.2233720368548E+18)',
+                ],
+            ],
+            'bitwiseOperationsOfIntRanges' => [
+                'code' => <<<'PHP'
+                    <?php
+                    $flags = rand(0, 1) | (rand(0, 1) << 1);
+                    $or = rand(0, 5) | rand(2, 9);
+                    $xor = rand(0, 5) ^ rand(2, 9);
+                    $and = rand(0, 5) & rand(2, 9);
+                    $shift = rand(0, 5) << rand(2, 9);
+                    $bit = rand(0, 1) | rand(0, 1);
+                    $negativeOr = rand(-3, 5) | rand(2, 9);
+                    $negativeShift = rand(-3, 5) << rand(0, 2);
+                    $negativeShiftBy = rand(0, 5) << rand(-3, 2);
+                    PHP,
+                'assertions' => [
+                    '$flags===' => 'int<0, 3>',
+                    '$or===' => 'int<0, 15>',
+                    '$xor===' => 'int<0, 15>',
+                    '$and===' => 'int<0, 5>',
+                    '$shift===' => 'int<0, 2560>',
+                    '$bit===' => 'int<0, 1>',
+                    '$negativeOr===' => 'int',
+                    '$negativeShift===' => 'int',
+                    '$negativeShiftBy===' => 'int',
+                ],
+            ],
+            'bitwiseOperationsOfUnboundedIntRanges' => [
+                'code' => <<<'PHP'
+                    <?php
+                    /** @var int<0, max> $u */
+                    $u = 5;
+                    $andRight = $u & rand(0, 5);
+                    $andLeft = rand(0, 5) & $u;
+                    $andBoth = $u & $u;
+                    $orLeft = $u | rand(0, 5);
+                    $orRight = rand(0, 5) | $u;
+                    $xor = $u ^ rand(0, 5);
+                    $shiftLeft = $u << rand(0, 2);
+                    $shiftBy = rand(0, 2) << $u;
+                    PHP,
+                'assertions' => [
+                    '$andRight===' => 'int<0, 5>',
+                    '$andLeft===' => 'int<0, 5>',
+                    '$andBoth===' => 'int<0, max>',
+                    '$orLeft===' => 'int',
+                    '$orRight===' => 'int',
+                    '$xor===' => 'int',
+                    '$shiftLeft===' => 'int',
+                    '$shiftBy===' => 'int',
+                ],
+            ],
+            'bitwiseOperationsOfIntRangesNearTheIntegerLimits' => [
+                'code' => <<<'PHP'
+                    <?php
+                    $fits = rand(0, 1) << rand(60, 62);
+                    $overflows = rand(0, 3) << rand(60, 62);
+                    $shiftedOut = rand(0, 1) << rand(60, 63);
+                    $edge = rand(0, 4611686018427387903) << rand(0, 1);
+                    $overEdge = rand(0, 4611686018427387904) << rand(0, 1);
+                    $sixtyTwoBits = rand(0, 4611686018427387903) | rand(0, 1);
+                    $sixtyThreeBits = rand(0, 4611686018427387904) | rand(0, 1);
+                    PHP,
+                'assertions' => [
+                    '$fits===' => 'int<0, 4611686018427387904>',
+                    '$overflows===' => 'int',
+                    '$shiftedOut===' => 'int',
+                    '$edge===' => 'int<0, 9223372036854775806>',
+                    '$overEdge===' => 'int',
+                    '$sixtyTwoBits===' => 'int<0, 4611686018427387903>',
+                    '$sixtyThreeBits===' => 'int<0, 9223372036854775807>',
                 ],
             ],
             'concatenatesLiteralsWithSmallIntRanges' => [
@@ -2608,6 +3111,56 @@ final class BinaryOperationTest extends TestCase
     public static function providerInvalidCodeParse(): iterable
     {
         return [
+            'offsetOfAVariableAssignedInTheRightOperandOfAndIsForgottenAfterTheIf' => [
+                'code' => '<?php
+                    /** @return array{a?: int} */
+                    function g(): array {
+                        return [];
+                    }
+
+                    function h(array $_x): bool {
+                        return true;
+                    }
+
+                    function f(bool $c): int {
+                        $x = g();
+                        if (!isset($x["a"])) {
+                            return 0;
+                        }
+                        if ($c && !h($x = g())) {
+                            return 0;
+                        }
+                        return $x["a"];
+                    }',
+                'error_message' => 'PossiblyUndefinedArrayOffset',
+            ],
+            'comparisonOutsideTheDocblockBoundOfAParamOfAConditionalReturnType' => [
+                'code' => '<?php
+                    /**
+                     * @param int<0, max> $count
+                     * @return ($count is 1 ? string : list<string>)
+                     */
+                    function shift(int $count = 1) {
+                        if ($count < 0) {
+                            throw new InvalidArgumentException("bad");
+                        }
+                        return $count === 1 ? "a" : ["a"];
+                    }',
+                'error_message' => 'DocblockTypeContradiction',
+            ],
+            'comparisonOutsideTheBoundOfATemplate' => [
+                'code' => '<?php
+                    /**
+                     * @template T of int<0, 3>
+                     * @param T $n
+                     */
+                    function f(int $n): void {
+                        if ($n > 10) {
+                            echo $n;
+                        }
+                    }',
+                'error_message' => 'DocblockTypeContradiction',
+            ],
             'interpolatedStringEndingInZeroIsNotNonFalsy' => [
                 'code' => '<?php
                     /** @return non-falsy-string */
