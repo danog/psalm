@@ -106,11 +106,11 @@ final class ReturnTypeAnalyzer
         if (!$return_type_parts
             || $has_yield
             || $did_explicitly_return
-            || ScopeAnalyzer::getControlActions(
-                $function_stmts,
-                $type_provider,
-                [],
-            ) === [ScopeAnalyzer::ACTION_END]
+            || !in_array(
+                ScopeAnalyzer::ACTION_NONE,
+                ScopeAnalyzer::getControlActions($function_stmts, $type_provider, [], true, true),
+                true,
+            )
         ) {
             return $return_type_parts;
         }
@@ -228,6 +228,7 @@ final class ReturnTypeAnalyzer
             $type_provider,
             [],
             false,
+            true,
         );
 
         $function_always_exits = $control_actions === [ScopeAnalyzer::ACTION_END];
@@ -769,7 +770,12 @@ final class ReturnTypeAnalyzer
                         );
                     }
                 } else {
-                    if ($function instanceof Function_
+                    if ($function instanceof Closure
+                        && $function->getAttribute(ClassAnalyzer::PROPERTY_HOOK_ATTRIBUTE) !== null
+                    ) {
+                        // a property hook returns the type of its property, which other hooks and writes share
+                        $check_for_less_specific_type = false;
+                    } elseif ($function instanceof Function_
                         || $function instanceof Closure
                         || $function instanceof ArrowFunction
                         || $function->isPrivate()

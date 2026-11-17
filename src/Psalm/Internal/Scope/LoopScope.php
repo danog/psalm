@@ -10,6 +10,7 @@ use Psalm\Type;
 use Psalm\Type\Union;
 
 use function array_intersect_key;
+use function max;
 
 /**
  * @internal
@@ -19,11 +20,32 @@ final class LoopScope
     public int $iteration_count = 0;
 
     /**
+     * The latest stamps (see Context::$parent_remove_vars) of the variables changed before a `break` or `continue`
+     *
+     * @var array<string, int>
+     */
+    public array $parent_remove_vars_at_jumps = [];
+
+    /**
      * What the condition being false says of the variables, when the loop has no break
      *
      * @var array<string, list<list<Assertion>>>
      */
     public array $exit_truths = [];
+
+    /**
+     * The variables evaluating the condition writes, with what they hold once it is evaluated
+     *
+     * @var array<string, Union>
+     */
+    public array $condition_written_vars = [];
+
+    /**
+     * The variables evaluating the condition always writes, whichever way it is left
+     *
+     * @var array<string, true>
+     */
+    public array $condition_always_written_var_ids = [];
 
     /**
      * The variables the loop (and the loops around it) may assign, written to, or pass to a call, as the root of
@@ -139,6 +161,7 @@ final class LoopScope
             $this->breaks_through_finally = true;
         }
 
+        $this->addParentRemoveVarsAtJump($context);
         $this->vars_at_breaks = self::addVarsAtJump($this->vars_at_breaks, $context->vars_in_scope);
     }
 
@@ -151,7 +174,21 @@ final class LoopScope
             $this->continues_through_finally = true;
         }
 
+        $this->addParentRemoveVarsAtJump($context);
         $this->vars_at_continues = self::addVarsAtJump($this->vars_at_continues, $context->vars_in_scope);
+    }
+
+    /**
+     * @psalm-external-mutation-free
+     */
+    private function addParentRemoveVarsAtJump(Context $context): void
+    {
+        foreach ($context->parent_remove_vars as $var_id => $stamp) {
+            $this->parent_remove_vars_at_jumps[$var_id] = max(
+                $stamp,
+                $this->parent_remove_vars_at_jumps[$var_id] ?? 0,
+            );
+        }
     }
 
     /**
