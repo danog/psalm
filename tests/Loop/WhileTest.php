@@ -965,6 +965,82 @@ final class WhileTest extends TestCase
                     '$fname===' => '\'thing\'',
                 ],
             ],
+            'preIncrementInAConditionThatHoldsOnlyForTheFirstValueExitsWithTheNextOne' => [
+                'code' => '<?php
+                    $try = 8;
+                    while (++$try < 10) {
+                        echo $try;
+                    }',
+                'assertions' => [
+                    '$try===' => '10',
+                ],
+            ],
+            'postIncrementInAConditionThatHoldsOnlyForTheFirstValueExitsWithTheNextOne' => [
+                'code' => '<?php
+                    $try = 8;
+                    while ($try++ < 9) {
+                        echo $try;
+                    }',
+                'assertions' => [
+                    '$try===' => '10',
+                ],
+            ],
+            'preDecrementInAConditionThatHoldsOnlyForTheFirstValueExitsWithTheNextOne' => [
+                'code' => '<?php
+                    $i = 2;
+                    while (--$i > 0) {
+                        echo $i;
+                    }',
+                'assertions' => [
+                    '$i===' => '0',
+                ],
+            ],
+            'incrementOfSeveralLiteralsInALoopIsWidened' => [
+                'code' => '<?php
+                    $i = rand(0, 1) ? 0 : 1;
+                    while (rand(0, 1)) {
+                        $i++;
+                    }
+
+                    $j = rand(0, 1) ? 0 : 3;
+                    while (rand(0, 1)) {
+                        $j--;
+                    }
+
+                    $k = rand(0, 1) ? 0 : 1;
+                    while (rand(0, 1)) {
+                        while (rand(0, 1)) {
+                            $k++;
+                        }
+                    }',
+                'assertions' => [
+                    '$i===' => 'int<0, max>',
+                    '$j===' => 'int<min, 3>',
+                    '$k===' => 'int<0, max>',
+                ],
+            ],
+            'compoundAssignmentOfSeveralLiteralsInALoopIsShiftedAsARange' => [
+                'code' => '<?php
+                    $a = rand(0, 1) ? 0 : 1;
+                    while (rand(0, 1)) {
+                        $a += 3;
+                    }
+
+                    $b = rand(0, 1) ? 0 : 1;
+                    while (rand(0, 1)) {
+                        $b -= 3;
+                    }
+
+                    $c = rand(0, 1) ? 0 : 1;
+                    while (rand(0, 1)) {
+                        $c += -3;
+                    }',
+                'assertions' => [
+                    '$a===' => 'int<0, max>',
+                    '$b===' => 'int<min, 1>',
+                    '$c===' => 'int<min, 1>',
+                ],
+            ],
             'variableAssignedInTheBodyOfALoopWhoseConditionHoldsForTheInitialLiteral' => [
                 'code' => '<?php
                     $a = 0;
@@ -2155,6 +2231,29 @@ final class WhileTest extends TestCase
                     }
                     echo $name;',
                 'error_message' => 'PossiblyUndefinedGlobalVariable',
+                // the condition is never true: it is reported too
+                'error_levels' => ['TypeDoesNotContainType'],
+            ],
+            'loopConditionOperandIsAnalysedWithTheTypesOfEachPass' => [
+                'code' => '<?php
+                    /** @param int<10, max> $i */
+                    function check(int $i): bool {
+                        return $i > 0;
+                    }
+
+                    $i = 0;
+                    $max = 10;
+                    while ($i < $max || check($i)) {
+                        $max = 0;
+                        ++$i;
+                    }',
+                'error_message' => 'InvalidArgument',
+            ],
+            'loopConditionWithPreIncrementNeverTrueForTheInitialLiteral' => [
+                'code' => '<?php
+                    $try = 9;
+                    while (++$try < 10) {}',
+                'error_message' => 'TypeDoesNotContainType',
             ],
             'variableAssignedInALoopWhoseConditionFailsForTheInitialLiteralIsPossiblyUndefined' => [
                 'code' => '<?php
@@ -2174,6 +2273,8 @@ final class WhileTest extends TestCase
                     }
                     echo $name;',
                 'error_message' => 'PossiblyUndefinedGlobalVariable',
+                // the condition is never true: it is reported too
+                'error_levels' => ['TypeDoesNotContainType'],
             ],
             'variableAssignedInALoopOverAnUnknownStartIsPossiblyUndefined' => [
                 'code' => '<?php

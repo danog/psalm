@@ -94,6 +94,9 @@ final class Populator
     {
         $this->progress->debug('ClassLikeStorage is populating' . "\n");
 
+        // before the members of the classes inherit their internal namespaces
+        $this->classlikes->markUnshippedCodeInternal();
+
         foreach ($this->classlike_storage_provider->getNew() as $class_storage) {
             $this->populateClassLikeStorage($class_storage);
         }
@@ -614,11 +617,11 @@ final class Populator
                     continue;
                 }
 
-                $storage->pseudo_methods[$method_name] ??= $pseudo_method;
-
-                if (isset($parent_interface_storage->declaring_pseudo_method_ids[$method_name])) {
+                if (!isset($storage->pseudo_methods[$method_name])) {
+                    $storage->pseudo_methods[$method_name] = $pseudo_method;
                     $storage->declaring_pseudo_method_ids[$method_name]
-                        ??= $parent_interface_storage->declaring_pseudo_method_ids[$method_name];
+                        = $parent_interface_storage->declaring_pseudo_method_ids[$method_name]
+                            ?? new MethodIdentifier($parent_interface_storage->name, $method_name);
                 }
             }
         }
@@ -1140,25 +1143,26 @@ final class Populator
     {
         $fq_class_name_lc = strtolower($storage->name);
 
+        // a plugin can add a `@method` without its declaring id
         foreach ($parent_storage->pseudo_methods as $method_name => $pseudo_method) {
-            if (!$this->hasPublicMethodAppearingInClass($storage, $fq_class_name_lc, $method_name)) {
-                $storage->pseudo_methods[$method_name] ??= $pseudo_method;
-
-                if (isset($parent_storage->declaring_pseudo_method_ids[$method_name])) {
-                    $storage->declaring_pseudo_method_ids[$method_name]
-                        ??= $parent_storage->declaring_pseudo_method_ids[$method_name];
-                }
+            if (!isset($storage->pseudo_methods[$method_name])
+                && !$this->hasPublicMethodAppearingInClass($storage, $fq_class_name_lc, $method_name)
+            ) {
+                $storage->pseudo_methods[$method_name] = $pseudo_method;
+                $storage->declaring_pseudo_method_ids[$method_name]
+                    = $parent_storage->declaring_pseudo_method_ids[$method_name]
+                        ?? new MethodIdentifier($parent_storage->name, $method_name);
             }
         }
 
         foreach ($parent_storage->pseudo_static_methods as $method_name => $pseudo_method) {
-            if (!$this->hasPublicMethodAppearingInClass($storage, $fq_class_name_lc, $method_name)) {
-                $storage->pseudo_static_methods[$method_name] ??= $pseudo_method;
-
-                if (isset($parent_storage->declaring_pseudo_static_method_ids[$method_name])) {
-                    $storage->declaring_pseudo_static_method_ids[$method_name]
-                        ??= $parent_storage->declaring_pseudo_static_method_ids[$method_name];
-                }
+            if (!isset($storage->pseudo_static_methods[$method_name])
+                && !$this->hasPublicMethodAppearingInClass($storage, $fq_class_name_lc, $method_name)
+            ) {
+                $storage->pseudo_static_methods[$method_name] = $pseudo_method;
+                $storage->declaring_pseudo_static_method_ids[$method_name]
+                    = $parent_storage->declaring_pseudo_static_method_ids[$method_name]
+                        ?? new MethodIdentifier($parent_storage->name, $method_name);
             }
         }
     }
