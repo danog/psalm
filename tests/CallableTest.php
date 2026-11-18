@@ -3691,6 +3691,13 @@ final class CallableTest extends TestCase
     public static function providerInvalidCodeParse(): iterable
     {
         return [
+            'arrayCallableNamingNoClass' => [
+                'code' => '<?php
+                    function call(callable $callback): void {}
+
+                    call(["", "run"]);',
+                'error_message' => 'InvalidArgument',
+            ],
             'invokeGenericFirstClassCallableWithInvalidBound' => [
                 'code' => '<?php
                     /**
@@ -5210,6 +5217,35 @@ final class CallableTest extends TestCase
                         protected function runLoop(): void {}
                     }',
                 'error_message' => 'expects a public callable',
+            ],
+            'emptyStringIsNotCallable' => [
+                'code' => '<?php
+                    function takesCallable(callable $c): void {}
+
+                    takesCallable("");',
+                'error_message' => 'InvalidArgument',
+            ],
+            'zeroStringIsNotCallable' => [
+                'code' => '<?php
+                    function takesCallable(callable $c): void {}
+
+                    takesCallable("0");',
+                'error_message' => 'InvalidArgument',
+            ],
+            'numericStringIsNotCallable' => [
+                'code' => '<?php
+                    function takesCallable(callable $c): void {}
+
+                    takesCallable("1e3");',
+                'error_message' => 'InvalidArgument',
+            ],
+            'numericStringIsNotACallableForABuiltin' => [
+                'code' => '<?php
+                    /** @param list<int> $a */
+                    function f(array $a): void {
+                        usort($a, "123");
+                    }',
+                'error_message' => 'InvalidArgument',
             ],
         ];
     }

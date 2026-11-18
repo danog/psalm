@@ -689,7 +689,11 @@ function sscanf(string $string, string $format, &...$vars) {}
  *
  * @return (
  *     func_num_args() is 1
- *     ? array{dirname: string, basename: string, extension?: string, filename: string}
+ *     ? (
+ *         $path is non-empty-string
+ *         ? array{dirname: string, basename: string, extension?: string, filename: string}
+ *         : array{dirname?: string, basename: string, extension?: string, filename: string}
+ *     )
  *     : string
  * )
  * @psalm-flow ($path) -> return
@@ -1331,7 +1335,8 @@ function preg_replace($pattern, $replacement, $subject, int $limit = -1, &$count
  * @psalm-purity-from-template P
  *
  * @psalm-taint-specialize
- * @psalm-flow ($subject) -> return
+ * @psalm-flow ($subject, $callback()) -> return
+ * @psalm-flow ($subject) -> $callback()
  */
 function preg_replace_callback($pattern, $callback, $subject, int $limit = -1, &$count = null, int $flags = 0) {}
 
@@ -1350,7 +1355,8 @@ function preg_replace_callback($pattern, $callback, $subject, int $limit = -1, &
  * @psalm-purity-from-template P
  *
  * @psalm-taint-specialize
- * @psalm-flow ($subject) -> return
+ * @psalm-flow ($subject, $pattern()) -> return
+ * @psalm-flow ($subject) -> $pattern()
  */
 function preg_replace_callback_array(array $pattern, $subject, int $limit = -1, &$count = null, int $flags = 0) {}
 
