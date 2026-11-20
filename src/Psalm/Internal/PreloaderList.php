@@ -1053,6 +1053,7 @@ final class PreloaderList {
         \Psalm\Internal\TypeVisitor\CanContainObjectTypeVisitor::class,
         \Psalm\Internal\TypeVisitor\CapturedValueVisitor::class,
         \Psalm\Internal\TypeVisitor\ClasslikeReplacer::class,
+        \Psalm\Internal\TypeVisitor\ClosureByRefUsesCollector::class,
         \Psalm\Internal\TypeVisitor\ConditionalSubjectReplacer::class,
         \Psalm\Internal\TypeVisitor\ContainsClassLikeVisitor::class,
         \Psalm\Internal\TypeVisitor\ContainsLiteralVisitor::class,
@@ -1485,6 +1486,7 @@ final class PreloaderList {
         \Psalm\Issue\WeakCipher::class,
         \Psalm\Issue\WeakHash::class,
         \Psalm\Issue\WeakRandom::class,
+        \Psalm\Issue\WrongCaseFunction::class,
         \Psalm\Issue\XmlExternalEntity::class,
         \Psalm\NodeTypeProvider::class,
         \Psalm\Node\Expr\AssignOp\VirtualBitwiseAnd::class,
@@ -1914,6 +1916,7 @@ final class PreloaderList {
         \Psalm\Type\Union::class,
         \Psalm\Type\UnionTrait::class,
         \Revolt\EventLoop::class,
+        \Revolt\EventLoop\Driver\StreamSelectDriver::class,
         \Revolt\EventLoop\FiberLocal::class,
         \SebastianBergmann\Diff\Differ::class,
         \SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder::class,
@@ -1927,7 +1930,6 @@ final class PreloaderList {
         \Symfony\Component\Console\Style\SymfonyStyle::class,
         \Symfony\Component\Filesystem\Path::class,
         \Webmozart\Assert\Assert::class,
-        \XdgBaseDir\Xdg::class,
 
     ];
 }
