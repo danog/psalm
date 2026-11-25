@@ -925,6 +925,19 @@ final class ArrayAssignmentTest extends TestCase
                     '$kept===' => 'non-empty-array<non-decimal-int-string, 0>',
                 ],
             ],
+            'intStringKeyIsAbsorbedOnlyByUnboundedInts' => [
+                'code' => '<?php
+                    /**
+                     * @param array<literal-int|\'5\', string> $literal
+                     * @param array<int<0, 10>|\'5\', string> $range
+                     * @param array<int|\'5\', string> $int
+                     */
+                    function f(array $literal, array $range, array $int): void {
+                        /** @psalm-check-type-exact $literal = array<literal-int, string> */
+                        /** @psalm-check-type-exact $range = array<5|int<0, 10>, string> */
+                        /** @psalm-check-type-exact $int = array<int, string> */
+                    }',
+            ],
             'templateBoundedByDecimalIntStringsKeysAreInts' => [
                 'code' => '<?php
                     /**
@@ -1202,7 +1215,7 @@ final class ArrayAssignmentTest extends TestCase
                     /** @var array<string, string> $a */
                     $a = [];
                     $a["x"] = 1;
-                    $a[uniqid()] = "b";
+                    $a[(string) rand()] = "b";
                     $b = $a["x"];
                     /** @psalm-check-type-exact $b = 1 */;
                     $a[str_repeat("x", rand(1, 3))] = "c";
@@ -1212,7 +1225,7 @@ final class ArrayAssignmentTest extends TestCase
                     /** @var array<string, array<string, int|string>> $e */
                     $e = [];
                     $e["x"]["y"] = 1;
-                    $e["x"][uniqid()] = "b";
+                    $e["x"][(string) rand()] = "b";
                     $f = $e["x"]["y"];
                     /** @psalm-check-type-exact $f = 1 */;
                     $e["x"][str_repeat("y", rand(1, 3))] = "c";
@@ -1344,7 +1357,7 @@ final class ArrayAssignmentTest extends TestCase
                     $d = [];
                     $d["any"]["x"] = 5;
                     $d["any"]["y"] = 6;
-                    $d[uniqid()]["x"] = "s";
+                    $d[(string) rand()]["x"] = "s";
                     $e = $d["any"]["x"];
                     /** @psalm-check-type-exact $e = 5 */;
                     $d[str_repeat("a", rand(1, 3))]["x"] = "s";
@@ -3964,6 +3977,11 @@ final class ArrayAssignmentTest extends TestCase
     public static function providerInvalidCodeParse(): iterable
     {
         return [
+            'invalidArrayOffsetShowsTheFullKeyType' => [
+                'code' => '<?php
+                    $a = [[1] => 2];',
+                'error_message' => 'Cannot create offset of type list{1}, expecting array-key',
+            ],
             'writeUnderATemplateKeyMayReplaceAStringItem' => [
                 'code' => '<?php
                     /**
