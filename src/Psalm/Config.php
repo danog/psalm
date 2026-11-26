@@ -110,7 +110,6 @@ use function getcwd;
 use function getenv;
 use function glob;
 use function hash;
-use function hrtime;
 use function implode;
 use function in_array;
 use function interface_exists;
@@ -118,6 +117,7 @@ use function is_a;
 use function is_array;
 use function is_dir;
 use function is_file;
+use function is_readable;
 use function is_resource;
 use function is_string;
 use function is_writable;
@@ -848,6 +848,10 @@ final class Config
      */
     public static function loadFromXMLFile(string $file_path, string $current_dir): Config
     {
+        if (!is_file($file_path) || !is_readable($file_path)) {
+            throw new ConfigException('Cannot read the config file ' . $file_path);
+        }
+
         $file_contents = file_get_contents($file_path);
 
         $base_dir = dirname($file_path);
@@ -2229,7 +2233,7 @@ final class Config
             }
 
             try {
-                $perf_start = Perf\Collector::$enabled ? (int) hrtime(true) : 0;
+                $perf_start = Perf\Collector::$enabled ? Perf\Collector::nowNs() : 0;
                 $plugin($socket, $plugin_config);
 
                 if ($perf_start !== 0) {
@@ -2272,7 +2276,7 @@ final class Config
 
         foreach ($this->plugin_paths as $path) {
             try {
-                $perf_start = Perf\Collector::$enabled ? (int) hrtime(true) : 0;
+                $perf_start = Perf\Collector::$enabled ? Perf\Collector::nowNs() : 0;
                 $plugin = new FileBasedPluginAdapter($path, $this, $codebase);
                 $plugin($socket);
 
@@ -3150,6 +3154,10 @@ final class Config
             $this->internal_stubs[] = $stubsDir . 'Php82.phpstub';
             $this->internal_stubs[] = $stubsDir . 'Php82Functions.phpstub';
             $this->php_extensions['random'] = true; // random is a part of the PHP core starting from PHP 8.2
+        }
+
+        if ($codebase->analysis_php_version_id >= 8_03_00) {
+            $this->internal_stubs[] = $stubsDir . 'Php83.phpstub';
         }
 
         if ($codebase->analysis_php_version_id >= 8_04_00) {
