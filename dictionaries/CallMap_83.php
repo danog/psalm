@@ -13175,7 +13175,7 @@ return array (
   ),
   'dateinterval::createfromdatestring' => 
   array (
-    0 => 'DateInterval|false',
+    0 => 'DateInterval',
     'datetime' => 'string',
   ),
   'dateinterval::format' => 
@@ -80800,7 +80800,7 @@ return array (
   ),
   'sqlite3result::columnname' => 
   array (
-    0 => 'string',
+    0 => 'false|string',
     'column' => 'int',
   ),
   'sqlite3result::columntype' => 
