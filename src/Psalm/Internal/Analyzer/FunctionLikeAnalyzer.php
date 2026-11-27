@@ -2418,7 +2418,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                 // `static` is what `$this` is, with the templates of the class, and the class itself in a final one
                 $this_type = $context->vars_in_scope['$this'] ?? null;
-                $this_object = $this_type !== null && $this_type->isSingle() ? $this_type->getSingleAtomic() : null;
+                $this_object = $this_type !== null && $this_type->isSingleAtomic()
+                    ? $this_type->getSingleAtomic()
+                    : null;
 
                 try {
                     $param_type = TypeExpander::expandUnion(
@@ -2957,6 +2959,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $this->source->getFQCLN(),
                 true,
             ),
+            $inferred_return_type->canBeFullyExpressedInPhp($codebase->analysis_php_version_id),
         );
     }
 

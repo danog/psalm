@@ -557,7 +557,7 @@ When `true`, Psalm will treat all classes as if they had sealed properties, mean
 >
 ```
 
-When `true` (the default), Psalm will run [Taint Analysis](../security_analysis/index.md) on your codebase. This config is the same as if you were running Psalm with `--taint-analysis`.
+When `true` (the default), Psalm will run [Taint Analysis](../security_analysis/index.md) on your codebase. This config is the same as if you were running Psalm with `--taint-analysis`. `--no-taint-analysis` turns it off for one run.
 
 #### reportInfo
 
@@ -939,6 +939,17 @@ Optional. If your codebase uses global variables that are accessed with the `glo
 <globals>
   <var name="globalVariableName" type="type" />
 </globals>
+```
+
+In a function, `global` gives the variable this type, whatever the file scope assigned to it:
+```php
+// <var name="x" type="int|null" />
+$x = null;
+
+function f(): void {
+    global $x;
+    $x ??= 1; // no issue
+}
 ```
 
 Some frameworks and libraries expose functionalities through e.g. `$GLOBALS[DB]->query($query)`.
