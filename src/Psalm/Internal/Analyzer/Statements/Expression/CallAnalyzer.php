@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
@@ -48,6 +49,7 @@ use Psalm\IssueBuffer;
 use Psalm\Node\Expr\BinaryOp\VirtualIdentical;
 use Psalm\Node\Expr\VirtualConstFetch;
 use Psalm\Node\VirtualName;
+use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Plugin\EventHandler\Event\AfterMethodCallAnalysisEvent;
 use Psalm\StatementsSource;
 use Psalm\Storage\Assertion\Falsy;
@@ -65,10 +67,18 @@ use Psalm\Storage\MethodStorage;
 use Psalm\Storage\Possibilities;
 use Psalm\Type;
 use Psalm\Type\Atomic\Scalar;
+use Psalm\Type\Atomic\TArray;
+use Psalm\Type\Atomic\TBool;
+use Psalm\Type\Atomic\TFloat;
+use Psalm\Type\Atomic\TInt;
+use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Atomic\TNull;
+use Psalm\Type\Atomic\TObject;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Reconciler;
+use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
@@ -769,11 +779,14 @@ abstract class CallAnalyzer
 
     /**
      * @param PhpParser\Node\Scalar\String_|PhpParser\Node\Expr\Array_|PhpParser\Node\Expr\BinaryOp\Concat $callable_arg
+     * @param ?Context $context resolves the variable of an `[$object, 'method']` argument that is not analysed yet,
+     *                          as in a params provider
      * @return list<non-empty-string>
      */
     public static function getFunctionIdsFromCallableArg(
         FileSource $file_source,
         PhpParser\Node\Expr $callable_arg,
+        ?Context $context = null,
     ): array {
         if ($callable_arg instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
             if ($callable_arg->left instanceof PhpParser\Node\Expr\ClassConstFetch
@@ -839,9 +852,19 @@ abstract class CallAnalyzer
             return [$fq_class_name . '::' . $method_name_arg->value];
         }
 
-        if (!$file_source instanceof StatementsAnalyzer
-            || !($class_arg_type = $file_source->node_data->getType($class_arg))
+        $class_arg_type = $file_source instanceof StatementsAnalyzer
+            ? $file_source->node_data->getType($class_arg)
+            : null;
+
+        if (!$class_arg_type
+            && $context
+            && $class_arg instanceof PhpParser\Node\Expr\Variable
+            && is_string($class_arg->name)
         ) {
+            $class_arg_type = $context->vars_in_scope['$' . $class_arg->name] ?? null;
+        }
+
+        if (!$class_arg_type) {
             return [];
         }
 
@@ -2099,5 +2122,77 @@ abstract class CallAnalyzer
                 }
             }
         }
+    }
+
+    /**
+     * The value naming the method of a call (`$object->$name()`, `A::$name()`) chooses the code it runs, like the name
+     * of `$name()` or the method of `[$object, $name]()`.
+     */
+    public static function addMethodNameSink(
+        StatementsAnalyzer $statements_analyzer,
+        PhpParser\Node\Expr $stmt,
+        PhpParser\Node\Expr $name,
+        Context $context,
+    ): void {
+        $taint_flow_graph = $statements_analyzer->taint_flow_graph;
+        $name_type = $statements_analyzer->node_data->getType($name);
+        $codebase = $statements_analyzer->getCodebase();
+
+        if (!$taint_flow_graph
+            || $name_type === null
+            || $name_type->parent_nodes === []
+            || !self::canBeMethodName($name_type)
+            || $codebase->config->suppressesIssueType($statements_analyzer->getSuppressedIssues(), 'TaintedInput')
+        ) {
+            return;
+        }
+
+        $sink = DataFlowNode::getForCallableArg(
+            'dynamic-method-call',
+            'variable-method-call',
+            0,
+            new CodeLocation($statements_analyzer->getSource(), $name),
+            TaintKind::INPUT_CALLABLE,
+        );
+
+        $taint_flow_graph->addSink($sink);
+
+        $event = new AddRemoveTaintsEvent($stmt, $context, $statements_analyzer, $codebase);
+
+        $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
+        $removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+
+        $taints = $added_taints & ~$removed_taints;
+        if ($taints !== 0) {
+            $taint_flow_graph->addSource($sink->setTaints($taints));
+        }
+
+        foreach ($name_type->parent_nodes as $parent_node) {
+            $taint_flow_graph->addPath($parent_node, $sink, 'call', $added_taints, $removed_taints);
+        }
+    }
+
+    /**
+     * PHP throws before the call for a method name that is not a string, objects with `__toString()` included.
+     *
+     * @psalm-pure
+     */
+    private static function canBeMethodName(Union $name_type): bool
+    {
+        foreach ($name_type->getAtomicTypes() as $atomic) {
+            if (!$atomic instanceof TArray
+                && !$atomic instanceof TKeyedArray
+                && !$atomic instanceof TNamedObject
+                && !$atomic instanceof TObject
+                && !$atomic instanceof TNull
+                && !$atomic instanceof TBool
+                && !$atomic instanceof TInt
+                && !$atomic instanceof TFloat
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

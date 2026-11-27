@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\AlgebraAnalyzer;
 use Psalm\Internal\Analyzer\ClosureAnalyzer;
 use Psalm\Internal\Analyzer\ExtensionRequirementAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
+use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\PurityWildcardInference;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallPurityAnalyzer;
@@ -46,6 +47,8 @@ use Psalm\Internal\TypeVisitor\TypeVariableResolver;
 use Psalm\Issue\DeprecatedFunction;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\ImpureMethodCall;
+use Psalm\Issue\InternalClass;
+use Psalm\Issue\InternalFunction;
 use Psalm\Issue\InvalidArrayOffset;
 use Psalm\Issue\InvalidFunctionCall;
 use Psalm\Issue\MixedFunctionCall;
@@ -752,6 +755,26 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $statements_analyzer->getSuppressedIssues(),
                 );
             }
+
+            if ($function_call_info->function_id !== null && !$context->collect_initializations) {
+                $caller_identifier = $statements_analyzer->getFullyQualifiedFunctionMethodOrNamespaceName() ?? '';
+
+                if (!NamespaceAnalyzer::isWithinAny(
+                    $caller_identifier,
+                    $function_call_info->function_storage->internal,
+                )) {
+                    IssueBuffer::maybeAdd(
+                        new InternalFunction(
+                            'The function ' . $function_call_info->function_id . ' is internal to '
+                                . InternalClass::listToPhrase($function_call_info->function_storage->internal)
+                                . ' but called from ' . ($caller_identifier ?: 'root namespace'),
+                            $code_location,
+                            $function_call_info->function_id,
+                        ),
+                        $statements_analyzer->getSuppressedIssues(),
+                    );
+                }
+            }
         }
 
         // a builtin a PHP version deprecates, whether or not a stub declares it
@@ -928,7 +951,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
     {
         if (!$callable instanceof TKeyedArray
             || !isset($callable->properties[0], $callable->properties[1])
-            || !$callable->properties[0]->isSingle()
+            || !$callable->properties[0]->isSingleAtomic()
             || !$callable->properties[1]->isSingleStringLiteral()
         ) {
             return [];
@@ -1192,7 +1215,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         Context $context,
         ?Union $callee_type,
     ): ?array {
-        $closure = $callee_type !== null && $callee_type->isSingle() ? $callee_type->getSingleAtomic() : null;
+        $closure = $callee_type !== null && $callee_type->isSingleAtomic() ? $callee_type->getSingleAtomic() : null;
 
         if (!$closure instanceof TClosure
             || $closure->callable_id === null
